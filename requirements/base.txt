@@ -8,3 +8,10 @@ uvicorn[standard]==0.22.0  # https://github.com/encode/uvicorn
 django==4.2.2  # https://www.djangoproject.com/
 django-environ==0.10.0  # https://github.com/joke2k/django-environ
 django-model-utils==4.3.1  # https://github.com/jazzband/django-model-utils
+django-timezone-field==5.0  # https://github.com/mfogel/django-timezone-field/
+
+# API
+# ------------------------------------------------------------------------------
+django-ninja==0.22.2  # https://github.com/vitalik/django-ninja
+django-ninja-jwt==5.2.5  # https://github.com/eadwinCode/django-ninja-jwt
+django-ninja-extra==0.19.0  # https://github.com/eadwinCode/django-ninja-extra

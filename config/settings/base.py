@@ -72,8 +72,8 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    "sapphire_backend.users",
-    # Your stuff: custom apps go here
+    "sapphire_backend.organizations",
+    "sapphire_backend.users"
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -90,6 +90,8 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
+
+AUTH_USER_MODEL = "users.User"
 
 # PASSWORDS
 # ------------------------------------------------------------------------------
