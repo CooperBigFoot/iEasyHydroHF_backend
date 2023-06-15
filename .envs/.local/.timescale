@@ -1,7 +1,7 @@
-# PostgreSQL
+# TimescaleDB
 # ------------------------------------------------------------------------------
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
 POSTGRES_DB=sapphire_backend
-POSTGRES_USER=debug
-POSTGRES_PASSWORD=debug
+POSTGRES_USER=sapphire
+POSTGRES_PASSWORD=sapphire
+POSTGRES_HOST=timescale
+POSTGRES_PORT=5432

@@ -1,8 +1,8 @@
 version: '3'
 
 volumes:
-  sapphire_backend_local_postgres_data: {}
-  sapphire_backend_local_postgres_data_backups: {}
+  sapphire_backend_local_timescale_data: {}
+  sapphire_backend_local_timescale_data_backups: {}
 
 services:
   django:
