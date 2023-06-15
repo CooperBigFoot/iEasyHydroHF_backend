@@ -1,8 +1,7 @@
-from timezone_field import TimeZoneField
-from phonenumber_field.modelfields import PhoneNumberField
-
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from phonenumber_field.modelfields import PhoneNumberField
+from timezone_field import TimeZoneField
 
 
 class Organization(models.Model):

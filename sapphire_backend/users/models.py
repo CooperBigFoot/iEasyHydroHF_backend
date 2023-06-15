@@ -1,8 +1,7 @@
-from phonenumber_field.modelfields import PhoneNumberField
-
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from phonenumber_field.modelfields import PhoneNumberField
 
 
 class User(AbstractUser):
@@ -21,7 +20,4 @@ class User(AbstractUser):
 
     @property
     def is_admin(self):
-        return self.user_role in {
-            self.UserRoles.ORGANIZATION_ADMIN,
-            self.UserRoles.SUPER_ADMIN
-        }
+        return self.user_role in {self.UserRoles.ORGANIZATION_ADMIN, self.UserRoles.SUPER_ADMIN}
