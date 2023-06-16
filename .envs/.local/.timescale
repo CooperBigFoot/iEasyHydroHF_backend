@@ -1,0 +1,7 @@
+# TimescaleDB
+# ------------------------------------------------------------------------------
+POSTGRES_DB=sapphire_backend
+POSTGRES_USER=sapphire
+POSTGRES_PASSWORD=sapphire
+POSTGRES_HOST=timescale
+POSTGRES_PORT=5432
