@@ -15,5 +15,5 @@ django-phonenumber-field[phonenumberslite]==7.1.0  # https://github.com/stefanfo
 # API
 # ------------------------------------------------------------------------------
 django-ninja==0.22.2  # https://github.com/vitalik/django-ninja
-django-ninja-jwt==5.2.5  # https://github.com/eadwinCode/django-ninja-jwt
+django-ninja-jwt[crypto]==5.2.5  # https://github.com/eadwinCode/django-ninja-jwt
 django-ninja-extra==0.19.1  # https://github.com/eadwinCode/django-ninja-extra

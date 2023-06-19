@@ -1,6 +1,7 @@
 """
 Base settings to build other settings files upon.
 """
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -68,7 +69,7 @@ DJANGO_APPS = [
     "django.contrib.admin",
     "django.forms",
 ]
-THIRD_PARTY_APPS = []
+THIRD_PARTY_APPS = ["ninja", "ninja_extra", "ninja_jwt", "ninja_jwt.token_blacklist"]
 
 LOCAL_APPS = ["sapphire_backend.organizations", "sapphire_backend.users"]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -220,3 +221,10 @@ LOGGING = {
 
 # Your stuff...
 # ------------------------------------------------------------------------------
+NINJA_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "TOKEN_OBTAIN_PAIR_INPUT_SCHEMA": "sapphire_backend.users.auth.schema.TokenObtainInputSchema",
+}
