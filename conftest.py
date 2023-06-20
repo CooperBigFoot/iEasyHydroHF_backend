@@ -1,9 +1,7 @@
 import pytest
+from django.contrib.auth import get_user_model
 from django.test import Client
 from ninja_jwt.tokens import AccessToken
-
-from django.contrib.auth import get_user_model
-
 
 User = get_user_model()
 

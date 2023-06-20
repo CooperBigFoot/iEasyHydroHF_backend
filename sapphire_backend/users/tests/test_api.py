@@ -26,16 +26,10 @@ class TestUserAPIController:
         response = api_client.get(f"{self.endpoint}/999999999999")
 
         assert response.status_code == 404
-        assert response.json() == {
-            "detail": "User not found.",
-            "code": "user_not_found"
-        }
+        assert response.json() == {"detail": "User not found.", "code": "user_not_found"}
 
     def test_get_inactive_user_by_id(self, api_client, inactive_user):
         response = api_client.get(f"{self.endpoint}/{inactive_user.id}")
 
         assert response.status_code == 404
-        assert response.json() == {
-            "detail": "User not found.",
-            "code": "user_not_found"
-        }
+        assert response.json() == {"detail": "User not found.", "code": "user_not_found"}
