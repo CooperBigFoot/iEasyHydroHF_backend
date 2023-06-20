@@ -1,6 +1,5 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from phonenumber_field.modelfields import PhoneNumberField
 from timezone_field import TimeZoneField
 
 
@@ -24,7 +23,7 @@ class Organization(models.Model):
     timezone = TimeZoneField(verbose_name=_("Organization timezone"), null=True, blank=True)
 
     contact = models.CharField(verbose_name=_("Contact person"), max_length=200, blank=True, default="")
-    contact_phone = PhoneNumberField(verbose_name=_("Contact phone"), blank=True)
+    contact_phone = models.CharField(verbose_name=_("Phone number"), blank=True, max_length=100)
 
     year_type = models.CharField(
         verbose_name=_("Year type"), max_length=2, choices=YearType.choices, default=YearType.HYDROLOGICAL
@@ -34,7 +33,6 @@ class Organization(models.Model):
     )
 
     is_active = models.BooleanField(verbose_name=_("Is active?"), default=True)
-    is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
 
     class Meta:
         verbose_name = _("Organization")
