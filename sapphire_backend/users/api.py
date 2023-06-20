@@ -21,4 +21,4 @@ class UserAPIController:
         try:
             return User.objects.get(id=user_id)
         except User.DoesNotExist:
-            return 404, {"message": _("User not found.")}
+            return 404, {"detail": _("User not found."), "code": "user_not_found"}

@@ -3,6 +3,8 @@ from ninja_jwt.controller import TokenObtainPairController
 from ninja_jwt.schema_control import SchemaControl
 from ninja_jwt.settings import api_settings
 
+from sapphire_backend.utils.mixins.schemas import Message
+
 schema = SchemaControl(api_settings)
 
 
@@ -10,7 +12,7 @@ schema = SchemaControl(api_settings)
 class AuthController(TokenObtainPairController):
     @http_post(
         "/token-obtain",
-        response=schema.obtain_pair_schema.get_response_schema(),
+        response={200: schema.obtain_pair_schema.get_response_schema(), 401: Message},
         url_name="token_obtain",
     )
     def obtain_token(self, user_token: schema.obtain_pair_schema):

@@ -10,7 +10,6 @@ django==4.2.2  # https://www.djangoproject.com/
 django-environ==0.10.0  # https://github.com/joke2k/django-environ
 django-model-utils==4.3.1  # https://github.com/jazzband/django-model-utils
 django-timezone-field==5.0  # https://github.com/mfogel/django-timezone-field/
-django-phonenumber-field[phonenumberslite]==7.1.0  # https://github.com/stefanfoulis/django-phonenumber-field
 
 # API
 # ------------------------------------------------------------------------------

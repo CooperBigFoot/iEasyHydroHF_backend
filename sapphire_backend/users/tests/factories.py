@@ -1,7 +1,10 @@
 import factory
+import pytz
 from django.contrib.auth import get_user_model
 from django.db.models import signals
 from faker import Faker
+
+from sapphire_backend.organizations.tests.factories import OrganizationFactory
 
 User = get_user_model()
 
@@ -16,3 +19,15 @@ class UserFactory(factory.django.DjangoModelFactory):
 
     first_name = fake.first_name()
     last_name = fake.last_name()
+
+    email = fake.ascii_email()
+    username = fake.language_name()
+    password = factory.PostGenerationMethodCall("set_password", "password123")
+
+    is_active = True
+    date_joined = fake.date_time_between(start_date="-1y", tzinfo=pytz.UTC)
+
+    contact_phone = fake.phone_number()
+    user_role = User.UserRoles.REGULAR_USER
+
+    organization = factory.SubFactory(OrganizationFactory)
