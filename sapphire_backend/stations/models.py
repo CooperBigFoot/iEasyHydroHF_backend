@@ -1,6 +1,7 @@
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from timezone_field import TimeZoneField
 
 from sapphire_backend.utils.mixins.models import SlugMixin
 
@@ -29,6 +30,7 @@ class Station(SlugMixin, models.Model):
     longitude = models.FloatField(
         verbose_name=_("Longitude"), validators=[MinValueValidator(-180), MaxValueValidator(180)]
     )
+    timezone = TimeZoneField(verbose_name=_("Station timezone"), null=True, blank=True)
     elevation = models.FloatField(verbose_name=_("Elevation in meters"), blank=True, null=True)
 
     is_automatic = models.BooleanField(verbose_name=_("Is automatic station?"), default=False)
@@ -43,6 +45,13 @@ class Station(SlugMixin, models.Model):
         verbose_name = _("Station")
         verbose_name_plural = _("Stations")
         ordering = ["-name"]
+        indexes = [
+            models.Index(fields=["organization"], name="station_organization_idx"),
+            models.Index(fields=["station_code"], name="station_code_idx"),
+        ]
+        constraints = [
+            models.UniqueConstraint("station_code", "is_automatic", name="station_code_is_automatic_unique")
+        ]
 
     def __str__(self):
         return self.name
