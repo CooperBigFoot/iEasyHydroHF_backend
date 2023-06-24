@@ -3,6 +3,8 @@ from django.http import HttpRequest
 from ninja_extra import permissions
 from ninja_extra.controllers import ControllerBase
 
+from sapphire_backend.organizations.models import Organization
+
 User = get_user_model()
 
 
@@ -17,8 +19,13 @@ class IsOrganizationAdmin(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
         user = request.user
         if user.is_authenticated:
-            # TODO find out how to get the organization ID, most likely from the controller path or something
             return (
-                user.user_role == User.UserRoles.ORGANIZATION_ADMIN and user.organization.id == "some_organization_id"
+                user.user_role == User.UserRoles.ORGANIZATION_ADMIN
+                and user.organization.id == controller.context.kwargs.get("organization_id")
             )
         return False
+
+
+class OgranizationExists(permissions.BasePermission):
+    def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
+        return Organization.objects.filter(id=controller.context.kwargs.get("organization_id")).exists()
