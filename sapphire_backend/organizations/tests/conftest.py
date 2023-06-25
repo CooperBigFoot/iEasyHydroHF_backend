@@ -9,10 +9,10 @@ register(OrganizationFactory)
 
 
 @pytest.fixture
-def organization(db, organization_factory):
+def other_organization(db, organization_factory):
     return organization_factory.create(
-        name="Kyrgyz Hydromet",
+        name="Kazakh Hydromet",
         language=Organization.Language.RUSSIAN,
         year_type=Organization.YearType.HYDROLOGICAL,
-        timezone=pytz.timezone("Asia/Bishkek"),
+        timezone=pytz.timezone("Asia/Almaty"),
     )

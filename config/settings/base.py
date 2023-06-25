@@ -71,7 +71,7 @@ DJANGO_APPS = [
 ]
 THIRD_PARTY_APPS = ["ninja", "ninja_extra", "ninja_jwt", "ninja_jwt.token_blacklist"]
 
-LOCAL_APPS = ["sapphire_backend.organizations", "sapphire_backend.users"]
+LOCAL_APPS = ["sapphire_backend.organizations", "sapphire_backend.stations", "sapphire_backend.users"]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
