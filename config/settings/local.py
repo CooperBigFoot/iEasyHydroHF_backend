@@ -37,3 +37,5 @@ INSTALLED_APPS += ["django_extensions"]  # noqa: F405
 
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"

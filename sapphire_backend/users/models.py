@@ -16,6 +16,7 @@ class User(AbstractUser):
     organization = models.ForeignKey(
         "organizations.Organization", verbose_name=_("Organization"), on_delete=models.PROTECT, null=True, blank=True
     )
+    avatar = models.ImageField(verbose_name=_("Avatar"), upload_to="avatars/", blank=True)
 
     @property
     def is_admin(self):

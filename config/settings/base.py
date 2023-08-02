@@ -233,3 +233,5 @@ NINJA_JWT = {
 
 # corsheaders
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+
+MAX_IMAGE_SIZE = env.int("MAX_IMAGE_SIZE", 10)  # MB

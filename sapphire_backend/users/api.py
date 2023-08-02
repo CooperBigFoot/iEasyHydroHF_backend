@@ -1,8 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext as _
+from ninja import File
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
+from sapphire_backend.utils.mixins.files import UploadedLimitedSizeFile
 from sapphire_backend.utils.mixins.schemas import Message
 
 from .schema import UserOutputSchema
@@ -22,3 +24,11 @@ class UsersAPIController:
             return User.objects.get(id=user_id, is_active=True)
         except User.DoesNotExist:
             return 404, {"detail": _("User not found."), "code": "user_not_found"}
+
+    @route.post(
+        "me/avatar-upload", response={201: UserOutputSchema}, url_name="users-me-avatar-upload", auth=JWTAuth()
+    )
+    def upload_avatar(self, request, image: UploadedLimitedSizeFile = File(...)):
+        request.user.avatar.save(image.name, image.file)
+        request.user.save()
+        return 201, request.user
