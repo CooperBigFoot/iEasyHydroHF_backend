@@ -20,3 +20,10 @@ class User(AbstractUser):
     @property
     def is_admin(self):
         return self.user_role in {self.UserRoles.ORGANIZATION_ADMIN, self.UserRoles.SUPER_ADMIN}
+
+    @property
+    def display_name(self):
+        if all([self.first_name, self.last_name]):
+            return f"{self.first_name} {self.last_name}"
+        else:
+            return self.username
