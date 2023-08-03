@@ -32,3 +32,7 @@ class UsersAPIController:
         request.user.avatar.save(image.name, image.file)
         request.user.save()
         return 201, request.user
+
+    @route.put("{user_id}", response={201: UserOutputSchema, 401: Message, 404: Message}, url_name="user-update")
+    def update_user(self, request, user_id: int):
+        pass
