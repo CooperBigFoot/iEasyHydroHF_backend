@@ -5,6 +5,7 @@ from django.test import Client
 from ninja_jwt.tokens import AccessToken
 
 from sapphire_backend.organizations.models import Organization
+from sapphire_backend.organizations.tests.factories import OrganizationFactory
 from sapphire_backend.users.tests.factories import UserFactory
 
 User = get_user_model()
@@ -12,11 +13,11 @@ User = get_user_model()
 
 @pytest.fixture
 def regular_user(db, user_factory=UserFactory):
-    return user_factory.create()
+    return user_factory.create(username="regular_user")
 
 
 @pytest.fixture
-def organization(db, organization_factory):
+def organization(db, organization_factory=OrganizationFactory):
     return organization_factory.create(
         name="Kyrgyz Hydromet",
         language=Organization.Language.RUSSIAN,
@@ -26,13 +27,25 @@ def organization(db, organization_factory):
 
 
 @pytest.fixture
+def backup_organization(db, organization_factory=OrganizationFactory):
+    return organization_factory.create(
+        name="Kazalk Hydromet",
+        language=Organization.Language.RUSSIAN,
+        year_type=Organization.YearType.HYDROLOGICAL,
+        timezone=pytz.timezone("Asia/Bishkek"),
+    )
+
+
+@pytest.fixture
 def organization_admin(db, user_factory, organization):
-    return user_factory.create(user_role=User.UserRoles.ORGANIZATION_ADMIN, organization=organization)
+    return user_factory.create(
+        username="organization_admin", user_role=User.UserRoles.ORGANIZATION_ADMIN, organization=organization
+    )
 
 
 @pytest.fixture
 def superadmin(db, user_factory):
-    return user_factory.create(user_role=User.UserRoles.SUPER_ADMIN)
+    return user_factory.create(username="superadmin", user_role=User.UserRoles.SUPER_ADMIN)
 
 
 @pytest.fixture

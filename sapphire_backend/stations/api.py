@@ -4,7 +4,7 @@ from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
 from sapphire_backend.utils.mixins.schemas import Message
-from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OgranizationExists
+from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OrganizationExists
 
 from .models import Station
 from .schema import StationInputSchema, StationOutputDetailSchema, StationOutputListSchema, StationUpdateSchema
@@ -14,7 +14,7 @@ from .schema import StationInputSchema, StationOutputDetailSchema, StationOutput
     "{organization_id}/stations",
     tags=["Stations"],
     auth=JWTAuth(),
-    permissions=[OgranizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
+    permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
 )
 class StationsAPIController:
     @route.post("", response={201: StationOutputDetailSchema, 400: Message})
