@@ -29,7 +29,7 @@ def organization(db, organization_factory=OrganizationFactory):
 @pytest.fixture
 def backup_organization(db, organization_factory=OrganizationFactory):
     return organization_factory.create(
-        name="Kazalk Hydromet",
+        name="Kazakh Hydromet",
         language=Organization.Language.RUSSIAN,
         year_type=Organization.YearType.HYDROLOGICAL,
         timezone=pytz.timezone("Asia/Bishkek"),
