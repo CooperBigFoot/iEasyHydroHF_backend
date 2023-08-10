@@ -223,7 +223,7 @@ LOGGING = {
 # Your stuff...
 # ------------------------------------------------------------------------------
 NINJA_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -233,3 +233,5 @@ NINJA_JWT = {
 
 # corsheaders
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+
+MAX_IMAGE_SIZE = env.int("MAX_IMAGE_SIZE", 10)  # MB

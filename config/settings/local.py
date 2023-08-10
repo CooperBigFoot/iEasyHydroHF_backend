@@ -37,3 +37,6 @@ INSTALLED_APPS += ["django_extensions"]  # noqa: F405
 
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+BACKEND_URL = env.str("DJANGO_BACKEND_URL", "http://localhost:8000")

@@ -16,7 +16,23 @@ class User(AbstractUser):
     organization = models.ForeignKey(
         "organizations.Organization", verbose_name=_("Organization"), on_delete=models.PROTECT, null=True, blank=True
     )
+    avatar = models.ImageField(verbose_name=_("Avatar"), upload_to="avatars/", blank=True)
 
     @property
     def is_admin(self):
         return self.user_role in {self.UserRoles.ORGANIZATION_ADMIN, self.UserRoles.SUPER_ADMIN}
+
+    @property
+    def is_organization_admin(self):
+        return self.user_role == self.UserRoles.ORGANIZATION_ADMIN
+
+    @property
+    def is_superadmin(self):
+        return self.user_role == self.UserRoles.SUPER_ADMIN
+
+    @property
+    def display_name(self):
+        if all([self.first_name, self.last_name]):
+            return f"{self.first_name} {self.last_name}"
+        else:
+            return self.username

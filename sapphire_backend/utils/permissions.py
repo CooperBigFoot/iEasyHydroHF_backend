@@ -8,11 +8,14 @@ from sapphire_backend.organizations.models import Organization
 User = get_user_model()
 
 
+class IsOwner(permissions.BasePermission):
+    def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
+        return request.user.is_authenticated and (request.user.id == controller.context.kwargs.get("user_id"))
+
+
 class IsSuperAdmin(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
-        if request.user.is_authenticated:
-            return request.user.user_role == User.UserRoles.SUPER_ADMIN
-        return False
+        return request.user.is_authenticated and (request.user.user_role == User.UserRoles.SUPER_ADMIN)
 
 
 class IsOrganizationAdmin(permissions.BasePermission):
@@ -26,6 +29,6 @@ class IsOrganizationAdmin(permissions.BasePermission):
         return False
 
 
-class OgranizationExists(permissions.BasePermission):
+class OrganizationExists(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
         return Organization.objects.filter(id=controller.context.kwargs.get("organization_id")).exists()
