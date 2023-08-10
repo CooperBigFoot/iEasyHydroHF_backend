@@ -1,5 +1,7 @@
 from ninja import ModelSchema, Schema
 
+from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
+
 from .models import Organization
 
 
@@ -16,7 +18,7 @@ class OrganizationUpdateSchema(ModelSchema):
         model_fields_optional = "__all__"
 
 
-class OrganizationOutputDetailSchema(OrganizationInputSchema):
+class OrganizationOutputDetailSchema(UUIDSchemaMixin, OrganizationInputSchema):
     id: int
     is_active: bool
     year_type: str
@@ -35,6 +37,6 @@ class OrganizationOutputDetailSchema(OrganizationInputSchema):
         return obj.get_language_display()
 
 
-class OrganizationOutputListSchema(Schema):
+class OrganizationOutputListSchema(UUIDSchemaMixin, Schema):
     id: int
     name: str

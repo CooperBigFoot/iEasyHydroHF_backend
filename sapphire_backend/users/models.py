@@ -2,8 +2,10 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from sapphire_backend.utils.mixins.models import UUIDMixin
 
-class User(AbstractUser):
+
+class User(UUIDMixin, AbstractUser):
     class UserRoles(models.TextChoices):
         REGULAR_USER = "regular_user", _("Regular user")
         ORGANIZATION_ADMIN = "organization_admin", _("Organization admin")

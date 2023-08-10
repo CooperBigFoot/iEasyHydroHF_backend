@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from slugify import slugify
@@ -43,3 +45,10 @@ class SlugMixin(models.Model):
 
     def get_slug(self):
         return self.slug or slugify(self.slug_source)
+
+
+class UUIDMixin(models.Model):
+    uuid = models.UUIDField(verbose_name=_("UUID"), editable=False, default=uuid.uuid4)
+
+    class Meta:
+        abstract = True

@@ -2,6 +2,9 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from ninja import Field, ModelSchema
 
+from sapphire_backend.organizations.schema import OrganizationOutputDetailSchema
+from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
+
 User = get_user_model()
 
 
@@ -22,10 +25,11 @@ class UserUpdateSchema(ModelSchema):
         model_fields_optional = "__all__"
 
 
-class UserOutputSchema(UserInputSchema):
+class UserOutputSchema(UUIDSchemaMixin, UserInputSchema):
     id: int
     display_name: str = Field(None, alias="display_name")
     avatar: str | None = None
+    organization: OrganizationOutputDetailSchema = None
 
     @staticmethod
     def resolve_avatar(obj: User):

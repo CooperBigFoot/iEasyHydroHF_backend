@@ -2,8 +2,10 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from timezone_field import TimeZoneField
 
+from sapphire_backend.utils.mixins.models import UUIDMixin
 
-class Organization(models.Model):
+
+class Organization(UUIDMixin, models.Model):
     class YearType(models.TextChoices):
         CALENDAR = "CA", _("Calendar")
         HYDROLOGICAL = "HY", _("Hydrological")
