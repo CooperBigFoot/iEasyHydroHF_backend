@@ -40,6 +40,7 @@ class Organization(UUIDMixin, models.Model):
         verbose_name = _("Organization")
         verbose_name_plural = _("Organizations")
         ordering = ["-name"]
+        indexes = [models.Index(fields=["uuid"], name="organization_uuid_idx")]
 
     def __str__(self):
         return self.name

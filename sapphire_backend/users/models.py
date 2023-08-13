@@ -16,9 +16,17 @@ class User(UUIDMixin, AbstractUser):
         verbose_name=_("User role"), max_length=30, choices=UserRoles.choices, default=UserRoles.REGULAR_USER
     )
     organization = models.ForeignKey(
-        "organizations.Organization", verbose_name=_("Organization"), on_delete=models.PROTECT, null=True, blank=True
+        "organizations.Organization",
+        verbose_name=_("Organization"),
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="members",
     )
     avatar = models.ImageField(verbose_name=_("Avatar"), upload_to="avatars/", blank=True)
+
+    class Meta(AbstractUser.Meta):
+        indexes = [models.Index(fields=["uuid"], name="user_uuid_idx")]
 
     @property
     def is_admin(self):

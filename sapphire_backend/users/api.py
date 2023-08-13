@@ -8,7 +8,7 @@ from sapphire_backend.utils.mixins.files import UploadedLimitedSizeFile
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import IsOwner, IsSuperAdmin
 
-from .schema import UserOutputSchema, UserUpdateSchema
+from .schema import UserOutputDetailSchema, UserUpdateSchema
 from .utils import can_update_role
 
 User = get_user_model()
@@ -16,18 +16,18 @@ User = get_user_model()
 
 @api_controller("users/", tags=["Users"], auth=JWTAuth())
 class UsersAPIController:
-    @route.get("me", response=UserOutputSchema, url_name="users-me")
+    @route.get("me", response=UserOutputDetailSchema, url_name="users-me")
     def get_current_user(self, request):
         return request.user
 
-    @route.get("{user_id}", response={200: UserOutputSchema, 404: Message}, url_name="user-by-id")
+    @route.get("{user_id}", response={200: UserOutputDetailSchema, 404: Message}, url_name="user-by-id")
     def get_user_by_id(self, request, user_id: int):
         try:
             return User.objects.get(id=user_id, is_active=True)
         except User.DoesNotExist:
             return 404, {"detail": _("User not found."), "code": "user_not_found"}
 
-    @route.post("me/avatar-upload", response={201: UserOutputSchema}, url_name="users-me-avatar-upload")
+    @route.post("me/avatar-upload", response={201: UserOutputDetailSchema}, url_name="users-me-avatar-upload")
     def upload_avatar(self, request, image: UploadedLimitedSizeFile = File(...)):
         request.user.avatar.save(image.name, image.file)
         request.user.save()
@@ -35,7 +35,7 @@ class UsersAPIController:
 
     @route.put(
         "{user_id}",
-        response={200: UserOutputSchema, 403: Message, 404: Message},
+        response={200: UserOutputDetailSchema, 403: Message, 404: Message},
         url_name="user-update",
         permissions=[IsOwner | IsSuperAdmin],
     )

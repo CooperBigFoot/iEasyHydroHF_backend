@@ -25,11 +25,9 @@ class UserUpdateSchema(ModelSchema):
         model_fields_optional = "__all__"
 
 
-class UserOutputSchema(UUIDSchemaMixin, UserInputSchema):
-    id: int
-    display_name: str = Field(None, alias="display_name")
+class UserOutputListSchema(UserInputSchema, UUIDSchemaMixin):
     avatar: str | None = None
-    organization: OrganizationOutputDetailSchema = None
+    display_name: str = Field(None, alias="display_name")
 
     @staticmethod
     def resolve_avatar(obj: User):
@@ -40,3 +38,8 @@ class UserOutputSchema(UUIDSchemaMixin, UserInputSchema):
             return obj.avatar.url
         else:
             return f"{settings.BACKEND_URL}{obj.avatar.url}"
+
+
+class UserOutputDetailSchema(UserOutputListSchema):
+    id: int
+    organization: OrganizationOutputDetailSchema = None

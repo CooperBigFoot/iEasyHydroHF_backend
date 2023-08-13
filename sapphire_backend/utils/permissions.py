@@ -21,14 +21,21 @@ class IsSuperAdmin(permissions.BasePermission):
 class IsOrganizationAdmin(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
         user = request.user
+        organization = Organization.objects.get(uuid=controller.context.kwargs.get("organization_uuid"))
         if user.is_authenticated:
-            return (
-                user.user_role == User.UserRoles.ORGANIZATION_ADMIN
-                and user.organization.id == controller.context.kwargs.get("organization_id")
-            )
+            return user.user_role == User.UserRoles.ORGANIZATION_ADMIN and user.organization.id == organization.id
+        return False
+
+
+class IsOrganizationMember(permissions.BasePermission):
+    def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
+        user = request.user
+        organization = Organization.objects.get(uuid=controller.context.kwargs.get("organization_uuid"))
+        if user.is_authenticated:
+            return user.organization.id == organization.id
         return False
 
 
 class OrganizationExists(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
-        return Organization.objects.filter(id=controller.context.kwargs.get("organization_id")).exists()
+        return Organization.objects.filter(uuid=controller.context.kwargs.get("organization_uuid")).exists()

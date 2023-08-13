@@ -11,11 +11,24 @@ class TestAuthController:
         assert response.status_code == 200
 
         response_data = response.json()
+        print(response_data)
 
         assert all(key in response_data for key in ["refresh", "access", "user"])
         assert all(
             key in response_data["user"]
-            for key in ["id", "username", "email", "first_name", "last_name", "contact_phone", "user_role"]
+            for key in [
+                "id",
+                "uuid",
+                "username",
+                "email",
+                "first_name",
+                "avatar",
+                "last_name",
+                "contact_phone",
+                "user_role",
+                "display_name",
+                "organization",
+            ]
         )
 
     def test_token_obtain_for_invalid_credentials(self, api_client, regular_user):
