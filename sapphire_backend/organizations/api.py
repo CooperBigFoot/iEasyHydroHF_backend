@@ -69,7 +69,7 @@ class OrganizationsAPIController:
     @route.get(
         "{organization_uuid}/members",
         response=list[UserOutputListSchema],
-        permissions=[OrganizationExists & (IsOrganizationAdmin | IsOrganizationMember)],
+        permissions=[OrganizationExists & (IsOrganizationAdmin | IsOrganizationMember | IsSuperAdmin)],
     )
     def organization_members(self, request, organization_uuid: str):
         organization = Organization.objects.get(uuid=organization_uuid)
