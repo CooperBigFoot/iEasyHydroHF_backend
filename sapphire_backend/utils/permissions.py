@@ -10,7 +10,7 @@ User = get_user_model()
 
 class IsOwner(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
-        return request.user.is_authenticated and (request.user.id == controller.context.kwargs.get("user_id"))
+        return request.user.is_authenticated and (str(request.user.uuid) == controller.context.kwargs.get("user_uuid"))
 
 
 class IsSuperAdmin(permissions.BasePermission):
@@ -20,11 +20,7 @@ class IsSuperAdmin(permissions.BasePermission):
 
 class IsOrganizationAdmin(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
-        user = request.user
-        organization = Organization.objects.get(uuid=controller.context.kwargs.get("organization_uuid"))
-        if user.is_authenticated:
-            return user.user_role == User.UserRoles.ORGANIZATION_ADMIN and user.organization.id == organization.id
-        return False
+        return request.user.is_authenticated and (request.user.user_role == User.UserRoles.ORGANIZATION_ADMIN)
 
 
 class IsOrganizationMember(permissions.BasePermission):

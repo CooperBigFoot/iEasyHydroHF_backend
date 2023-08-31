@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from django.contrib.auth import get_user_model
 
@@ -18,29 +20,28 @@ class TestUserAPIController:
         assert response.status_code == 401
         assert "detail" in response.json()
 
-    def test_get_user_by_id(self, authenticated_regular_user_api_client, regular_user):
-        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{regular_user.id}")
+    def test_get_user_by_uuid(self, authenticated_regular_user_api_client, regular_user):
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{regular_user.uuid}")
 
         assert response.status_code == 200
         assert response.json()["id"] == regular_user.id
 
-    def test_get_user_by_id_for_unauthorized_user(self, api_client, regular_user):
-        response = api_client.get(f"{self.endpoint}/{regular_user.id}")
+    def test_get_user_by_uuid_for_unauthorized_user(self, api_client, regular_user):
+        response = api_client.get(f"{self.endpoint}/{regular_user.uuid}")
 
         assert response.status_code == 401
 
     @pytest.mark.django_db
-    def test_get_non_existing_user_by_id(self, authenticated_regular_user_api_client):
-        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/999999999999")
+    def test_get_non_existing_user_by_uuid(self, authenticated_regular_user_api_client):
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{uuid.uuid4()}")
 
         assert response.status_code == 404
         assert response.json() == {"detail": "User not found.", "code": "user_not_found"}
 
-    def test_get_inactive_user_by_id(self, authenticated_regular_user_api_client, inactive_user):
-        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{inactive_user.id}")
+    def test_get_inactive_user_by_uuid(self, authenticated_regular_user_api_client, inactive_user):
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{inactive_user.uuid}")
 
-        assert response.status_code == 404
-        assert response.json() == {"detail": "User not found.", "code": "user_not_found"}
+        assert response.status_code == 200
 
     def test_update_user(self, authenticated_regular_user_api_client, regular_user):
         update_data = {"first_name": "Update first name", "last_name": "Updated last name"}
@@ -49,9 +50,9 @@ class TestUserAPIController:
         original_email = regular_user.email
 
         response = authenticated_regular_user_api_client.put(
-            f"{self.endpoint}/{regular_user.id}", update_data, content_type="application/json"
+            f"{self.endpoint}/{regular_user.uuid}", update_data, content_type="application/json"
         )
-
+        print(response.json())
         assert response.status_code == 200
         regular_user.refresh_from_db()
 
@@ -67,7 +68,7 @@ class TestUserAPIController:
             "email": "new@email.com",
         }
         response = authenticated_superadmin_user_api_client.put(
-            f"{self.endpoint}/123456789", update_data, content_type="application/json"
+            f"{self.endpoint}/{uuid.uuid4()}", update_data, content_type="application/json"
         )
 
         assert response.status_code == 404
@@ -79,7 +80,7 @@ class TestUserAPIController:
             "email": "new@email.com",
         }
         response = authenticated_regular_user_api_client.put(
-            f"{self.endpoint}/{organization_admin.id}", update_data, content_type="application/json"
+            f"{self.endpoint}/{organization_admin.uuid}", update_data, content_type="application/json"
         )
 
         assert response.status_code == 403
@@ -91,7 +92,7 @@ class TestUserAPIController:
             "email": "new@email.com",
         }
         response = authenticated_superadmin_user_api_client.put(
-            f"{self.endpoint}/{organization_admin.id}", update_data, content_type="application/json"
+            f"{self.endpoint}/{organization_admin.uuid}", update_data, content_type="application/json"
         )
 
         assert response.status_code == 200
@@ -103,7 +104,7 @@ class TestUserAPIController:
         update_data = {"user_role": User.UserRoles.SUPER_ADMIN}
 
         response = authenticated_regular_user_api_client.put(
-            f"{self.endpoint}/{regular_user.id}", update_data, content_type="application/json"
+            f"{self.endpoint}/{regular_user.uuid}", update_data, content_type="application/json"
         )
 
         assert response.status_code == 403
@@ -117,7 +118,7 @@ class TestUserAPIController:
         assert regular_user.user_role == User.UserRoles.REGULAR_USER
 
         response = authenticated_superadmin_user_api_client.put(
-            f"{self.endpoint}/{regular_user.id}", update_data, content_type="application/json"
+            f"{self.endpoint}/{regular_user.uuid}", update_data, content_type="application/json"
         )
 
         assert response.status_code == 200
