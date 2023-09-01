@@ -1,6 +1,6 @@
 class TestUserModelController:
     def test_display_name_for_user_with_first_and_last_name(self, inactive_user):
-        assert inactive_user.display_name == "Deleted User"
+        assert inactive_user.display_name == "Inactive User"
 
     def test_display_name_for_user_without_first_or_last_name(self, user_without_first_last_name):
         assert user_without_first_last_name.display_name == "my_display_name"
@@ -37,3 +37,12 @@ class TestUserModelController:
 
     def test_is_super_admin_for_super_admin(self, superadmin):
         assert superadmin.is_superadmin
+
+    def test_user_soft_delete(self, deleted_user):
+        deleted_user.soft_delete()
+
+        assert deleted_user.username == f"User {deleted_user.uuid}"
+        assert deleted_user.email == "deleted@user.com"
+        assert deleted_user.organization is None
+        assert deleted_user.is_active is False
+        assert deleted_user.is_deleted

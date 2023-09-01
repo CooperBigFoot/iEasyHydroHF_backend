@@ -26,6 +26,11 @@ class TestUserAPIController:
         assert response.status_code == 200
         assert response.json()["id"] == regular_user.id
 
+    def test_get_deleted_user(self, authenticated_superadmin_user_api_client, deleted_user):
+        response = authenticated_superadmin_user_api_client.get(f"{self.endpoint}/{deleted_user.uuid}")
+
+        assert response.status_code == 404
+
     def test_get_user_by_uuid_for_unauthorized_user(self, api_client, regular_user):
         response = api_client.get(f"{self.endpoint}/{regular_user.uuid}")
 
