@@ -25,7 +25,7 @@ class UsersAPIController:
     @route.get("{user_uuid}", response={200: UserOutputDetailSchema, 404: Message}, url_name="user-by-uuid")
     def get_user_by_id(self, request, user_uuid: str):
         try:
-            return User.objects.get(uuid=user_uuid)
+            return User.objects.get(uuid=user_uuid, is_deleted=False)
         except User.DoesNotExist:
             return 404, {"detail": _("User not found."), "code": "user_not_found"}
 
@@ -43,7 +43,7 @@ class UsersAPIController:
     )
     def update_user(self, request, user_uuid: str, user_data: UserUpdateSchema):
         try:
-            user = User.objects.get(uuid=user_uuid)
+            user = User.objects.get(uuid=user_uuid, is_deleted=False)
         except User.DoesNotExist:
             return 404, {"detail": "User not found", "code": "user_not_found"}
         for attr, value in user_data.dict(exclude_unset=True).items():
@@ -64,7 +64,7 @@ class UsersAPIController:
     )
     def delete_user(self, request, user_uuid: str):
         try:
-            user = User.objects.get(uuid=user_uuid)
+            user = User.objects.get(uuid=user_uuid, is_deleted=False)
         except User.DoesNotExist:
             return 404, {"detail": _("User not found"), "code": "user_not_found"}
 
@@ -73,7 +73,7 @@ class UsersAPIController:
                 "detail": _("Cannot delete yourself. Please use the account deactivation feature."),
                 "code": "delete_error",
             }
-        user.delete()
+        user.soft_delete()
 
         return 200, {"detail": _("User successfully deleted"), "code": "delete_success"}
 
@@ -96,6 +96,8 @@ class UsersAPIController:
                 "code": "delete_error",
             }
 
-        User.objects.filter(uuid__in=user_uuids).delete()
+        users = User.objects.filter(uuid__in=user_uuids)
+        for user in users:
+            user.soft_delete()
 
         return 200, {"detail": _("Users successfully deleted"), "code": "delete_success"}

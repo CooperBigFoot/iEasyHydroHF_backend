@@ -73,4 +73,4 @@ class OrganizationsAPIController:
     )
     def organization_members(self, request, organization_uuid: str):
         organization = Organization.objects.get(uuid=organization_uuid)
-        return organization.members
+        return organization.members.filter(is_deleted=False)
