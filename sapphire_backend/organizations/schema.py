@@ -14,7 +14,7 @@ class OrganizationInputSchema(ModelSchema):
 class OrganizationUpdateSchema(ModelSchema):
     class Config:
         model = Organization
-        model_exclude = ["id"]
+        model_exclude = ["id", "uuid"]
         model_fields_optional = "__all__"
 
 
