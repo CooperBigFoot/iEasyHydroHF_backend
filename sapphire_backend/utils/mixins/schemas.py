@@ -6,6 +6,11 @@ class Message(Schema):
     code: str = ""
 
 
+class FieldMessage(Schema):
+    field: str
+    message: str
+
+
 class UUIDSchemaMixin(Schema):
     uuid: str
 
