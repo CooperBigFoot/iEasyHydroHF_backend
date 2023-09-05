@@ -1,5 +1,6 @@
+from zoneinfo import ZoneInfo
+
 import pytest
-import pytz
 from django.contrib.auth import get_user_model
 from django.test import Client
 from ninja_jwt.tokens import AccessToken
@@ -22,7 +23,7 @@ def organization(db, organization_factory=OrganizationFactory):
         name="Kyrgyz Hydromet",
         language=Organization.Language.RUSSIAN,
         year_type=Organization.YearType.HYDROLOGICAL,
-        timezone=pytz.timezone("Asia/Bishkek"),
+        timezone=ZoneInfo("Asia/Bishkek"),
     )
 
 
@@ -32,7 +33,7 @@ def backup_organization(db, organization_factory=OrganizationFactory):
         name="Kazakh Hydromet",
         language=Organization.Language.RUSSIAN,
         year_type=Organization.YearType.HYDROLOGICAL,
-        timezone=pytz.timezone("Asia/Bishkek"),
+        timezone=ZoneInfo("Asia/Bishkek"),
     )
 
 

@@ -1,5 +1,6 @@
+from zoneinfo import ZoneInfo
+
 import factory
-import pytz
 from faker import Faker
 
 from sapphire_backend.organizations.tests.factories import OrganizationFactory
@@ -24,7 +25,7 @@ class StationFactory(factory.django.DjangoModelFactory):
     country = fake.country()
     basin = fake.city()
     region = fake.city()
-    timezone = pytz.UTC
+    timezone = ZoneInfo("UTC")
 
     latitude = fake.latitude()
     longitude = fake.longitude()

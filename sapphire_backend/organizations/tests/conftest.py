@@ -1,5 +1,6 @@
+from zoneinfo import ZoneInfo
+
 import pytest
-import pytz
 from pytest_factoryboy import register
 
 from ..models import Organization
@@ -14,5 +15,5 @@ def other_organization(db, organization_factory):
         name="Kazakh Hydromet",
         language=Organization.Language.RUSSIAN,
         year_type=Organization.YearType.HYDROLOGICAL,
-        timezone=pytz.timezone("Asia/Almaty"),
+        timezone=ZoneInfo("Asia/Almaty"),
     )
