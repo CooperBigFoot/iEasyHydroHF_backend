@@ -42,7 +42,7 @@ class OrganizationsAPIController:
         permissions=[OrganizationExists & (IsSuperAdmin | IsOrganizationAdmin)],
     )
     def get_organization(self, request, organization_uuid: str):
-        Organization.objects.get(uuid=organization_uuid)
+        return Organization.objects.get(uuid=organization_uuid)
 
     @route.delete(
         "{organization_uuid}",
