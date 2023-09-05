@@ -1,5 +1,6 @@
+from zoneinfo import ZoneInfo
+
 import factory
-import pytz
 from faker import Faker
 
 from ..models import Organization
@@ -24,7 +25,7 @@ class OrganizationFactory(factory.django.DjangoModelFactory):
 
     contact = fake.name()
     contact_phone = fake.phone_number()
-    timezone = pytz.UTC
+    timezone = ZoneInfo("UTC")
 
     year_type = Organization.YearType.CALENDAR
     language = Organization.Language.ENGLISH

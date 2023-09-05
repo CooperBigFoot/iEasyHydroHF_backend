@@ -1,5 +1,6 @@
+from zoneinfo import ZoneInfo
+
 import factory
-import pytz
 from django.contrib.auth import get_user_model
 from django.db.models import signals
 from faker import Faker
@@ -25,7 +26,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     password = factory.PostGenerationMethodCall("set_password", "password123")
 
     is_active = True
-    date_joined = fake.date_time_between(start_date="-1y", tzinfo=pytz.UTC)
+    date_joined = fake.date_time_between(start_date="-1y", tzinfo=ZoneInfo("UTC"))
 
     contact_phone = fake.phone_number()
     user_role = User.UserRoles.REGULAR_USER
