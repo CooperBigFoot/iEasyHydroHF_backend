@@ -2,8 +2,10 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from sapphire_backend.utils.mixins.models import UUIDMixin
 
-class User(AbstractUser):
+
+class User(UUIDMixin, AbstractUser):
     class UserRoles(models.TextChoices):
         REGULAR_USER = "regular_user", _("Regular user")
         ORGANIZATION_ADMIN = "organization_admin", _("Organization admin")
@@ -14,9 +16,18 @@ class User(AbstractUser):
         verbose_name=_("User role"), max_length=30, choices=UserRoles.choices, default=UserRoles.REGULAR_USER
     )
     organization = models.ForeignKey(
-        "organizations.Organization", verbose_name=_("Organization"), on_delete=models.PROTECT, null=True, blank=True
+        "organizations.Organization",
+        verbose_name=_("Organization"),
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="members",
     )
     avatar = models.ImageField(verbose_name=_("Avatar"), upload_to="avatars/", blank=True)
+    is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
+
+    class Meta(AbstractUser.Meta):
+        indexes = [models.Index(fields=["uuid"], name="user_uuid_idx")]
 
     @property
     def is_admin(self):
@@ -36,3 +47,11 @@ class User(AbstractUser):
             return f"{self.first_name} {self.last_name}"
         else:
             return self.username
+
+    def soft_delete(self):
+        self.is_deleted = True
+        self.username = f"User {self.uuid}"
+        self.email = "deleted@user.com"
+        self.is_active = False
+        self.organization = None
+        self.save()

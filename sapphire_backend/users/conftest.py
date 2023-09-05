@@ -9,7 +9,24 @@ register(UserFactory)
 @pytest.fixture
 def inactive_user(db, user_factory):
     return user_factory.create(
-        first_name="Deleted", last_name="User", username="deleted_user", email="delete@user.com", is_active=False
+        first_name="Inactive",
+        last_name="User",
+        username="inactive_user",
+        email="inactive@user.com",
+        is_active=False,
+        is_deleted=False,
+    )
+
+
+@pytest.fixture
+def deleted_user(db, user_factory):
+    return user_factory.create(
+        first_name="Deleted",
+        last_name="User",
+        username="deleted_user",
+        email="deleted@user.com",
+        is_active=False,
+        is_deleted=True,
     )
 
 
