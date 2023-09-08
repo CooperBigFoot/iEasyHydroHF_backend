@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class MeasurementsConfig(AppConfig):
+class MetricsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "sapphire_backend.measurements"
+    name = "sapphire_backend.metrics"
