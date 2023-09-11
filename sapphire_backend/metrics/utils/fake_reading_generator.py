@@ -1,4 +1,3 @@
-import math
 import random
 from datetime import datetime as dt
 from datetime import timedelta
@@ -12,6 +11,13 @@ from sapphire_backend.metrics.models import AirTemperature, WaterDischarge, Wate
 class FakeReadingGenerator:
     def __init__(self, metric: str):
         self.model = self._get_model_for_metric(metric)
+        self.SEASON_STARTS = {
+            "winter": 1,
+            "spring": 80,  # This can be adjusted
+            "summer": 172,  # This can be adjusted
+            "autumn": 266,  # This can be adjusted
+            "next_winter": 355,  # This can be adjusted
+        }
 
     @staticmethod
     def _get_model_for_metric(metric: str):
@@ -35,40 +41,61 @@ class FakeReadingGenerator:
                 "\t-air_temp"
             )
 
+    def _get_season(self, day_of_year):
+        """Get the season for a given day of the year."""
+        if self.SEASON_STARTS["spring"] <= day_of_year < self.SEASON_STARTS["summer"]:
+            return "spring"
+        elif self.SEASON_STARTS["summer"] <= day_of_year < self.SEASON_STARTS["autumn"]:
+            return "summer"
+        elif self.SEASON_STARTS["autumn"] <= day_of_year < self.SEASON_STARTS["next_winter"]:
+            return "autumn"
+        else:
+            return "winter"
+
     @staticmethod
-    def _generate_air_temperature(day_of_year, previous_value=None):
-        # Constants for tweaking the simulation
-        AMPLITUDE = 10  # This will determine the max difference from the seasonal baseline
-        ANOMALY_CHANCE = 0.02  # 2% chance for an anomaly
-        ANOMALY_AMPLITUDE = 30  # How much an anomaly might deviate from the expected value
-        MISSING_VALUE_CHANCE = 0.4  # 4% chance for a missing value
+    def _get_next_season(season):
+        """Return the next season."""
+        if season == "winter":
+            return "spring"
+        elif season == "spring":
+            return "summer"
+        elif season == "summer":
+            return "autumn"
+        elif season == "autumn":
+            return "next_winter"
 
-        if random.random() < MISSING_VALUE_CHANCE:
-            return None
+    def _generate_air_temperature(self, day_of_year, previous_value=None):
+        """Generate a realistic air temperature based on the day of the year."""
+        # Define temperature bounds
+        WINTER_TEMP = (-10, 10)
+        SPRING_TEMP = (5, 25)
+        SUMMER_TEMP = (15, 40)
+        AUTUMN_TEMP = (5, 25)
 
-        # Determine the seasonal baseline using a sine wave
-        # This simulates the cyclical nature of seasonal temperatures
-        baseline = AMPLITUDE * math.sin(2 * math.pi * day_of_year / 365.25)
+        season = self._get_season(day_of_year)
 
-        # Random daily variation
-        variation = random.uniform(-3, 3)  # Change this for larger/smaller daily variations
+        # Define a mapping of seasons to their respective temperature bounds
+        temp_mapping = {"winter": WINTER_TEMP, "spring": SPRING_TEMP, "summer": SUMMER_TEMP, "autumn": AUTUMN_TEMP}
 
-        # Calculate expected value for this day
-        expected_value = baseline + variation
+        min_temp, max_temp = temp_mapping[season]
 
-        # Introduce potential anomalies
-        if random.random() < ANOMALY_CHANCE:
-            expected_value += random.uniform(-ANOMALY_AMPLITUDE, ANOMALY_AMPLITUDE)
+        # If it's the first value, or no previous value provided, select randomly from the range
+        if previous_value is None:
+            return random.uniform(min_temp, max_temp)
 
-        # Make sure the next value is not drastically different from the previous value (if given)
-        if previous_value is not None:
-            expected_value = (expected_value + previous_value) / 2
+        # Adjust based on transition phase: the first 15 days of the season
+        # will have a more limited change from the previous day's value.
+        if (day_of_year - self.SEASON_STARTS[season]) < 15:
+            adjusted_temp = previous_value + random.uniform(-1, 1)
+        else:
+            adjusted_temp = previous_value + random.uniform(-3, 3)
 
-        return expected_value
+        return max(min_temp, min(max_temp, adjusted_temp))
 
     def generate_air_temperature_readings(self, station, year, step, unit):
         start_date = dt(year, 1, 1, tzinfo=ZoneInfo("UTC"))
         end_date = dt(year + 1, 1, 1, tzinfo=ZoneInfo("UTC"))
+        MISSING_VALUE_PROBABILITY = 0.01  # 1% chance of a missing value
 
         previous_value = None
         current_date = start_date
@@ -76,13 +103,19 @@ class FakeReadingGenerator:
         total_minutes_in_year = (end_date - start_date).total_seconds() / 60
         total_iterations = int(total_minutes_in_year / step)
 
-        with tqdm(total=total_iterations, desc="Generating air temperature readings", unit="reading") as pbar:
+        consecutive_missing_count = 0
+        with tqdm(total=total_iterations, desc="Generating readings", unit="reading") as pbar:
             while current_date < end_date:
-                day_of_year = current_date.timetuple().tm_yday
-                value = self._generate_air_temperature(day_of_year, previous_value)
-                reading = AirTemperature(station=station, timestamp=current_date, value=value, unit=unit)
-                reading.save()
+                # Check for missing value
+                if random.random() < MISSING_VALUE_PROBABILITY and consecutive_missing_count < 3:
+                    consecutive_missing_count += 1
+                else:
+                    consecutive_missing_count = 0
+                    day_of_year = current_date.timetuple().tm_yday
+                    value = self._generate_air_temperature(day_of_year, previous_value)
+                    reading = AirTemperature(station=station, timestamp=current_date, value=value, unit=unit)
+                    reading.save()
+                    previous_value = value
 
-                previous_value = value if value else previous_value
                 current_date += timedelta(minutes=step)
                 pbar.update(1)
