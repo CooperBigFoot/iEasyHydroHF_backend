@@ -2,13 +2,21 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 
-from sapphire_backend.metrics.models import AirTemperature
+from sapphire_backend.metrics.models import AirTemperature, WaterDischarge, WaterLevel, WaterTemperature, WaterVelocity
 from sapphire_backend.metrics.utils.fake_reading_generator import FakeReadingGenerator
 from sapphire_backend.stations.models import Station
 
 
 class Command(BaseCommand):
     help = "Create fake readings for testing purposes"
+
+    DEFAULT_UNITS = {
+        "air_temp": "°C",
+        "water_temp": "°C",
+        "water_level": "m",
+        "water_discharge": "m³/s",
+        "water_velocity": "m/s",
+    }
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("--station_id", type=int, help="IDs of the station for which to create fake readings.")
@@ -29,12 +37,19 @@ class Command(BaseCommand):
         except Station.DoesNotExist:
             raise CommandError("The station with the given ID doesn't exist.")
 
+        unit = options["unit"] if options["unit"] else self.DEFAULT_UNITS.get(options["metric"])
+
         if fake_generator.model == AirTemperature:
-            fake_generator.generate_air_temperature_readings(
-                station=station,
-                year=options["year"],
-                step=options["step"],
-                unit=options["unit"] if options["unit"] else "°C",
-            )
+            fake_generator.generate_air_temperature_readings(station, options["year"], options["step"], unit)
+        elif fake_generator.model == WaterTemperature:
+            fake_generator.generate_water_temperature_readings(station, options["year"], options["step"], unit)
+        elif fake_generator.model == WaterLevel:
+            fake_generator.generate_water_level_readings(station, options["year"], options["step"], unit)
+        elif fake_generator.model == WaterDischarge:
+            fake_generator.generate_water_discharge_readings(station, options["year"], options["step"], unit)
+        elif fake_generator.model == WaterVelocity:
+            fake_generator.generate_water_velocity_readings(station, options["year"], options["step"], unit)
+        else:
+            raise CommandError(f"Unsupported metric: {options['metric']}")
 
         return None

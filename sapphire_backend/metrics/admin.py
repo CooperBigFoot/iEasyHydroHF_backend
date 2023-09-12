@@ -4,12 +4,13 @@ from .models import AirTemperature, WaterDischarge, WaterLevel, WaterTemperature
 
 
 class MetricAdminMixin(admin.ModelAdmin):
-    @admin.display(description="Timestamp")
-    def formatted_timestamp(self, obj):
-        return obj.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-
-    list_display = ["station", "formatted_timestamp", "value"]
+    list_display = ["station", "timestamp", "value"]
     list_filter = ["station__name", "timestamp"]
+    delete_selected_confirmation_template = "metrics/delete_selected_confirmation_template.html"
+
+    def get_deleted_objects(self, objs, request):
+        print(objs)
+        return super().get_deleted_objects(objs, request)
 
 
 @admin.register(WaterDischarge)
