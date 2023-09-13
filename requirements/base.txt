@@ -9,7 +9,7 @@ tzdata==2023.3  # https://github.com/python/tzdata
 django==4.2.5  # https://www.djangoproject.com/
 django-environ==0.11.2  # https://github.com/joke2k/django-environ
 django-model-utils==4.3.1  # https://github.com/jazzband/django-model-utils
-django-timezone-field==6.0  # https://github.com/mfogel/django-timezone-field/
+django-timezone-field==6.0.1  # https://github.com/mfogel/django-timezone-field/
 django-cors-headers==4.2.0  # https://github.com/adamchainz/django-cors-headers
 
 # API
