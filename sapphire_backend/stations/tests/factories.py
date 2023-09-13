@@ -29,7 +29,7 @@ class StationFactory(factory.django.DjangoModelFactory):
 
     latitude = fake.latitude()
     longitude = fake.longitude()
-    elevation = fake.pyfloat(right_digits=1, positive=True, min_value=0.0, max_value=5000)
+    elevation = fake.pyfloat(right_digits=1, min_value=0.0, max_value=5000)
 
     is_automatic = False
     is_deleted = False
