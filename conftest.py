@@ -73,13 +73,3 @@ def authenticated_superadmin_user_api_client(superadmin):
     token = AccessToken.for_user(superadmin)
     client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
     return client
-
-
-@pytest.fixture(autouse=True, scope="session")
-def django_test_environment(django_test_environment):
-    from django.apps import apps
-
-    get_models = apps.get_models
-
-    for m in [m for m in get_models() if not m._meta.managed]:
-        m._meta.managed = True
