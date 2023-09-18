@@ -1,16 +1,24 @@
 from django.contrib import admin
 
-from .models import AirTemperature, WaterDischarge, WaterLevel, WaterTemperature, WaterVelocity
+from .models import (
+    AirTemperature,
+    Precipitation,
+    SensorStatus,
+    WaterDischarge,
+    WaterLevel,
+    WaterTemperature,
+    WaterVelocity,
+)
 
 
 class MetricAdminMixin(admin.ModelAdmin):
-    list_display = ["station", "timestamp", "value"]
-    list_filter = ["station__name", "timestamp"]
+    list_display = ["sensor", "get_sensor_station_name", "timestamp", "average_value"]
+    list_filter = ["sensor__station__name", "timestamp"]
     delete_selected_confirmation_template = "metrics/delete_selected_confirmation_template.html"
 
-    def get_deleted_objects(self, objs, request):
-        print(objs)
-        return super().get_deleted_objects(objs, request)
+    @staticmethod
+    def get_sensor_station_name(obj):
+        return obj.sensor.station.name
 
 
 @admin.register(WaterDischarge)
@@ -36,3 +44,19 @@ class WaterTemperatureAdmin(MetricAdminMixin):
 @admin.register(AirTemperature)
 class AirTemperatureAdmin(MetricAdminMixin):
     pass
+
+
+@admin.register(Precipitation)
+class PrecipitationAdmin(MetricAdminMixin):
+    pass
+
+
+@admin.register(SensorStatus)
+class SensorStatusAdmin(admin.ModelAdmin):
+    list_display = ["sensor", "get_sensor_station_name", "timestamp", "battery_status", "malfunction"]
+    list_filter = ["malfunction", "sensor__station__name"]
+    delete_selected_confirmation_template = "metrics/delete_selected_confirmation_template.html"
+
+    @staticmethod
+    def get_sensor_station_name(obj):
+        return obj.sensor.station.name

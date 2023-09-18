@@ -2,9 +2,16 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 
-from sapphire_backend.metrics.models import AirTemperature, WaterDischarge, WaterLevel, WaterTemperature, WaterVelocity
+from sapphire_backend.metrics.models import (
+    AirTemperature,
+    Precipitation,
+    WaterDischarge,
+    WaterLevel,
+    WaterTemperature,
+    WaterVelocity,
+)
 from sapphire_backend.metrics.utils.fake_reading_generator import FakeReadingGenerator
-from sapphire_backend.stations.models import Station
+from sapphire_backend.stations.models import Sensor
 
 
 class Command(BaseCommand):
@@ -16,10 +23,11 @@ class Command(BaseCommand):
         "water_level": "m",
         "water_discharge": "m³/s",
         "water_velocity": "m/s",
+        "precipitation": "mm",
     }
 
     def add_arguments(self, parser: CommandParser) -> None:
-        parser.add_argument("--station_id", type=int, help="IDs of the station for which to create fake readings.")
+        parser.add_argument("--sensor_id", type=int, help="IDs of the sensor for which to create fake readings.")
         parser.add_argument("--metric", type=str, help="For which metric should the readings be generated.")
         parser.add_argument("--year", type=int, help="For which year to generate readings.")
         parser.add_argument(
@@ -33,22 +41,24 @@ class Command(BaseCommand):
         except ValueError as e:
             raise CommandError(e)
         try:
-            station = Station.objects.get(id=options["station_id"])
-        except Station.DoesNotExist:
+            sensor = Sensor.objects.get(id=options["sensor_id"])
+        except Sensor.DoesNotExist:
             raise CommandError("The station with the given ID doesn't exist.")
 
         unit = options["unit"] if options["unit"] else self.DEFAULT_UNITS.get(options["metric"])
 
         if fake_generator.model == AirTemperature:
-            fake_generator.generate_air_temperature_readings(station, options["year"], options["step"], unit)
+            fake_generator.generate_air_temperature_readings(sensor, options["year"], options["step"], unit)
         elif fake_generator.model == WaterTemperature:
-            fake_generator.generate_water_temperature_readings(station, options["year"], options["step"], unit)
+            fake_generator.generate_water_temperature_readings(sensor, options["year"], options["step"], unit)
         elif fake_generator.model == WaterLevel:
-            fake_generator.generate_water_level_readings(station, options["year"], options["step"], unit)
+            fake_generator.generate_water_level_readings(sensor, options["year"], options["step"], unit)
         elif fake_generator.model == WaterDischarge:
-            fake_generator.generate_water_discharge_readings(station, options["year"], options["step"], unit)
+            fake_generator.generate_water_discharge_readings(sensor, options["year"], options["step"], unit)
         elif fake_generator.model == WaterVelocity:
-            fake_generator.generate_water_velocity_readings(station, options["year"], options["step"], unit)
+            fake_generator.generate_water_velocity_readings(sensor, options["year"], options["step"], unit)
+        elif fake_generator.model == Precipitation:
+            fake_generator.generate_precipitation_readings(sensor, options["year"], options["step"], unit)
         else:
             raise CommandError(f"Unsupported metric: {options['metric']}")
 

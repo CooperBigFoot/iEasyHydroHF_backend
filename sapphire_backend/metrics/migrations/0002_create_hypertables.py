@@ -14,7 +14,9 @@ class Migration(migrations.Migration):
                  SELECT create_hypertable('public.metrics_waterlevel', 'timestamp', chunk_time_interval => INTERVAL '1 day');\
                  SELECT create_hypertable('public.metrics_watervelocity', 'timestamp', chunk_time_interval => INTERVAL '1 day');\
                  SELECT create_hypertable('public.metrics_watertemperature', 'timestamp', chunk_time_interval => INTERVAL '1 day');\
-                 SELECT create_hypertable('public.metrics_airtemperature', 'timestamp', chunk_time_interval => INTERVAL '1 day');"
+                 SELECT create_hypertable('public.metrics_airtemperature', 'timestamp', chunk_time_interval => INTERVAL '1 day');\
+                 SELECT create_hypertable('public.metrics_precipitation', 'timestamp', chunk_time_interval => INTERVAL '1 day');\
+                 SELECT create_hypertable('public.metrics_sensorstatus', 'timestamp', chunk_time_interval => INTERVAL '1 day');"
             )],
             reverse_sql=[(
                 "CREATE TABLE public.metrics_waterlevel_tmp (LIKE public.metrics_waterlevel INCLUDING ALL);"
@@ -41,6 +43,16 @@ class Migration(migrations.Migration):
                 "INSERT INTO public.metrics_airtemperature_tmp (SELECT * FROM public.metrics_airtemperature);"
                 "DROP TABLE public.metrics_airtemperature;"
                 "ALTER TABLE public.metrics_airtemperature_tmp RENAME TO metrics_airtemperature;"
+
+                "CREATE TABLE public.metrics_precipitation_tmp (LIKE public.metrics_precipitation INCLUDING ALL);"
+                "INSERT INTO public.metrics_precipitation_tmp (SELECT * FROM public.metrics_precipitation);"
+                "DROP TABLE public.metrics_precipitation;"
+                "ALTER TABLE public.metrics_precipitation_tmp RENAME TO metrics_precipitation;"
+
+                "CREATE TABLE public.metrics_sensorstatus_tmp (LIKE public.metrics_sensorstatus INCLUDING ALL);"
+                "INSERT INTO public.metrics_sensorstatus_tmp (SELECT * FROM public.metrics_sensorstatus);"
+                "DROP TABLE public.metrics_sensorstatus;"
+                "ALTER TABLE public.metrics_sensorstatus_tmp RENAME TO metrics_sensorstatus;"
             )]
         )
     ]

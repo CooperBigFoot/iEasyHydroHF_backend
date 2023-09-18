@@ -5,7 +5,14 @@ from zoneinfo import ZoneInfo
 
 from tqdm import tqdm
 
-from sapphire_backend.metrics.models import AirTemperature, WaterDischarge, WaterLevel, WaterTemperature, WaterVelocity
+from sapphire_backend.metrics.models import (
+    AirTemperature,
+    Precipitation,
+    WaterDischarge,
+    WaterLevel,
+    WaterTemperature,
+    WaterVelocity,
+)
 
 
 class FakeReadingGenerator:
@@ -27,6 +34,7 @@ class FakeReadingGenerator:
             "water_velocity": WaterVelocity,
             "water_temp": WaterTemperature,
             "air_temp": AirTemperature,
+            "precipitation": Precipitation,
         }
 
         try:
@@ -38,7 +46,8 @@ class FakeReadingGenerator:
                 "\t-water_level\n"
                 "\t-water_velocity\n"
                 "\t-water_temp\n"
-                "\t-air_temp"
+                "\t-air_temp\n"
+                "\t-precipitation"
             )
 
     def _get_season(self, day_of_year):
@@ -64,7 +73,7 @@ class FakeReadingGenerator:
         elif season == "autumn":
             return "next_winter"
 
-    def _generate_air_temperature(self, day_of_year, previous_value=None):
+    def _generate_air_temperature(self, day_of_year, previous_avg=None):
         TEMP_MAPPING = {
             "winter": (-10, 10),
             "spring": (5, 25),
@@ -72,9 +81,9 @@ class FakeReadingGenerator:
             "autumn": (5, 25),
         }
 
-        return self._generic_value_generator(day_of_year, previous_value, TEMP_MAPPING)
+        return self._generic_value_generator(day_of_year, previous_avg, TEMP_MAPPING)
 
-    def _generate_water_temperature(self, day_of_year, previous_value=None):
+    def _generate_water_temperature(self, day_of_year, previous_avg=None):
         """Generate a realistic water temperature based on the day of the year."""
         TEMP_MAPPING = {
             "winter": (0, 7),
@@ -83,9 +92,9 @@ class FakeReadingGenerator:
             "autumn": (10, 18),
         }
 
-        return self._generic_value_generator(day_of_year, previous_value, TEMP_MAPPING)
+        return self._generic_value_generator(day_of_year, previous_avg, TEMP_MAPPING)
 
-    def _generate_water_discharge(self, day_of_year, previous_value=None):
+    def _generate_water_discharge(self, day_of_year, previous_avg=None):
         DISCHARGE_MAPPING = {
             "winter": (250, 450),
             "spring": (450, 700),
@@ -93,9 +102,9 @@ class FakeReadingGenerator:
             "autumn": (200, 500),
         }
 
-        return self._generic_value_generator(day_of_year, previous_value, DISCHARGE_MAPPING)
+        return self._generic_value_generator(day_of_year, previous_avg, DISCHARGE_MAPPING)
 
-    def _generate_water_velocity(self, day_of_year, previous_value=None):
+    def _generate_water_velocity(self, day_of_year, previous_avg=None):
         VELOCITY_MAPPING = {
             "winter": (1.5, 2.5),
             "spring": (2.5, 3.5),
@@ -103,9 +112,9 @@ class FakeReadingGenerator:
             "autumn": (1.2, 2.5),
         }
 
-        return self._generic_value_generator(day_of_year, previous_value, VELOCITY_MAPPING)
+        return self._generic_value_generator(day_of_year, previous_avg, VELOCITY_MAPPING)
 
-    def _generate_water_level(self, day_of_year, previous_value=None):
+    def _generate_water_level(self, day_of_year, previous_avg=None):
         LEVEL_MAPPING = {
             "winter": (3, 4),
             "spring": (4, 6),
@@ -113,49 +122,67 @@ class FakeReadingGenerator:
             "autumn": (3, 5),
         }
 
-        return self._generic_value_generator(day_of_year, previous_value, LEVEL_MAPPING)
+        return self._generic_value_generator(day_of_year, previous_avg, LEVEL_MAPPING)
 
-    def _generic_value_generator(self, day_of_year, previous_value, mapping):
+    def _generate_precipitation(self, day_of_year, previous_avg=None):
+        PRECIPITATION_MAPPING = {
+            "winter": (0, 7),
+            "spring": (1, 15),
+            "summer": (1, 10),
+            "autumn": (1, 12),
+        }
+
+        return self._generic_value_generator(day_of_year, previous_avg, PRECIPITATION_MAPPING)
+
+    def _generic_value_generator(self, day_of_year, previous_avg, mapping):
         season = self._get_season(day_of_year)
-        min_value, max_value = mapping[season]
+        min_bound, max_bound = mapping[season]
 
-        if previous_value is None:
-            return random.uniform(min_value, max_value)
-
-        if (day_of_year - self.SEASON_STARTS[season]) < 15:
-            adjusted_value = previous_value + random.uniform(-1, 1)
+        if previous_avg is None:
+            avg_value = random.uniform(min_bound, max_bound)
         else:
-            adjusted_value = previous_value + random.uniform(-3, 3)
+            if (day_of_year - self.SEASON_STARTS[season]) < 15:
+                avg_value = previous_avg + random.uniform(-1, 1)
+            else:
+                avg_value = previous_avg + random.uniform(-3, 3)
 
-        return max(min_value, min(max_value, adjusted_value))
+        avg_value = max(min_bound, min(max_bound, avg_value))
+        min_value = max(min_bound, avg_value - random.uniform(0.5, 2))
+        max_value = min(max_bound, avg_value + random.uniform(0.5, 2))
 
-    def generate_water_temperature_readings(self, station, year, step, unit):
+        return min_value, max_value, avg_value
+
+    def generate_water_temperature_readings(self, sensor, year, step, unit):
         return self._generic_reading_generator(
-            station, year, step, unit, self._generate_water_temperature, WaterTemperature
+            sensor, year, step, unit, self._generate_water_temperature, WaterTemperature
         )
 
-    def generate_water_discharge_readings(self, station, year, step, unit):
+    def generate_water_discharge_readings(self, sensor, year, step, unit):
         return self._generic_reading_generator(
-            station, year, step, unit, self._generate_water_discharge, WaterDischarge
+            sensor, year, step, unit, self._generate_water_discharge, WaterDischarge
         )
 
-    def generate_water_velocity_readings(self, station, year, step, unit):
-        return self._generic_reading_generator(station, year, step, unit, self._generate_water_velocity, WaterVelocity)
+    def generate_water_velocity_readings(self, sensor, year, step, unit):
+        return self._generic_reading_generator(sensor, year, step, unit, self._generate_water_velocity, WaterVelocity)
 
-    def generate_water_level_readings(self, station, year, step, unit):
-        return self._generic_reading_generator(station, year, step, unit, self._generate_water_level, WaterLevel)
+    def generate_water_level_readings(self, sensor, year, step, unit):
+        return self._generic_reading_generator(sensor, year, step, unit, self._generate_water_level, WaterLevel)
 
-    def generate_air_temperature_readings(self, station, year, step, unit):
+    def generate_air_temperature_readings(self, sensor, year, step, unit):
         return self._generic_reading_generator(
-            station, year, step, unit, self._generate_air_temperature, AirTemperature
+            sensor, year, step, unit, self._generate_air_temperature, AirTemperature
         )
 
-    def _generic_reading_generator(self, station, year, step, unit, generator_function, model_class):
+    def generate_precipitation_readings(self, sensor, year, step, unit):
+        return self._generic_reading_generator(sensor, year, step, unit, self._generate_precipitation, Precipitation)
+
+    @staticmethod
+    def _generic_reading_generator(sensor, year, step, unit, generator_function, model_class):
         start_date = dt(year, 1, 1, tzinfo=ZoneInfo("UTC"))
         end_date = dt(year + 1, 1, 1, tzinfo=ZoneInfo("UTC"))
         MISSING_VALUE_PROBABILITY = 0.01
 
-        previous_value = None
+        previous_avg = None
         current_date = start_date
         total_minutes_in_year = (end_date - start_date).total_seconds() / 60
         total_iterations = int(total_minutes_in_year / step)
@@ -168,10 +195,16 @@ class FakeReadingGenerator:
                 else:
                     consecutive_missing_count = 0
                     day_of_year = current_date.timetuple().tm_yday
-                    value = generator_function(day_of_year, previous_value)
-                    reading = model_class(station=station, timestamp=current_date, value=value, unit=unit)
+                    min_value, max_value, avg_value = generator_function(day_of_year, previous_avg)
+                    reading = model_class(
+                        sensor=sensor,
+                        timestamp=current_date,
+                        average_value=avg_value,
+                        maximum_value=max_value,
+                        minimum_value=min_value,
+                        unit=unit,
+                    )
                     reading.save()
-                    previous_value = value
-
+                    previous_avg = avg_value
                 current_date += timedelta(minutes=step)
                 pbar.update(1)
