@@ -3,10 +3,12 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from timezone_field import TimeZoneField
 
-from sapphire_backend.utils.mixins.models import SlugMixin
+from sapphire_backend.utils.mixins.models import SlugMixin, UUIDMixin
+
+from .managers import SensorQuerySet
 
 
-class Station(SlugMixin, models.Model):
+class Station(SlugMixin, UUIDMixin, models.Model):
     class StationType(models.TextChoices):
         HYDROLOGICAL = "H", _("Hydrological")
         METEOROLOGICAL = "M", _("Meteorological")
@@ -48,6 +50,7 @@ class Station(SlugMixin, models.Model):
         indexes = [
             models.Index(fields=["organization"], name="station_organization_idx"),
             models.Index(fields=["station_code"], name="station_code_idx"),
+            models.Index(fields=["uuid"], name="station_uuid_idx"),
         ]
         constraints = [
             models.UniqueConstraint("station_code", "is_automatic", name="station_code_is_automatic_unique")
@@ -55,3 +58,26 @@ class Station(SlugMixin, models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Sensor(UUIDMixin, models.Model):
+    name = models.CharField(verbose_name=_("Sensor name"), default="Default", max_length=100)
+    manufacturer = models.CharField(verbose_name=_("Manufacturer"), max_length=150, blank=True)
+    identifier = models.CharField(verbose_name=_("Sensor identifier"), max_length=150, blank=True)
+    station = models.ForeignKey("stations.Station", verbose_name=_("Station"), on_delete=models.PROTECT)
+    installation_date = models.DateTimeField(verbose_name=_("Installation date"), blank=True, null=True)
+    is_active = models.BooleanField(verbose_name=_("Is active?"), default=True)
+
+    objects = SensorQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = _("Sensor")
+        verbose_name_plural = _("Sensors")
+        ordering = ["-name"]
+        indexes = [
+            models.Index(fields=["uuid"], name="sensor_uuid_idx"),
+            models.Index(fields=["station"], name="sensor_station_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.name} sensor - {self.station.name} station"
