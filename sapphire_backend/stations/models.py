@@ -19,7 +19,7 @@ class Station(SlugMixin, UUIDMixin, models.Model):
         verbose_name=_("Station type"), choices=StationType.choices, default=StationType.HYDROLOGICAL
     )
     organization = models.ForeignKey(
-        "organizations.Organization", verbose_name=_("Organization"), on_delete=models.PROTECT
+        "organizations.Organization", verbose_name=_("Organization"), on_delete=models.PROTECT, related_name="stations"
     )
     station_code = models.CharField(verbose_name=_("Station code"), max_length=100)
 
@@ -64,9 +64,12 @@ class Sensor(UUIDMixin, models.Model):
     name = models.CharField(verbose_name=_("Sensor name"), default="Default", max_length=100)
     manufacturer = models.CharField(verbose_name=_("Manufacturer"), max_length=150, blank=True)
     identifier = models.CharField(verbose_name=_("Sensor identifier"), max_length=150, blank=True)
-    station = models.ForeignKey("stations.Station", verbose_name=_("Station"), on_delete=models.PROTECT)
+    station = models.ForeignKey(
+        "stations.Station", verbose_name=_("Station"), on_delete=models.PROTECT, related_name="sensors"
+    )
     installation_date = models.DateTimeField(verbose_name=_("Installation date"), blank=True, null=True)
     is_active = models.BooleanField(verbose_name=_("Is active?"), default=True)
+    is_default = models.BooleanField(verbose_name=_("Is default?"), default=True)
 
     objects = SensorQuerySet.as_manager()
 
@@ -77,6 +80,13 @@ class Sensor(UUIDMixin, models.Model):
         indexes = [
             models.Index(fields=["uuid"], name="sensor_uuid_idx"),
             models.Index(fields=["station"], name="sensor_station_idx"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["station", "is_default"],
+                name="unique_default_sensor_per_station",
+                condition=models.Q(is_default=True),
+            )
         ]
 
     def __str__(self):
