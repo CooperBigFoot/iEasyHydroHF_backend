@@ -6,11 +6,7 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 
 from sapphire_backend.stations.models import Station
-from sapphire_backend.telegrams.exceptions import (
-    InvalidTokenException,
-    MissingSectionError,
-    UnsupportedSectionException,
-)
+from sapphire_backend.telegrams.exceptions import InvalidTokenException, MissingSectionError
 
 
 class BaseTelegramParser(ABC):
@@ -78,13 +74,13 @@ class KN15TelegramParser(BaseTelegramParser):
         if section_zero["section_code"] == 1:
             section_one = self.parse_section_one()
 
-        elif section_zero["section_code"] == 2:
-            section_one = self.parse_section_one()
-            # section_three = self.parse_section_three()
-            # section_six = self.parse_section_six()
+        # elif section_zero["section_code"] == 2:
+        #    section_one = self.parse_section_one()
+        # section_three = self.parse_section_three()
+        # section_six = self.parse_section_six()
 
-        else:
-            raise UnsupportedSectionException(section_zero["section_code"])
+        # else:
+        #    raise UnsupportedSectionException(section_zero["section_code"])
 
         return {"section_zero": section_zero, "section_one": section_one}
 
@@ -101,6 +97,8 @@ class KN15TelegramParser(BaseTelegramParser):
         Section 0 contains the station code, date, and section code.
         """
         station_code = self.get_next_token()
+        print()
+        print(f"Station code: {station_code}\n")
         self.validate_station(station_code)
 
         def extract_day_from_token(date_token: str) -> int:
@@ -129,15 +127,17 @@ class KN15TelegramParser(BaseTelegramParser):
 
             # try setting the day of the current month to day_in_month
             try:
-                parsed_date = dt(current_year, current_month, day_in_month, hour)
+                parsed_date = dt(current_year, current_month, day_in_month, hour, tzinfo=ZoneInfo(settings.TIME_ZONE))
             except ValueError:
                 # if day_in_month is invalid for the current month,
                 # set parsed_date to the last day of the previous month
                 if current_month == 1:  # if January, move to December of the previous year
-                    parsed_date = dt(current_year - 1, 12, 31, hour)
+                    parsed_date = dt(current_year - 1, 12, 31, hour, tzinfo=ZoneInfo(settings.TIME_ZONE))
                 else:
                     last_day_prev_month = (dt(current_year, current_month, 1) - timedelta(days=1)).day
-                    parsed_date = dt(current_year, current_month - 1, last_day_prev_month, hour)
+                    parsed_date = dt(
+                        current_year, current_month - 1, last_day_prev_month, hour, tzinfo=ZoneInfo(settings.TIME_ZONE)
+                    )
 
             # if parsed_date is in the future, move it to the previous month
             if parsed_date > today:
@@ -152,9 +152,13 @@ class KN15TelegramParser(BaseTelegramParser):
             return parsed_date
 
         input_token = self.get_next_token()
+        print(f"Input token: {input_token}\n")
         parsed_day_in_month = extract_day_from_token(input_token)
+        print(f"Parsed day in month: {parsed_day_in_month}\n")
         parsed_hour = extract_hour_from_token(input_token)
+        print(f"Parsed hour: {parsed_hour}\n")
         date = determine_date(parsed_day_in_month, parsed_hour)
+        print(f"Date: {date}\n")
 
         try:
             section_code = int(input_token[4])
@@ -206,15 +210,21 @@ class KN15TelegramParser(BaseTelegramParser):
 
         # water level at 08:00
         input_token = self.get_next_token()
+        print(f"Next token: {input_token}")
         morning_water_level = extract_water_level(input_token, "1")
+        print(f"Water level morning: {morning_water_level}")
 
         # water level trend
         input_token = self.get_next_token()
+        print(f"Next token: {input_token}")
         water_level_trend = extract_water_level_trend(input_token)
+        print(f"Water level trend: {water_level_trend}")
 
         # water level at 20:00
         input_token = self.get_next_token()
+        print(f"Next token: {input_token}")
         evening_water_level = extract_water_level(input_token, "3")
+        print(f"Water level evening: {evening_water_level}")
 
         # water and air temperatures - optional
         water_temperature, air_temperature = None, None
