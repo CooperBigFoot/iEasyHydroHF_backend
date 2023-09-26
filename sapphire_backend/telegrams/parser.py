@@ -342,6 +342,11 @@ class KN15TelegramParser(BaseTelegramParser):
 
             return mean_water_level
 
+        # check if the information refers to the previous day which is currently supported
+        input_token = self.get_next_token()
+        if not input_token.endswith("01"):
+            raise InvalidTokenException(f"Expected data from previous day (code 93301), got: {input_token}")
+
         # mean water level for the period 20:00 to 08:00
         input_token = self.get_next_token()
         parsed_mean_water_level = extract_mean_water_level(input_token)
