@@ -9,7 +9,7 @@ from django.conf import settings
 from sapphire_backend.stations.models import Station
 from sapphire_backend.telegrams.exceptions import (
     InvalidTokenException,
-    MissingSectionError,
+    MissingSectionException,
     UnsupportedSectionException,
 )
 from sapphire_backend.telegrams.models import Telegram
@@ -59,7 +59,7 @@ class BaseTelegramParser(ABC):
         """
         if self.tokens:
             return self.tokens.pop(0)
-        raise MissingSectionError("Unexpected end of telegram")
+        raise MissingSectionException("Unexpected end of telegram")
 
     @staticmethod
     def validate_station(station_code: str) -> None:

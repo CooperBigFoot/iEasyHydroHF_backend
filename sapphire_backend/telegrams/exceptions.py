@@ -1,9 +1,15 @@
+import logging
+
+logger = logging.getLogger("telegram_logger")
+
+
 class TelegramParserException(Exception):
     """
     Base exception for all telegram parsing errors.
     """
 
-    pass
+    def __init__(self, *args):
+        logger.error(f"{args[1]}: {args[0]}")
 
 
 class InvalidTokenException(TelegramParserException):
@@ -26,7 +32,7 @@ class UnsupportedSectionException(TelegramParserException):
         super().__init__(f"{message}: {section_code}")
 
 
-class MissingSectionError(TelegramParserException):
+class MissingSectionException(TelegramParserException):
     """
     Raised when a required section is missing from the telegram.
     """
