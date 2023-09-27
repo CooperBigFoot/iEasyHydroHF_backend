@@ -22,10 +22,14 @@ class BaseTelegramParser(ABC):
         self.store_in_db = store_parsed_telegram
         self.automatic_ingestion = automatic_ingestion
         self.tokens = self.tokenize()
+        self.station = None
 
     def handle_telegram_termination_character(self, termination_character: str = "="):
-        if self.original_telegram.endswith(termination_character):
-            return self.original_telegram[:-1]
+        return (
+            self.original_telegram[:-1]
+            if self.original_telegram.endswith(termination_character)
+            else self.original_telegram
+        )
 
     def tokenize(self) -> list[str]:
         """
@@ -61,11 +65,12 @@ class BaseTelegramParser(ABC):
             return self.tokens.pop(0)
         raise MissingSectionException("Unexpected end of telegram")
 
-    @staticmethod
-    def validate_station(station_code: str) -> None:
+    def validate_station(self, station_code: str) -> None:
         if not station_code.isdigit() or len(station_code) != 5:
             raise InvalidTokenException(f"Invalid station code: {station_code}")
-        if not Station.objects.filter(station_code=station_code).exists():
+        try:
+            self.station = Station.objects.get(station_code=station_code)
+        except Station.DoesNotExist:
             raise InvalidTokenException(f"Station with code {station_code} does not exist")
 
     @classmethod
@@ -74,6 +79,14 @@ class BaseTelegramParser(ABC):
         Parses a list of telegrams and returns a list of parsed results.
         """
         return [cls(telegram, store_in_db, automatic).parse() for telegram in telegrams]
+
+    def save_telegram(self, decoded_values: dict[str, Any]):
+        Telegram.objects.create(
+            telegram=self.original_telegram,
+            decoded_values=decoded_values,
+            automatically_ingested=self.automatic_ingestion,
+            organization=self.station.organization,
+        )
 
 
 class KN15TelegramParser(BaseTelegramParser):
@@ -96,16 +109,18 @@ class KN15TelegramParser(BaseTelegramParser):
         elif section_zero["section_code"] == 2:
             section_one = self.parse_section_one()
             decoded_values["section_one"] = section_one
+            decoded_values["section_three"] = []
+            decoded_values["section_six"] = []
             while self.tokens:
                 token = self.tokens[0]
                 section_number = token[:3]
 
                 if section_number == "933":
                     section_three = self.parse_section_three()
-                    decoded_values["section_three"] = section_three
+                    decoded_values["section_three"].append(section_three)
                 elif section_number == "966":
                     section_six = self.parse_section_six()
-                    decoded_values["section_six"] = section_six
+                    decoded_values["section_six"].append(section_six)
                 else:
                     raise UnsupportedSectionException(section_number, "Unsupported section number inside section 1")
 
@@ -114,12 +129,14 @@ class KN15TelegramParser(BaseTelegramParser):
                 section_zero["section_code"], "Unsupported section code (only 1 and 2 are allowed), got"
             )
 
+        # remove sections three and six if they are still empty
+        if not decoded_values["section_three"]:
+            decoded_values.pop("section_three")
+        if not decoded_values["section_six"]:
+            decoded_values.pop("section_six")
+
         if self.store_in_db:
-            Telegram.objects.create(
-                telegram=self.original_telegram,
-                decoded_values=decoded_values,
-                automatically_ingested=self.automatic_ingestion,
-            )
+            self.save_telegram(decoded_values)
         else:
             self.print_decoded_telegram(decoded_values)
 
@@ -128,8 +145,9 @@ class KN15TelegramParser(BaseTelegramParser):
     @staticmethod
     def print_decoded_telegram(decoded_values: dict[str, Any]):
         section_one = decoded_values.get("section_one")
-        section_six = decoded_values.get("section_six")
-        section_zero_date = decoded_values["section_zero"]["date"]
+        section_three_list = decoded_values.get("section_three")
+        section_six_list = decoded_values.get("section_six")
+        section_zero_date = dt.fromisoformat(decoded_values["section_zero"]["date"])
         previous_day = section_zero_date - timedelta(days=1)
         morning_water_level = None
         daily_change = None
@@ -158,21 +176,28 @@ class KN15TelegramParser(BaseTelegramParser):
 
         print(f"\nDaily change\n{daily_change} cm")
 
-        if section_six:
-            date = section_six.get("date")
-            water_level = section_six.get("water_level")
-            cross_section_area = section_six.get("cross_section_area")
-            discharge = section_six.get("discharge")
-            maximum_depth = section_six.get("maximum_depth")
+        if section_three_list:
+            for section_three in section_three_list:
+                mean_water_level = section_three.get("mean_water_level")
+                print("\nReported mean water level")
+                print(f"{mean_water_level} cm" if mean_water_level else "--- cm")
 
-            print("\nwarning")
-            print("Reported discharge")
-            print(f"Date\n{date.strftime('%B %d, %Y')}")
+        if section_six_list:
+            for section_six in section_six_list:
+                date = dt.fromisoformat(section_six.get("date"))
+                water_level = section_six.get("water_level")
+                cross_section_area = section_six.get("cross_section_area")
+                discharge = section_six.get("discharge")
+                maximum_depth = section_six.get("maximum_depth")
 
-            print(f"\nWater level\n{water_level} cm" if water_level else "--- cm")
-            print(f"\nCross-section area\n{cross_section_area} m2" if cross_section_area else "--- m2")
-            print(f"\nDischarge\n{discharge} m3/s" if discharge else "--- m3/s")
-            print(f"\nMaximum depth\n{maximum_depth} cm" if maximum_depth else "--- cm")
+                print("\nwarning")
+                print("Reported discharge")
+                print(f"Date\n{date.strftime('%B %d, %Y')}")
+
+                print(f"\nWater level\n{water_level} cm" if water_level else "--- cm")
+                print(f"\nCross-section area\n{cross_section_area} m2" if cross_section_area else "--- m2")
+                print(f"\nDischarge\n{discharge} m3/s" if discharge else "--- m3/s")
+                print(f"\nMaximum depth\n{maximum_depth} cm" if maximum_depth else "--- cm")
 
     @staticmethod
     def adjust_water_level_value_for_negative(value: int) -> int:
@@ -249,7 +274,7 @@ class KN15TelegramParser(BaseTelegramParser):
         except ValueError:
             raise InvalidTokenException(f"Invalid hour: {input_token[4]}")
 
-        return {"station_code": station_code, "date": date, "section_code": section_code}
+        return {"station_code": station_code, "date": date.isoformat(), "section_code": section_code}
 
     def parse_section_one(self) -> dict:
         """
@@ -358,7 +383,7 @@ class KN15TelegramParser(BaseTelegramParser):
         Parses section 6 of the KN15 telegram.
         """
 
-        def extract_discharge_or_free_river_area(token: str) -> int:
+        def extract_discharge_or_free_river_area(token: str) -> float:
             significand = int(token[2:])
             exponent = int(token[1])
             return significand * (10 ** (exponent - 3))
@@ -407,5 +432,5 @@ class KN15TelegramParser(BaseTelegramParser):
             "discharge": discharge,
             "cross_section_area": cross_section_area,
             "maximum_depth": maximum_depth,
-            "date": date,
+            "date": date.isoformat(),
         }
