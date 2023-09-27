@@ -141,11 +141,7 @@ class KN15TelegramParser(BaseTelegramParser):
         if section_one:
             morning_water_level = section_one.get("morning_water_level")
             water_level_20h_period = section_one.get("water_level_20h_period")
-            daily_change = (
-                morning_water_level - water_level_20h_period
-                if morning_water_level and water_level_20h_period
-                else "---"
-            )
+            daily_change = section_one.get("water_level_trend")
 
             print("\n8:00 AM")
             print("--- cm" if morning_water_level is None else f"{morning_water_level} cm")
@@ -388,13 +384,13 @@ class KN15TelegramParser(BaseTelegramParser):
         # group 4hhhh (optional)
         maximum_depth = None
         if self.tokens and self.tokens[0].startswith("4"):
-            token = self.get_next_token()
-            maximum_depth = int(token[1:])
+            input_token = self.get_next_token()
+            maximum_depth = int(input_token[1:])
 
         # group 5YYGG
-        token = self.get_next_token()
-        day_in_month = int(token[1:3])
-        hour = int(token[3:])
+        input_token = self.get_next_token()
+        day_in_month = int(input_token[1:3])
+        hour = int(input_token[3:])
 
         # Calculate the date
         today = dt.now(tz=ZoneInfo(settings.TIME_ZONE))
