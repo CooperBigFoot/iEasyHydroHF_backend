@@ -8,8 +8,8 @@ class Telegram(CreatedDateMixin, models.Model):
     telegram = models.TextField(verbose_name=_("Original telegram(s)"))
     decoded_values = models.JSONField(verbose_name=_("Decoded values"))
     automatically_ingested = models.BooleanField(verbose_name=_("Was automatically ingested?"), default=False)
-    organization = models.ForeignKey(
-        "organizations.Organization", verbose_name=_("Organization"), on_delete=models.CASCADE, null=True, blank=True
+    station = models.ForeignKey(
+        "stations.Station", verbose_name=_("Station"), on_delete=models.CASCADE, null=True, blank=True
     )
 
     class Meta:

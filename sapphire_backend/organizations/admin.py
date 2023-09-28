@@ -8,3 +8,4 @@ class OrganizationAdmin(admin.ModelAdmin):
     list_display = ["name", "country", "year_type", "is_active"]
     list_filter = ["is_active", "year_type"]
     search_fields = ["name", "description"]
+    readonly_fields = ["uuid"]

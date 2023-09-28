@@ -85,7 +85,7 @@ class BaseTelegramParser(ABC):
             telegram=self.original_telegram,
             decoded_values=decoded_values,
             automatically_ingested=self.automatic_ingestion,
-            organization=self.station.organization,
+            station=self.station,
         )
 
 
@@ -101,6 +101,8 @@ class KN15TelegramParser(BaseTelegramParser):
         # start by parsing section zero
         section_zero = self.parse_section_zero()
         decoded_values["section_zero"] = section_zero
+        decoded_values["section_three"] = []
+        decoded_values["section_six"] = []
 
         if section_zero["section_code"] == 1:
             section_one = self.parse_section_one()
@@ -109,8 +111,6 @@ class KN15TelegramParser(BaseTelegramParser):
         elif section_zero["section_code"] == 2:
             section_one = self.parse_section_one()
             decoded_values["section_one"] = section_one
-            decoded_values["section_three"] = []
-            decoded_values["section_six"] = []
             while self.tokens:
                 token = self.tokens[0]
                 section_number = token[:3]
@@ -274,7 +274,12 @@ class KN15TelegramParser(BaseTelegramParser):
         except ValueError:
             raise InvalidTokenException(f"Invalid hour: {input_token[4]}")
 
-        return {"station_code": station_code, "date": date.isoformat(), "section_code": section_code}
+        return {
+            "station_code": station_code,
+            "station_name": self.station.name,
+            "date": date.isoformat(),
+            "section_code": section_code,
+        }
 
     def parse_section_one(self) -> dict:
         """

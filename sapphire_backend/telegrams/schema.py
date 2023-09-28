@@ -12,6 +12,7 @@ class TelegramBulkInputSchema(Schema):
 class TelegramSectionZeroSchema(Schema):
     date: str
     station_code: str
+    station_name: str
 
 
 class TelegramSectionOneSchema(Schema):
