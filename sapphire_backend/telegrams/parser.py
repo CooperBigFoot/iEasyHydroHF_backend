@@ -88,6 +88,15 @@ class BaseTelegramParser(ABC):
             station=self.station,
         )
 
+    def save_parsing_error(self, error: str):
+        Telegram.objects.create(
+            telegram=self.original_telegram,
+            automatically_ingested=self.automatic_ingestion,
+            station=self.station,
+            errors=error,
+            successfully_parsed=False,
+        )
+
 
 class KN15TelegramParser(BaseTelegramParser):
     def __init__(self, telegram: str, store_parsed_telegram: bool = True, automatic_ingestion: bool = False):

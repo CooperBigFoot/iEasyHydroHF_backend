@@ -6,8 +6,10 @@ from sapphire_backend.utils.mixins.models import CreatedDateMixin
 
 class Telegram(CreatedDateMixin, models.Model):
     telegram = models.TextField(verbose_name=_("Original telegram(s)"))
-    decoded_values = models.JSONField(verbose_name=_("Decoded values"))
+    decoded_values = models.JSONField(verbose_name=_("Decoded values"), blank=True, null=True)
     automatically_ingested = models.BooleanField(verbose_name=_("Was automatically ingested?"), default=False)
+    successfully_parsed = models.BooleanField(verbose_name=_("Was parsed successfully?"), default=True)
+    errors = models.TextField(verbose_name=_("Errors"), blank=True)
     station = models.ForeignKey(
         "stations.Station", verbose_name=_("Station"), on_delete=models.CASCADE, null=True, blank=True
     )

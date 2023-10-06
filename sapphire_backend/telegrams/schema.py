@@ -41,3 +41,20 @@ class TelegramOutputSchema(Schema):
     section_one: TelegramSectionOneSchema
     section_three: TelegramSectionThreeSchema = None
     section_six: list[TelegramSectionSixSingleSchema] = None
+
+
+class BulkParseSuccessTelegramSchema(Schema):
+    index: int
+    telegram: str
+    parsed_data: TelegramOutputSchema
+
+
+class BulkParseErrorTelegramSchema(Schema):
+    index: int
+    telegram: str
+    error: str
+
+
+class BulkParseOutputSchema(Schema):
+    parsed: list[BulkParseSuccessTelegramSchema]
+    errors: list[BulkParseErrorTelegramSchema]

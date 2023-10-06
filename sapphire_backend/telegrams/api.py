@@ -6,11 +6,11 @@ from sapphire_backend.utils.permissions import IsOrganizationMember, Organizatio
 
 from .exceptions import TelegramParserException
 from .parser import KN15TelegramParser
-from .schema import TelegramBulkInputSchema, TelegramInputSchema, TelegramOutputSchema
+from .schema import BulkParseOutputSchema, TelegramBulkInputSchema, TelegramInputSchema, TelegramOutputSchema
 
 
 @api_controller(
-    "{organization_uuid}/telegrams",
+    "telegrams/{organization_uuid}",
     tags=["Telegrams"],
     auth=JWTAuth(),
     permissions=[OrganizationExists & IsOrganizationMember],
@@ -30,11 +30,20 @@ class TelegramsAPIController:
         except TelegramParserException as e:
             return 400, {"detail": str(e), "code": "invalid_telegram"}
 
-    @route.post("parse-bulk", response={201: list[TelegramOutputSchema], 400: Message})
+    @route.post("parse-bulk", response={201: BulkParseOutputSchema, 400: Message})
     def bulk_parse_telegram(self, request, organization_uuid: str, encoded_telegrams: TelegramBulkInputSchema):
-        try:
-            decoded_values = KN15TelegramParser.parse_bulk(telegrams=encoded_telegrams.telegrams, store_in_db=True)
-            # TODO figure out how to validate the station and organization for bulk parse
-            return 201, decoded_values
-        except TelegramParserException as e:
-            return 400, {"detail": str(e), "code": "invalid_telegram"}
+        data = {"parsed": [], "errors": []}
+        for idx, telegram in enumerate(encoded_telegrams.telegrams):
+            parser = KN15TelegramParser(telegram)
+            try:
+                decoded = parser.parse()
+                if str(parser.station.organization.uuid) != organization_uuid:
+                    error = f"Station with code {parser.station.station_code} does not exist for this organization"
+                    data["errors"].append({"index": idx, "telegram": telegram, "error": error})
+                    parser.save_parsing_error(error)
+                data["parsed"].append({"index": idx, "telegram": telegram, "parsed_data": decoded})
+            except TelegramParserException as e:
+                data["errors"].append({"index": idx, "telegram": telegram, "error": str(e)})
+                parser.save_parsing_error(str(e))
+
+        return 201, data
