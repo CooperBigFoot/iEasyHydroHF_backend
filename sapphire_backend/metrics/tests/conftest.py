@@ -3,6 +3,7 @@ from pytest_factoryboy import register
 
 from .factories import (
     AirTemperatureFactory,
+    PrecipitationFactory,
     WaterDischargeFactory,
     WaterLevelFactory,
     WaterTemperatureFactory,
@@ -14,6 +15,7 @@ register(WaterDischargeFactory)
 register(WaterLevelFactory)
 register(WaterVelocityFactory)
 register(WaterTemperatureFactory)
+register(PrecipitationFactory)
 
 
 @pytest.fixture

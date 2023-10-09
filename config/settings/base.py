@@ -76,6 +76,7 @@ LOCAL_APPS = [
     "sapphire_backend.stations",
     "sapphire_backend.users",
     "sapphire_backend.metrics",
+    "sapphire_backend.telegrams",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -235,6 +236,9 @@ NINJA_JWT = {
     "TOKEN_OBTAIN_PAIR_INPUT_SCHEMA": "sapphire_backend.users.auth.schema.TokenObtainInputSchema",
 }
 
+
+# https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "0.0.0.0", "127.0.0.1", "ieasyhydro.localhost"])
 
 # corsheaders
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])

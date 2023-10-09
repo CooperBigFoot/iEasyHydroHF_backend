@@ -11,14 +11,14 @@ from .schema import StationInputSchema, StationOutputDetailSchema, StationOutput
 
 
 @api_controller(
-    "{organization_id}/stations",
+    "{organization_uuid}/stations",
     tags=["Stations"],
     auth=JWTAuth(),
     permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
 )
 class StationsAPIController:
     @route.post("", response={201: StationOutputDetailSchema, 400: Message})
-    def create_station(self, request, organization_id: int, station_data: StationInputSchema):
+    def create_station(self, request, organization_uuid: str, station_data: StationInputSchema):
         try:
             station = Station.objects.create(**station_data.dict())
         except IntegrityError:
@@ -27,18 +27,18 @@ class StationsAPIController:
         return 201, station
 
     @route.get("", response=list[StationOutputListSchema])
-    def get_stations(self, request, organization_id: int):
+    def get_stations(self, request, organization_uuid: str):
         return Station.objects.all()
 
     @route.get("{station_id}", response={200: StationOutputDetailSchema, 404: Message})
-    def get_station(self, request, organization_id: int, station_id: int):
+    def get_station(self, request, organization_uuid: str, station_id: int):
         try:
             return 200, Station.objects.get(id=station_id)
         except Station.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
 
     @route.delete("{station_id}", response=Message)
-    def delete_station(self, request, organization_id: int, station_id: int):
+    def delete_station(self, request, organization_uuid: str, station_id: int):
         try:
             station = Station.objects.get(id=station_id)
             station.delete()
@@ -49,7 +49,7 @@ class StationsAPIController:
             return 400, {"detail": _("Station could not be deleted."), "code": "error"}
 
     @route.put("{station_id}", response={200: StationOutputDetailSchema, 404: Message})
-    def update_station(self, request, organization_id: int, station_id: int, station_data: StationUpdateSchema):
+    def update_station(self, request, organization_uuid: str, station_id: int, station_data: StationUpdateSchema):
         try:
             station = Station.objects.get(id=station_id)
             for attr, value in station_data.dict(exclude_unset=True).items():

@@ -3,16 +3,16 @@ from zoneinfo import ZoneInfo
 import factory
 from faker import Faker
 
-from sapphire_backend.stations.tests.factories import StationFactory
+from sapphire_backend.stations.tests.factories import SensorFactory
 
-from ..models import AirTemperature, WaterDischarge, WaterLevel, WaterTemperature, WaterVelocity
+from ..models import AirTemperature, Precipitation, WaterDischarge, WaterLevel, WaterTemperature, WaterVelocity
 
 fake = Faker()
 
 
 class MetricFactoryMixin(factory.django.DjangoModelFactory):
     timestamp = fake.date_time(tzinfo=ZoneInfo("UTC"))
-    station = factory.SubFactory(StationFactory)
+    sensor = factory.SubFactory(SensorFactory)
 
 
 class AirTemperatureFactory(MetricFactoryMixin):
@@ -21,7 +21,16 @@ class AirTemperatureFactory(MetricFactoryMixin):
 
     class Meta:
         model = AirTemperature
-        django_get_or_create = ("timestamp", "station")
+        django_get_or_create = ("timestamp", "sensor")
+
+
+class PrecipitationFactory(MetricFactoryMixin):
+    value = fake.pydecimal(left_digits=2, right_digits=6, min_value=0, max_value=20)
+    unit = "mm"
+
+    class Meta:
+        model = Precipitation
+        django_get_or_create = ("timestamp", "sensor")
 
 
 class WaterTemperatureFactory(MetricFactoryMixin):
@@ -30,7 +39,7 @@ class WaterTemperatureFactory(MetricFactoryMixin):
 
     class Meta:
         model = WaterTemperature
-        django_get_or_create = ("timestamp", "station")
+        django_get_or_create = ("timestamp", "sensor")
 
 
 class WaterDischargeFactory(MetricFactoryMixin):
@@ -39,7 +48,7 @@ class WaterDischargeFactory(MetricFactoryMixin):
 
     class Meta:
         model = WaterDischarge
-        django_get_or_create = ("timestamp", "station")
+        django_get_or_create = ("timestamp", "sensor")
 
 
 class WaterVelocityFactory(MetricFactoryMixin):
@@ -48,7 +57,7 @@ class WaterVelocityFactory(MetricFactoryMixin):
 
     class Meta:
         model = WaterVelocity
-        django_get_or_create = ("timestamp", "station")
+        django_get_or_create = ("timestamp", "sensor")
 
 
 class WaterLevelFactory(MetricFactoryMixin):
@@ -57,4 +66,4 @@ class WaterLevelFactory(MetricFactoryMixin):
 
     class Meta:
         model = WaterLevel
-        django_get_or_create = ("timestamp", "station")
+        django_get_or_create = ("timestamp", "sensor")

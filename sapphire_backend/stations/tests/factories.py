@@ -5,7 +5,7 @@ from faker import Faker
 
 from sapphire_backend.organizations.tests.factories import OrganizationFactory
 
-from ..models import Station
+from ..models import Sensor, Station
 
 fake = Faker()
 
@@ -37,3 +37,17 @@ class StationFactory(factory.django.DjangoModelFactory):
 
     measurement_time_step = fake.pyint(min_value=1, max_value=720)
     discharge_level_alarm = 100
+
+
+class SensorFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Sensor
+        django_get_or_create = ("name", "station")
+
+    name = fake.company()
+    station = factory.SubFactory(StationFactory)
+    identifier = fake.isbn13()
+    manufacturer = fake.company()
+    installation_date = fake.date_time(tzinfo=ZoneInfo("UTC"))
+    is_active = True
+    is_default = True

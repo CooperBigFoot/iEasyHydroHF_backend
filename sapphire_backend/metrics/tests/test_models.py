@@ -2,7 +2,7 @@ import pytest
 from django.db import connection
 
 
-class TestMetricsModelController:
+class TestMetricsModel:
     @pytest.mark.django_db
     def test_hypertable_count(self):
         with connection.cursor() as c:
