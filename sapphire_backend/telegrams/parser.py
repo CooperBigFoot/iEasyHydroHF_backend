@@ -10,6 +10,7 @@ from sapphire_backend.stations.models import Station
 from sapphire_backend.telegrams.exceptions import (
     InvalidTokenException,
     MissingSectionException,
+    TelegramAlreadyParsedException,
     UnsupportedSectionException,
 )
 from sapphire_backend.telegrams.models import Telegram
@@ -31,6 +32,9 @@ class BaseTelegramParser(ABC):
             else self.original_telegram
         )
 
+    def telegram_already_parsed(self):
+        return Telegram.objects.filter(telegram=self.original_telegram, successfully_parsed=True).exists()
+
     def tokenize(self) -> list[str]:
         """
         Breaks the telegram into tokens for easier parsing.
@@ -43,7 +47,8 @@ class BaseTelegramParser(ABC):
         Main parsing method.
         Must be implemented by subclasses.
         """
-        pass
+        if self.telegram_already_parsed():
+            raise TelegramAlreadyParsedException(telegram=self.original_telegram)
 
     @staticmethod
     def print_decoded_telegram(decoded_values: dict[str, Any]):
@@ -106,6 +111,7 @@ class KN15TelegramParser(BaseTelegramParser):
         """
         Implements the parsing logic for KN15 telegrams.
         """
+        super().parse()
         decoded_values = {}
         # start by parsing section zero
         section_zero = self.parse_section_zero()
@@ -145,7 +151,8 @@ class KN15TelegramParser(BaseTelegramParser):
             decoded_values.pop("section_six")
 
         if self.store_in_db:
-            self.save_telegram(decoded_values)
+            pass
+            # self.save_telegram(decoded_values)
         else:
             self.print_decoded_telegram(decoded_values)
 

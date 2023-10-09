@@ -44,6 +44,5 @@ class TelegramsAPIController:
                 data["parsed"].append({"index": idx, "telegram": telegram, "parsed_data": decoded})
             except TelegramParserException as e:
                 data["errors"].append({"index": idx, "telegram": telegram, "error": str(e)})
-                parser.save_parsing_error(str(e))
 
         return 201, data

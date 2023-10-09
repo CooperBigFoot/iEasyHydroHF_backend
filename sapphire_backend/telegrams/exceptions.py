@@ -42,3 +42,13 @@ class MissingSectionException(TelegramParserException):
         self.section_name = section_name
         logger.error(f"{message}: {section_name}")
         super().__init__(f"{message}: {section_name}")
+
+
+class TelegramAlreadyParsedException(TelegramParserException):
+    """
+    Raised when a telegram is a successfully parsed telegram already exists.
+    """
+
+    def __init__(self, telegram: str, message: str = "Telegram already ingested"):
+        logger.error(f"{message}: {telegram}")
+        super().__init__(f"{message}: {telegram}")
