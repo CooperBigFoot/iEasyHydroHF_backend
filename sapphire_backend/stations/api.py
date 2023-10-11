@@ -1,5 +1,6 @@
 from django.db import IntegrityError
 from django.utils.translation import gettext as _
+from ninja import Query
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
@@ -7,7 +8,7 @@ from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OrganizationExists
 
 from .models import Station
-from .schema import StationInputSchema, StationOutputDetailSchema, StationOutputListSchema, StationUpdateSchema
+from .schema import StationFilterSchema, StationInputSchema, StationOutputDetailSchema, StationUpdateSchema
 
 
 @api_controller(
@@ -26,9 +27,13 @@ class StationsAPIController:
 
         return 201, station
 
-    @route.get("", response=list[StationOutputListSchema])
-    def get_stations(self, request, organization_uuid: str):
-        return Station.objects.all()
+    @route.get("", response=list[StationOutputDetailSchema])
+    def get_stations(self, request, organization_uuid: str, station_type_filter: StationFilterSchema = Query(...)):
+        stations = Station.objects.filter(organization__uuid=organization_uuid)
+        if station_type_filter.station_type:
+            stations = stations.filter(station_type=station_type_filter.station_type.value)
+
+        return stations
 
     @route.get("{station_id}", response={200: StationOutputDetailSchema, 404: Message})
     def get_station(self, request, organization_uuid: str, station_id: int):

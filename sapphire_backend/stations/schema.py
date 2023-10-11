@@ -1,4 +1,4 @@
-from ninja import ModelSchema, Schema
+from ninja import Field, ModelSchema, Schema
 
 from .models import Station
 
@@ -20,11 +20,8 @@ class StationOutputDetailSchema(StationInputSchema):
     id: int
     slug: str
     organization_id: int
+    timezone: str = Field(None, alias="get_timezone_display")
 
 
-class StationOutputListSchema(Schema):
-    station_code: str
-    name: str
-    basin: str
-    region: str
-    is_automatic: bool
+class StationFilterSchema(Schema):
+    station_type: Station.StationType = None
