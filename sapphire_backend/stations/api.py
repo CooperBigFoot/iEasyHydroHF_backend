@@ -12,7 +12,7 @@ from .schema import StationFilterSchema, StationInputSchema, StationOutputDetail
 
 
 @api_controller(
-    "{organization_uuid}/stations",
+    "stations/{organization_uuid}",
     tags=["Stations"],
     auth=JWTAuth(),
     permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
