@@ -11,6 +11,10 @@ class User(UUIDMixin, AbstractUser):
         ORGANIZATION_ADMIN = "organization_admin", _("Organization admin")
         SUPER_ADMIN = "super_admin", _("Super admin")
 
+    class Language(models.TextChoices):
+        ENGLISH = "en", _("English")
+        RUSSIAN = "ru", _("Russian")
+
     contact_phone = models.CharField(verbose_name=_("Phone number"), blank=True, max_length=100)
     user_role = models.CharField(
         verbose_name=_("User role"), max_length=30, choices=UserRoles.choices, default=UserRoles.REGULAR_USER
@@ -23,8 +27,13 @@ class User(UUIDMixin, AbstractUser):
         blank=True,
         related_name="members",
     )
+
     avatar = models.ImageField(verbose_name=_("Avatar"), upload_to="avatars/", blank=True)
     is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
+
+    language = models.CharField(
+        verbose_name=_("Language"), max_length=2, choices=Language.choices, default=Language.ENGLISH
+    )
 
     class Meta(AbstractUser.Meta):
         indexes = [models.Index(fields=["uuid"], name="user_uuid_idx")]
