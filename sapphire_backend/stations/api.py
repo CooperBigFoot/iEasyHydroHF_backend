@@ -35,17 +35,17 @@ class StationsAPIController:
 
         return stations
 
-    @route.get("{station_id}", response={200: StationOutputDetailSchema, 404: Message})
-    def get_station(self, request, organization_uuid: str, station_id: int):
+    @route.get("{station_uuid}", response={200: StationOutputDetailSchema, 404: Message})
+    def get_station(self, request, organization_uuid: str, station_uuid: str):
         try:
-            return 200, Station.objects.get(id=station_id)
+            return 200, Station.objects.get(uuid=station_uuid)
         except Station.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
 
-    @route.delete("{station_id}", response=Message)
-    def delete_station(self, request, organization_uuid: str, station_id: int):
+    @route.delete("{station_uuid}", response=Message)
+    def delete_station(self, request, organization_uuid: str, station_uuid: str):
         try:
-            station = Station.objects.get(id=station_id)
+            station = Station.objects.get(id=station_uuid)
             station.delete()
             return 200, {"detail": "Station successfully deleted", "code": "success"}
         except Station.DoesNotExist:
@@ -53,10 +53,10 @@ class StationsAPIController:
         except IntegrityError:
             return 400, {"detail": _("Station could not be deleted."), "code": "error"}
 
-    @route.put("{station_id}", response={200: StationOutputDetailSchema, 404: Message})
-    def update_station(self, request, organization_uuid: str, station_id: int, station_data: StationUpdateSchema):
+    @route.put("{station_uuid}", response={200: StationOutputDetailSchema, 404: Message})
+    def update_station(self, request, organization_uuid: str, station_uuid: str, station_data: StationUpdateSchema):
         try:
-            station = Station.objects.get(id=station_id)
+            station = Station.objects.get(uuid=station_uuid)
             for attr, value in station_data.dict(exclude_unset=True).items():
                 setattr(station, attr, value)
             station.save()
