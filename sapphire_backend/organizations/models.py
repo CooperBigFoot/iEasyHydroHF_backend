@@ -11,8 +11,8 @@ class Organization(UUIDMixin, models.Model):
         HYDROLOGICAL = "HY", _("Hydrological")
 
     class Language(models.TextChoices):
-        ENGLISH = "EN", _("English")
-        RUSSIAN = "RU", _("Russian")
+        ENGLISH = "en", _("English")
+        RUSSIAN = "ru", _("Russian")
 
     name = models.CharField(verbose_name=_("Organization name"), max_length=100)
     description = models.TextField(verbose_name=_("Description"), blank=True, default="")
