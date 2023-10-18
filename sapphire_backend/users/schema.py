@@ -21,8 +21,16 @@ class UserInputSchema(ModelSchema):
 class UserUpdateSchema(ModelSchema):
     class Config:
         model = User
-        model_fields = ["username", "email", "user_role", "first_name", "last_name", "contact_phone", "language",
-                        "is_active"]
+        model_fields = [
+            "username",
+            "email",
+            "user_role",
+            "first_name",
+            "last_name",
+            "contact_phone",
+            "language",
+            "is_active",
+        ]
         model_fields_optional = "__all__"
 
 
