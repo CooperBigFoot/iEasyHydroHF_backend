@@ -51,6 +51,10 @@ class User(UUIDMixin, AbstractUser):
         return self.user_role == self.UserRoles.SUPER_ADMIN
 
     @property
+    def is_regular(self):
+        return self.user_role == self.UserRoles.REGULAR_USER
+
+    @property
     def display_name(self):
         if all([self.first_name, self.last_name]):
             return f"{self.first_name} {self.last_name}"
