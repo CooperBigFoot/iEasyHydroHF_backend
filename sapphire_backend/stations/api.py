@@ -29,7 +29,7 @@ class StationsAPIController:
 
     @route.get("", response=list[StationOutputDetailSchema])
     def get_stations(self, request, organization_uuid: str, station_type_filter: StationFilterSchema = Query(...)):
-        stations = Station.objects.filter(organization__uuid=organization_uuid)
+        stations = Station.objects.filter(organization__uuid=organization_uuid, is_deleted=False)
         if station_type_filter.station_type:
             stations = stations.filter(station_type=station_type_filter.station_type.value)
 
@@ -38,16 +38,17 @@ class StationsAPIController:
     @route.get("{station_uuid}", response={200: StationOutputDetailSchema, 404: Message})
     def get_station(self, request, organization_uuid: str, station_uuid: str):
         try:
-            return 200, Station.objects.get(uuid=station_uuid)
+            return 200, Station.objects.get(uuid=station_uuid, is_deleted=False)
         except Station.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
 
-    @route.delete("{station_uuid}", response=Message)
+    @route.delete("{station_uuid}", response={200: Message, 400: Message, 404: Message})
     def delete_station(self, request, organization_uuid: str, station_uuid: str):
         try:
-            station = Station.objects.get(id=station_uuid)
-            station.delete()
-            return 200, {"detail": "Station successfully deleted", "code": "success"}
+            station = Station.objects.get(uuid=station_uuid, is_deleted=False)
+            station.is_deleted = True
+            station.save()
+            return 200, {"detail": _(f"{station.name} station successfully deleted"), "code": "success"}
         except Station.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
         except IntegrityError:
@@ -56,7 +57,7 @@ class StationsAPIController:
     @route.put("{station_uuid}", response={200: StationOutputDetailSchema, 404: Message})
     def update_station(self, request, organization_uuid: str, station_uuid: str, station_data: StationUpdateSchema):
         try:
-            station = Station.objects.get(uuid=station_uuid)
+            station = Station.objects.get(uuid=station_uuid, is_deleted=False)
             for attr, value in station_data.dict(exclude_unset=True).items():
                 setattr(station, attr, value)
             station.save()
