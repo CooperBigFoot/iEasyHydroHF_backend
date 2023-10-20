@@ -33,7 +33,7 @@ class StationsAPIController:
         if station_type_filter.station_type:
             stations = stations.filter(station_type=station_type_filter.station_type.value)
 
-        return stations
+        return stations.select_related("organization")
 
     @route.get("{station_uuid}", response={200: StationOutputDetailSchema, 404: Message})
     def get_station(self, request, organization_uuid: str, station_uuid: str):

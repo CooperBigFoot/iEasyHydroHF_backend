@@ -19,8 +19,12 @@ class StationUpdateSchema(ModelSchema):
 class StationOutputDetailSchema(StationInputSchema):
     id: int
     slug: str
-    organization_id: int
+    organization_uuid: str
     timezone: str = Field(None, alias="get_timezone_display")
+
+    @staticmethod
+    def resolve_organization_uuid(obj):
+        return str(obj.organization.uuid)
 
 
 class StationFilterSchema(Schema):
