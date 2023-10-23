@@ -20,17 +20,7 @@ line-length = 119
 target-version = ['py311']
 
 
-# ==== isort ====
-[tool.isort]
-profile = "black"
-line_length = 119
-known_first_party = [
-    "sapphire_backend",
-    "config",
-]
-skip = ["venv/"]
-skip_glob = ["**/migrations/*.py"]
-
+# ==== ruff ====
 [tool.ruff]
 exclude = [
     ".tox",
@@ -45,9 +35,21 @@ exclude = [
 ignore = []
 line-length = 119
 select = [
+    # pycodestyle
     "E",
+    # pyflakes
     "F",
     "W",
+    # isort
+    "I"
+]
+
+
+# ==== ruff-isort ====
+[tool.ruff.isort]
+known-first-party = [
+    "sapphire_backend",
+    "config",
 ]
 
 
@@ -70,33 +72,3 @@ ignore_errors = true
 
 [tool.django-stubs]
 django_settings_module = "config.settings.test"
-
-
-# ==== PyLint ====
-[tool.pylint.MASTER]
-load-plugins = [
-    "pylint_django",
-]
-django-settings-module = "config.settings.local"
-
-[tool.pylint.FORMAT]
-max-line-length = 119
-
-[tool.pylint."MESSAGES CONTROL"]
-disable = [
-    "missing-docstring",
-    "invalid-name",
-]
-
-[tool.pylint.DESIGN]
-max-parents = 13
-
-[tool.pylint.TYPECHECK]
-generated-members = [
-    "REQUEST",
-    "acl_users",
-    "aq_parent",
-    "[a-zA-Z]+_set{1,2}",
-    "save",
-    "delete",
-]
