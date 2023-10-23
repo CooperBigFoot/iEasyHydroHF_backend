@@ -16,4 +16,4 @@ django-cors-headers==4.2.0  # https://github.com/adamchainz/django-cors-headers
 # ------------------------------------------------------------------------------
 django-ninja==0.22.2  # https://github.com/vitalik/django-ninja
 django-ninja-jwt[crypto]==5.2.5  # https://github.com/eadwinCode/django-ninja-jwt
-django-ninja-extra==0.19.3  # https://github.com/eadwinCode/django-ninja-extra
+django-ninja-extra==0.19.8  # https://github.com/eadwinCode/django-ninja-extra
