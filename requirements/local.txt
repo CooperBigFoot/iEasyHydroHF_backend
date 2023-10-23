@@ -22,9 +22,6 @@ sphinx-autobuild==2021.3.14 # https://github.com/GaretJax/sphinx-autobuild
 # Code quality
 # ------------------------------------------------------------------------------
 ruff==0.1.1  # https://github.com/astral-sh/ruff
-flake8-to-ruff==0.0.233  # https://github.com/astral-sh/ruff#subdirectory=crates/flake8_to_ruff
-flake8==6.1.0  # https://github.com/PyCQA/flake8
-flake8-isort==6.1.0  # https://github.com/gforcada/flake8-isort
 coverage==7.3.1  # https://github.com/nedbat/coveragepy
 black==23.9.1  # https://github.com/psf/black
 pylint-django==2.5.3  # https://github.com/PyCQA/pylint-django

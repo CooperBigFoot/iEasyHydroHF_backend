@@ -2,10 +2,11 @@ from django.db import IntegrityError
 from django.utils.translation import gettext as _
 from ninja import Query
 from ninja_extra import api_controller, route
-from ninja_jwt.authentication import JWTAuth
+
 
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OrganizationExists
+from ninja_jwt.authentication import JWTAuth
 
 from .models import Station
 from .schema import StationFilterSchema, StationInputSchema, StationOutputDetailSchema, StationUpdateSchema
