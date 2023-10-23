@@ -31,6 +31,25 @@ known_first_party = [
 skip = ["venv/"]
 skip_glob = ["**/migrations/*.py"]
 
+[tool.ruff]
+exclude = [
+    ".tox",
+    ".git",
+    "*/migrations/*",
+    "*/static/CACHE/*",
+    "docs",
+    "node_modules",
+    "venv",
+    ".venv",
+]
+ignore = []
+line-length = 119
+select = [
+    "E",
+    "F",
+    "W",
+]
+
 
 # ==== mypy ====
 [tool.mypy]
