@@ -1,7 +1,6 @@
-from zoneinfo import ZoneInfo
-
 import factory
 from faker import Faker
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.organizations.tests.factories import OrganizationFactory
 

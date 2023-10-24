@@ -1,9 +1,8 @@
-from zoneinfo import ZoneInfo
-
 import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
 from ninja_jwt.tokens import AccessToken
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.organizations.tests.factories import OrganizationFactory

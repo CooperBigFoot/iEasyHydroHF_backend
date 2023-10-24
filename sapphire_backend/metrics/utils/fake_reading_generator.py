@@ -1,9 +1,9 @@
 import random
 from datetime import datetime as dt
 from datetime import timedelta
-from zoneinfo import ZoneInfo
 
 from tqdm import tqdm
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.metrics.models import (
     AirTemperature,

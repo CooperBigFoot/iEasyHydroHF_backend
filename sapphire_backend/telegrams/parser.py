@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 from datetime import datetime as dt
 from datetime import timedelta
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from django.conf import settings
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.stations.models import Station
 from sapphire_backend.telegrams.exceptions import (

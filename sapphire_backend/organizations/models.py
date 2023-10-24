@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from timezone_field import TimeZoneField
@@ -22,6 +23,15 @@ class Organization(UUIDMixin, models.Model):
     city = models.CharField(verbose_name=_("City"), max_length=100)
     street_address = models.CharField(verbose_name=_("Street address"), max_length=255)
     zip_code = models.CharField(verbose_name=_("ZIP code"), max_length=50)
+    latitude = models.FloatField(
+        verbose_name=_("Latitude"), validators=[MinValueValidator(-90), MaxValueValidator(90)], blank=True, null=True
+    )
+    longitude = models.FloatField(
+        verbose_name=_("Longitude"),
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        blank=True,
+        null=True,
+    )
     timezone = TimeZoneField(verbose_name=_("Organization timezone"), null=True, blank=True)
 
     contact = models.CharField(verbose_name=_("Contact person"), max_length=200, blank=True, default="")
