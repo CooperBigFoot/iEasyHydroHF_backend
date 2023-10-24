@@ -6,7 +6,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("organizations", "0003_organization_uuid_index"),
+        ("organizations", "0004_alter_organization_language"),
     ]
 
     operations = [
