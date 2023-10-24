@@ -1,7 +1,6 @@
-from zoneinfo import ZoneInfo
-
 import pytest
 from pytest_factoryboy import register
+from zoneinfo import ZoneInfo
 
 from ..models import Organization
 from .factories import OrganizationFactory

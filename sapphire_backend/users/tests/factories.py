@@ -1,9 +1,8 @@
-from zoneinfo import ZoneInfo
-
 import factory
 from django.contrib.auth import get_user_model
 from django.db.models import signals
 from faker import Faker
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.organizations.tests.factories import OrganizationFactory
 

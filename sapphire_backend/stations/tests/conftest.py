@@ -1,9 +1,9 @@
 from datetime import datetime as dt
-from zoneinfo import ZoneInfo
 
 import pytest
 from django.conf import settings
 from pytest_factoryboy import register
+from zoneinfo import ZoneInfo
 
 from .factories import SensorFactory, StationFactory
 

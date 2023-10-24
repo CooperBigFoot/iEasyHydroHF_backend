@@ -1,7 +1,6 @@
-from zoneinfo import ZoneInfo
-
 import factory
 from faker import Faker
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.stations.tests.factories import SensorFactory
 
