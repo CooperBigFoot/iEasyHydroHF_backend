@@ -4,6 +4,7 @@ from ninja import Query
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
+from sapphire_backend.organizations.models import Organization
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OrganizationExists
 
@@ -21,7 +22,10 @@ class StationsAPIController:
     @route.post("", response={201: StationOutputDetailSchema, 400: Message})
     def create_station(self, request, organization_uuid: str, station_data: StationInputSchema):
         try:
-            station = Station.objects.create(**station_data.dict())
+            organization = Organization.objects.get(uuid=organization_uuid)
+            station_dict = station_data.dict()
+            station_dict["organization"] = organization
+            station = Station.objects.create(**station_dict)
         except IntegrityError:
             return 400, {"detail": _("Station with the same code already exists."), "code": "duplicate_station"}
 

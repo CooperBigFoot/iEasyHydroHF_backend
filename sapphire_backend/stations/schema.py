@@ -20,6 +20,7 @@ class StationOutputDetailSchema(StationInputSchema):
     id: int
     slug: str
     organization_uuid: str
+    organization_id: int
     timezone: str = Field(None, alias="get_timezone_display")
 
     @staticmethod
