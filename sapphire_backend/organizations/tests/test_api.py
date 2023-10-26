@@ -18,8 +18,10 @@ class TestOrganizationsAPIController:
         assert response.status_code == 401
         assert response.json()["detail"] == "Unauthorized"
 
-    def test_get_organization_for_other_organization_admin(self, authenticated_regular_user_api_client, organization):
-        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{organization.uuid}")
+    def test_get_organization_for_other_organization_admin(
+        self, authenticated_regular_user_api_client, backup_organization
+    ):
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{backup_organization.uuid}")
 
         assert response.status_code == 403
         assert response.json()["detail"] == "You do not have permission to perform this action."

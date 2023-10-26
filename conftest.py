@@ -32,7 +32,7 @@ def backup_organization(db, organization_factory=OrganizationFactory):
         name="Kazakh Hydromet",
         language=Organization.Language.RUSSIAN,
         year_type=Organization.YearType.HYDROLOGICAL,
-        timezone=ZoneInfo("Asia/Bishkek"),
+        timezone=ZoneInfo("Asia/Almaty"),
     )
 
 
