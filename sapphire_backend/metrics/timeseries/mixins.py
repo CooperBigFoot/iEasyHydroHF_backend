@@ -20,7 +20,7 @@ class TimeSeriesModelMixin(models.Model):
         verbose_name=_("Maximum value"), max_digits=10, decimal_places=5, null=True, blank=True
     )
     unit = models.CharField(verbose_name=_("Unit"), blank=True, max_length=20)
-    sensor = models.ForeignKey("stations.Sensor", verbose_name=_("Sensor"), on_delete=models.CASCADE)
+    sensor = models.ForeignKey("stations.Sensor", to_field="uuid", verbose_name=_("Sensor"), on_delete=models.PROTECT)
 
     class Meta:
         abstract = True

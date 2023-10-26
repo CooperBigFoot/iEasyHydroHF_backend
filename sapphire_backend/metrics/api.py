@@ -1,6 +1,7 @@
-from ninja_extra import api_controller
+from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
+# from sapphire_backend.stations.models import Sensor
 from sapphire_backend.utils.permissions import IsOrganizationMember, IsSuperAdmin, OrganizationExists
 
 
@@ -11,4 +12,6 @@ from sapphire_backend.utils.permissions import IsOrganizationMember, IsSuperAdmi
     permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)],
 )
 class MetricsAPIController:
-    pass
+    @route.get("/latest")
+    def get_latest_metrics(self, request, organization_uuid: str, station_uuid: str, sensor_uuid: str = None):
+        pass
