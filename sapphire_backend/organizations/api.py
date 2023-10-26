@@ -39,7 +39,7 @@ class OrganizationsAPIController:
     @route.get(
         "{organization_uuid}",
         response=OrganizationOutputDetailSchema,
-        permissions=[OrganizationExists & (IsSuperAdmin | IsOrganizationAdmin)],
+        permissions=[OrganizationExists & (IsSuperAdmin | IsOrganizationAdmin | IsOrganizationMember)],
     )
     def get_organization(self, request, organization_uuid: str):
         return Organization.objects.get(uuid=organization_uuid)

@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from ninja import Field, ModelSchema
 
-from sapphire_backend.organizations.schema import OrganizationOutputDetailSchema
+from sapphire_backend.organizations.schema import OrganizationOutputListSchema
 from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
 
 User = get_user_model()
@@ -51,4 +51,4 @@ class UserOutputListSchema(UserInputSchema, UUIDSchemaMixin):
 
 class UserOutputDetailSchema(UserOutputListSchema):
     id: int
-    organization: OrganizationOutputDetailSchema = None
+    organization: OrganizationOutputListSchema = None

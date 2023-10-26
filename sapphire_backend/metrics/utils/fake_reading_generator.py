@@ -188,6 +188,8 @@ class FakeReadingGenerator:
         total_iterations = int(total_minutes_in_year / step)
 
         consecutive_missing_count = 0
+        batch_size = 2000
+        readings_batch = []
         with tqdm(total=total_iterations, desc=f"Generating {model_class.__name__} readings", unit="reading") as pbar:
             while current_date < end_date:
                 if random.random() < MISSING_VALUE_PROBABILITY and consecutive_missing_count < 3:
@@ -204,7 +206,15 @@ class FakeReadingGenerator:
                         minimum_value=min_value,
                         unit=unit,
                     )
-                    reading.save()
+                    readings_batch.append(reading)
                     previous_avg = avg_value
+
+                    if len(readings_batch) == batch_size:
+                        model_class.objects.bulk_create(readings_batch)
+                        pbar.update(batch_size)
+                        readings_batch = []
                 current_date += timedelta(minutes=step)
-                pbar.update(1)
+
+            if readings_batch:
+                model_class.objects.bulk_create(readings_batch)
+                pbar.update(len(readings_batch))
