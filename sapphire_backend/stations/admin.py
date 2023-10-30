@@ -16,3 +16,4 @@ class SensorAdmin(admin.ModelAdmin):
     list_display = ["name", "station", "identifier", "manufacturer", "is_default"]
     list_filter = ["station__name", "manufacturer", "is_default"]
     search_fields = ["station__name", "manufacturer"]
+    readonly_fields = ["uuid"]

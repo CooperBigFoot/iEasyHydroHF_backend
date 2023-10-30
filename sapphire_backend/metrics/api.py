@@ -1,7 +1,16 @@
 from django.utils.translation import gettext_lazy as _
+from ninja import Query
 from ninja_extra import api_controller, route
+from ninja_extra.pagination import PageNumberPaginationExtra, PaginatedResponseSchema, paginate
 from ninja_jwt.authentication import JWTAuth
 
+from sapphire_backend.metrics.schema import (
+    MetricParams,
+    OrderQueryParams,
+    TimeseriesFiltersSchema,
+    TimeseriesOutputSchema,
+)
+from sapphire_backend.metrics.utils.helpers import get_metric_model
 from sapphire_backend.stations.models import Sensor
 from sapphire_backend.utils.permissions import (
     IsOrganizationMember,
@@ -19,7 +28,7 @@ from sapphire_backend.utils.permissions import (
 )
 class MetricsAPIController:
     @route.get("/latest")
-    def get_latest_metrics(self, request, organization_uuid: str, station_uuid: str, sensor_uuid: str = None):
+    def get_latest_metrics(self, request, organization_uuid: str, station_uuid: str, sensor_uuid: str | None):
         try:
             if sensor_uuid:
                 sensor = Sensor.objects.for_station(station_uuid).get(uuid=sensor_uuid, is_active=True)
@@ -32,6 +41,21 @@ class MetricsAPIController:
             }
         print(sensor)
 
-    @route.get("/timeseries")
-    def get_timeseries(self, request, organization_uuid: str, station_uuid: str, sensor_uuid: str = None):
-        pass
+    @route.get("/timeseries/{metric}", response={200: PaginatedResponseSchema[TimeseriesOutputSchema]})
+    @paginate(PageNumberPaginationExtra, page_size=100)
+    def get_timeseries(
+        self,
+        request,
+        organization_uuid: str,
+        station_uuid: str,
+        metric: MetricParams,
+        filters: TimeseriesFiltersSchema = Query(...),
+        order_by: OrderQueryParams = Query(...),
+    ):
+        model_class = get_metric_model(metric.value)
+        base_qs = model_class.objects.filter(sensor__station=station_uuid)
+        qs = filters.filter(base_qs)
+
+        order_by = f"-{order_by.param.value}" if order_by.descending else order_by.param
+
+        return qs.order_by(order_by)

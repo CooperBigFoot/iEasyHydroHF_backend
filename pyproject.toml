@@ -43,6 +43,7 @@ select = [
     "UP",  # pyupgrade
 ]
 ignore = [
+    "E501", # line to long
     "B904",  # exception chaining
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex

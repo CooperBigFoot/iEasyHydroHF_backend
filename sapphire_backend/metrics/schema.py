@@ -1,17 +1,39 @@
 from datetime import datetime
+from enum import Enum
+from uuid import UUID
 
-from ninja import Schema
-
-
-class TimeseriesFiltersSchema(Schema):
-    timestamp__lte: datetime
-    timestamp__gte: datetime
-    average_value__lte: float
-    average_value__gte: float
+from django.db.models.expressions import Q
+from ninja import FilterSchema, Schema
 
 
-class TimeseriesOrderSchema(Schema):
-    timestamp: str
+class TimeseriesFiltersSchema(FilterSchema):
+    sensor_uuid: UUID | None
+    timestamp__lte: datetime | None
+    timestamp__gte: datetime | None
+    average_value__lte: float | None
+    average_value__gte: float | None
+
+    def filter_sensor_uuid(self, value: bool) -> Q:
+        return Q(sensor=value) if value else Q(sensor__is_default=True)
+
+
+class OrderParams(str, Enum):
+    timestamp = "timestamp"
+    average_value = "average_value"
+
+
+class OrderQueryParams(Schema):
+    param: OrderParams = OrderParams.timestamp
+    descending: bool = False
+
+
+class MetricParams(str, Enum):
+    water_discharge = "water_discharge"
+    water_level = "water_level"
+    water_velocity = "water_velocity"
+    water_temperature = "water_temp"
+    air_temperature = "air_temp"
+    precipitation = "precipitation"
 
 
 class LatestMetricOutputSchema(Schema):
@@ -20,3 +42,7 @@ class LatestMetricOutputSchema(Schema):
 
 class TimeseriesOutputSchema(Schema):
     timestamp: datetime
+    minimum_value: float
+    average_value: float
+    maximum_value: float
+    unit: str
