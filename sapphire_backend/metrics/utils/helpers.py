@@ -1,3 +1,5 @@
+from django.db.models.aggregates import Avg, Max, Min
+
 from sapphire_backend.metrics.models import (
     AirTemperature,
     Precipitation,
@@ -6,18 +8,19 @@ from sapphire_backend.metrics.models import (
     WaterTemperature,
     WaterVelocity,
 )
+from sapphire_backend.metrics.schema import AggregationFunctionParams, MetricParams
 
+METRIC_MODEL_MAPPING = {
+    MetricParams.water_discharge: WaterDischarge,
+    MetricParams.water_level: WaterLevel,
+    MetricParams.water_temperature: WaterTemperature,
+    MetricParams.water_velocity: WaterVelocity,
+    MetricParams.air_temperature: AirTemperature,
+    MetricParams.precipitation: Precipitation,
+}
 
-def get_metric_model(
-    metric: str
-) -> WaterDischarge | WaterLevel | WaterTemperature | WaterVelocity | AirTemperature | Precipitation | None:
-    metric_str_model_mapping = {
-        "water_discharge": WaterDischarge,
-        "water_level": WaterLevel,
-        "water_velocity": WaterVelocity,
-        "water_temp": WaterTemperature,
-        "air_temp": AirTemperature,
-        "precipitation": Precipitation,
-    }
-
-    return metric_str_model_mapping.get(metric)
+AGGREGATION_MAPPING = {
+    AggregationFunctionParams.average: Avg("average_value"),
+    AggregationFunctionParams.minimum: Min("average_value"),
+    AggregationFunctionParams.maximum: Max("average_value"),
+}

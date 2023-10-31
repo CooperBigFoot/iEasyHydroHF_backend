@@ -5,12 +5,14 @@ from ninja_extra.pagination import PageNumberPaginationExtra, PaginatedResponseS
 from ninja_jwt.authentication import JWTAuth
 
 from sapphire_backend.metrics.schema import (
+    AggregationFunctionParams,
     MetricParams,
     OrderQueryParams,
     TimeseriesFiltersSchema,
+    TimeseriesGroupingOutputSchema,
     TimeseriesOutputSchema,
 )
-from sapphire_backend.metrics.utils.helpers import get_metric_model
+from sapphire_backend.metrics.utils.helpers import AGGREGATION_MAPPING, METRIC_MODEL_MAPPING
 from sapphire_backend.stations.models import Sensor
 from sapphire_backend.utils.permissions import (
     IsOrganizationMember,
@@ -52,10 +54,34 @@ class MetricsAPIController:
         filters: TimeseriesFiltersSchema = Query(...),
         order_by: OrderQueryParams = Query(...),
     ):
-        model_class = get_metric_model(metric.value)
+        model_class = METRIC_MODEL_MAPPING[metric]
         base_qs = model_class.objects.filter(sensor__station=station_uuid)
         qs = filters.filter(base_qs)
 
         order_by = f"-{order_by.param.value}" if order_by.descending else order_by.param
 
         return qs.order_by(order_by)
+
+    @route.get("/timeseries/{metric}/group", response={200: PaginatedResponseSchema[TimeseriesGroupingOutputSchema]})
+    @paginate(PageNumberPaginationExtra, page_size=100)
+    def get_grouped_timeseries(
+        self,
+        request,
+        organization_uuid: str,
+        station_uuid: str,
+        metric: MetricParams,
+        grouping_interval: str,
+        grouping_function: AggregationFunctionParams = Query(...),
+        filters: TimeseriesFiltersSchema = Query(...),
+    ):
+        model_class = METRIC_MODEL_MAPPING[metric]
+        aggregation_function = AGGREGATION_MAPPING[grouping_function]
+        base_qs = (
+            model_class.objects.filter(sensor__station=station_uuid)
+            .time_bucket(grouping_interval)
+            .values("bucket", "unit")
+            .annotate(value=aggregation_function)
+        )
+
+        qs = filters.filter(base_qs).order_by("-bucket")
+        return qs

@@ -36,13 +36,25 @@ class MetricParams(str, Enum):
     precipitation = "precipitation"
 
 
+class AggregationFunctionParams(str, Enum):
+    average = "avg"
+    minimum = "min"
+    maximum = "max"
+
+
 class LatestMetricOutputSchema(Schema):
     timestamp: datetime
 
 
 class TimeseriesOutputSchema(Schema):
     timestamp: datetime
-    minimum_value: float
+    minimum_value: float | None
     average_value: float
-    maximum_value: float
+    maximum_value: float | None
+    unit: str
+
+
+class TimeseriesGroupingOutputSchema(Schema):
+    bucket: datetime
+    value: float
     unit: str
