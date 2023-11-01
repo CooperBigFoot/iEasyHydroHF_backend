@@ -73,6 +73,7 @@ class MetricsAPIController:
         grouping_interval: str,
         grouping_function: AggregationFunctionParams = Query(...),
         filters: TimeseriesFiltersSchema = Query(...),
+        ascending: bool = True,
     ):
         model_class = METRIC_MODEL_MAPPING[metric]
         aggregation_function = AGGREGATION_MAPPING[grouping_function]
@@ -83,5 +84,6 @@ class MetricsAPIController:
             .annotate(value=aggregation_function)
         )
 
-        qs = filters.filter(base_qs).order_by("-bucket")
+        ordering = "bucket" if ascending else "-bucket"
+        qs = filters.filter(base_qs).order_by(ordering)
         return qs
