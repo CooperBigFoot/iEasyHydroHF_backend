@@ -24,6 +24,8 @@ services:
 
   timescale:
     image: timescale/timescaledb:latest-pg13
+    env_file:
+      - .backend.env
     volumes:
       - sapphire_backend_staging_timescale_data:/var/lib/postgresql/data
       - sapphire_backend_staging_timescale_data_backups:/backups
