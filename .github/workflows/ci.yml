@@ -101,5 +101,5 @@ jobs:
             ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 098907041092.dkr.ecr.eu-central-1.amazonaws.com"
             ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml down"
             ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml pull"
-            ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml up"
+            ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml up -d"
 
