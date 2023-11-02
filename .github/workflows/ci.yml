@@ -96,5 +96,5 @@ jobs:
             chmod 400 deployment/ec2_staging_keypair.pem
             ssh -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/staging/"
             scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/ec2_install_docker.sh ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
-            scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/backend-staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/backend/staging/
-            scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/.backend.env ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/backend/staging/
+            scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/backend-staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
+            scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/.backend.env ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
