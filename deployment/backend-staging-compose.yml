@@ -27,6 +27,8 @@ services:
   django:
     image: 098907041092.dkr.ecr.eu-central-1.amazonaws.com/sapphire_backend:latest
     command: /start
+    env_file:
+      - .backend.env
     expose:
       - 8000
     ports:
