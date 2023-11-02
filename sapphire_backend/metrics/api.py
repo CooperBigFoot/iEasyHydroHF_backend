@@ -1,7 +1,8 @@
 from django.utils.translation import gettext_lazy as _
 from ninja import Query
 from ninja_extra import api_controller, route
-from ninja_extra.pagination import PageNumberPaginationExtra, PaginatedResponseSchema, paginate
+from ninja_extra.pagination import LimitOffsetPagination, paginate
+from ninja_extra.schemas import NinjaPaginationResponseSchema
 from ninja_jwt.authentication import JWTAuth
 
 from sapphire_backend.metrics.schema import (
@@ -43,8 +44,8 @@ class MetricsAPIController:
             }
         print(sensor)
 
-    @route.get("/timeseries/{metric}", response={200: PaginatedResponseSchema[TimeseriesOutputSchema]})
-    @paginate(PageNumberPaginationExtra, page_size=100)
+    @route.get("/timeseries/{metric}", response={200: NinjaPaginationResponseSchema[TimeseriesOutputSchema]})
+    @paginate(LimitOffsetPagination, page_size=100)
     def get_timeseries(
         self,
         request,
@@ -62,8 +63,10 @@ class MetricsAPIController:
 
         return qs.order_by(order_by)
 
-    @route.get("/timeseries/{metric}/group", response={200: PaginatedResponseSchema[TimeseriesGroupingOutputSchema]})
-    @paginate(PageNumberPaginationExtra, page_size=100)
+    @route.get(
+        "/timeseries/{metric}/group", response={200: NinjaPaginationResponseSchema[TimeseriesGroupingOutputSchema]}
+    )
+    @paginate(LimitOffsetPagination)
     def get_grouped_timeseries(
         self,
         request,
