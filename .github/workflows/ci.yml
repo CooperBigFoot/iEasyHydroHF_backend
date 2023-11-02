@@ -85,7 +85,7 @@ jobs:
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v4
-        - name: SSH deploy to EC2
+        - name: Prepare environment files
           run: |
             echo 'POSTGRES_USER=${{ secrets.POSTGRES_USER }}' >> deployment/.backend.env
             echo 'POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}' >> deployment/.backend.env
@@ -94,6 +94,8 @@ jobs:
             echo 'DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}' >> deployment/.backend.env
             echo '${{ secrets.EC2_STAGING_KEYPAIR }}' >> deployment/ec2_kp.pem
             chmod 400 deployment/ec2_kp.pem
+        - name: Deploy to EC2 via SSH
+          run: |
             ssh -o StrictHostKeyChecking=no -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/staging/"
             scp -i deployment/ec2_kp.pem deployment/ec2_install_docker.sh ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/
             scp -i deployment/ec2_kp.pem deployment/backend-staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
@@ -102,4 +104,7 @@ jobs:
             ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml down"
             ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml pull"
             ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml up -d"
-
+        - name: Database migrations
+          run: |
+            ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml exec django python manage.py migrate"
+        
