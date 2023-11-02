@@ -80,7 +80,6 @@ jobs:
           docker build -t $DOCKER_REGISTRY/$APP_NAME:staging-${SHORT_SHA} -t $DOCKER_REGISTRY/$APP_NAME:staging-latest -f ./compose/production/django/Dockerfile .
           docker push $DOCKER_REGISTRY/$APP_NAME:staging-${SHORT_SHA}
           docker push $DOCKER_REGISTRY/$APP_NAME:staging-latest
-            echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> deployment/.env
 
   deploy:
     runs-on: ubuntu-latest
