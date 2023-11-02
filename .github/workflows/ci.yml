@@ -81,15 +81,16 @@ jobs:
 #          docker push $DOCKER_REGISTRY/$APP_NAME:staging-latest
 
     deploy:
-      - runs-on: ubuntu-latest
-      - uses: actions/checkout@v4
-      - name: SSH deployment on EC2
-        run: |
-          echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> deployment/.env
-          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> deployment/.env
-          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> deployment/.env
-          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> deployment/.env
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> deployment/.env
-          echo "${{ secrets.EC2_STAGING_KEYPAIR }}" >> deployment/ec2_staging_keypair.pem
-          chmod 400 deployment/ec2_staging_keypair.pem
-          scp -i deployment/sapphire_staging_keypair.pem staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - name: SSH deployment on EC2
+          run: |
+            echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> deployment/.env
+            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> deployment/.env
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> deployment/.env
+            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> deployment/.env
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> deployment/.env
+            echo "${{ secrets.EC2_STAGING_KEYPAIR }}" >> deployment/ec2_staging_keypair.pem
+            chmod 400 deployment/ec2_staging_keypair.pem
+            scp -i deployment/sapphire_staging_keypair.pem staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/
