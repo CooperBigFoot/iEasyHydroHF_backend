@@ -1,13 +1,12 @@
 version: '3'
 
 volumes:
-  production_traefik: {}
   sapphire_backend_staging_timescale_data: {}
   sapphire_backend_staging_timescale_data_backups: {}
 
 services:
   django:
-    image: 098907041092.dkr.ecr.eu-central-1.amazonaws.com/sapphire_backend:latest
+    image: 098907041092.dkr.ecr.eu-central-1.amazonaws.com/sapphire_backend:staging-latest
     command: /start
     env_file:
       - .backend.env
