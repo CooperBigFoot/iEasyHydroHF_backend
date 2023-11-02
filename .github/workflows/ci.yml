@@ -106,5 +106,5 @@ jobs:
             ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml up -d"
         - name: Database migrations
           run: |
-            ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml exec django python manage.py migrate"
-        
+            ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml -T exec django python manage.py migrate"
+
