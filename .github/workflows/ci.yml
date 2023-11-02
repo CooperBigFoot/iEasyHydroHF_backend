@@ -92,10 +92,13 @@ jobs:
             echo 'POSTGRES_DB=${{ secrets.POSTGRES_DB }}' >> deployment/.backend.env
             echo 'DATABASE_URL=${{ secrets.DATABASE_URL }}' >> deployment/.backend.env
             echo 'DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}' >> deployment/.backend.env
-            echo '${{ secrets.EC2_STAGING_KEYPAIR }}' >> deployment/ec2_staging_keypair.pem
-            chmod 400 deployment/ec2_staging_keypair.pem
-            ssh -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/staging/"
-            scp -i deployment/ec2_staging_keypair.pem deployment/ec2_install_docker.sh ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/
-            scp  -i deployment/ec2_staging_keypair.pem deployment/backend-staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
-            scp  -i deployment/ec2_staging_keypair.pem deployment/.backend.env ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
+            echo '${{ secrets.EC2_STAGING_KEYPAIR }}' >> deployment/ec2_kp.pem
+            chmod 400 deployment/ec2_kp.pem
+            ssh -o StrictHostKeyChecking=no -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/staging/"
+            scp -i deployment/ec2_kp.pem deployment/ec2_install_docker.sh ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/
+            scp  -i deployment/ec2_kp.pem deployment/backend-staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
+            scp  -i deployment/ec2_kp.pem deployment/.backend.env ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
+            ssh  -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml down"
+            ssh  -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml pull"
+            ssh  -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml up"
 
