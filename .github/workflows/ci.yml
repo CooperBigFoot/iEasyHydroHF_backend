@@ -92,9 +92,9 @@ jobs:
             echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> deployment/.backend.env
             echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> deployment/.backend.env
             echo "${{ secrets.EC2_STAGING_KEYPAIR }}" >> deployment/ec2_staging_keypair.pem
-
             chmod 400 deployment/ec2_staging_keypair.pem
-            ssh -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/backend/"
-            scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/ec2_install_docker.sh ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/backend/
-            scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/backend-staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/backend/
-            scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/.backend.env ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/backend/
+            echo "DJANGO_SECRET_KEY=\"${{ secrets.DJANGO_SECRET_KEY }}\"" >> deployment/.env
+            ssh -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/staging/"
+            scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/ec2_install_docker.sh ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
+            scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/backend-staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/backend/staging/
+            scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/.backend.env ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/backend/staging/
