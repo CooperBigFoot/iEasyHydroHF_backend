@@ -6,24 +6,6 @@ volumes:
   sapphire_backend_staging_timescale_data_backups: {}
 
 services:
-  nextjs:
-    image: 098907041092.dkr.ecr.eu-central-1.amazonaws.com/sapphire_frontend:staging-latest
-    expose:
-      - 3000
-    ports:
-      - "3000:3000"
-    labels:
-#      - "traefik.enable=true"
-#      - "traefik.http.routers.frontend.rule=Host(`whoami.localhost`)"
-#      - "traefik.http.routers.frontend.entrypoints=websecure"
-#      - "traefik.http.routers.frontend.tls.certresolver=myresolver"
-#      - "traefik.http.services.frontend.loadbalancer.server.port=80"
-#      - "traefik.http.routers.frontend.tls=true"
-
-      - "traefik.enable=true"
-      - "traefik.http.routers.whoami.rule=Host(`18.158.219.38`)"
-      - "traefik.http.routers.whoami.entrypoints=web"
-
   django:
     image: 098907041092.dkr.ecr.eu-central-1.amazonaws.com/sapphire_backend:latest
     command: /start
@@ -86,5 +68,4 @@ services:
 
 networks:
   default:
-    external:
       name: 'sapphirenetwork'
