@@ -81,30 +81,30 @@ jobs:
           docker push $DOCKER_REGISTRY/$APP_NAME:staging-latest
             echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> deployment/.env
 
-    deploy:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - name: Prepare environment files
-          run: |
-            echo 'POSTGRES_USER=${{ secrets.POSTGRES_USER }}' >> deployment/.backend.env
-            echo 'POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}' >> deployment/.backend.env
-            echo 'POSTGRES_DB=${{ secrets.POSTGRES_DB }}' >> deployment/.backend.env
-            echo 'DATABASE_URL=${{ secrets.DATABASE_URL }}' >> deployment/.backend.env
-            echo 'DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}' >> deployment/.backend.env
-            echo '${{ secrets.EC2_STAGING_KEYPAIR }}' >> deployment/ec2_kp.pem
-            chmod 400 deployment/ec2_kp.pem
-        - name: Deploy to EC2 via SSH
-          run: |
-            ssh -o StrictHostKeyChecking=no -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/staging/"
-            scp -i deployment/ec2_kp.pem deployment/ec2_install_docker.sh ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/
-            scp -i deployment/ec2_kp.pem deployment/backend-staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
-            scp -i deployment/ec2_kp.pem deployment/.backend.env ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
-            ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 098907041092.dkr.ecr.eu-central-1.amazonaws.com"
-            ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml down"
-            ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml pull"
-            ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml up -d"
-        - name: Database migrations
-          run: |
-            ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml exec -T django python manage.py migrate"
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare environment files
+        run: |
+          echo 'POSTGRES_USER=${{ secrets.POSTGRES_USER }}' >> deployment/.backend.env
+          echo 'POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}' >> deployment/.backend.env
+          echo 'POSTGRES_DB=${{ secrets.POSTGRES_DB }}' >> deployment/.backend.env
+          echo 'DATABASE_URL=${{ secrets.DATABASE_URL }}' >> deployment/.backend.env
+          echo 'DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}' >> deployment/.backend.env
+          echo '${{ secrets.EC2_STAGING_KEYPAIR }}' >> deployment/ec2_kp.pem
+          chmod 400 deployment/ec2_kp.pem
+      - name: Deploy to EC2 via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/staging/"
+          scp -i deployment/ec2_kp.pem deployment/ec2_install_docker.sh ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/
+          scp -i deployment/ec2_kp.pem deployment/backend-staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
+          scp -i deployment/ec2_kp.pem deployment/.backend.env ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
+          ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 098907041092.dkr.ecr.eu-central-1.amazonaws.com"
+          ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml down"
+          ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml pull"
+          ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml up -d"
+      - name: Database migrations
+        run: |
+          ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml exec -T django python manage.py migrate"
 
