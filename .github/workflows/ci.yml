@@ -93,4 +93,4 @@ jobs:
             echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> deployment/.env
             echo "${{ secrets.EC2_STAGING_KEYPAIR }}" >> deployment/ec2_staging_keypair.pem
             chmod 400 deployment/ec2_staging_keypair.pem
-            scp -i deployment/ec2_staging_keypair.pem staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/
+            scp -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem deployment/backend-staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/
