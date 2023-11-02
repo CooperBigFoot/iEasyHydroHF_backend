@@ -91,7 +91,7 @@ jobs:
             echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> deployment/.backend.env
             echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> deployment/.backend.env
             echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> deployment/.backend.env
-            echo 'DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}' >> deployment/.env
+            echo 'DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}' >> deployment/.backend.env
             echo "${{ secrets.EC2_STAGING_KEYPAIR }}" >> deployment/ec2_staging_keypair.pem
             chmod 400 deployment/ec2_staging_keypair.pem
             ssh -o StrictHostKeyChecking=no -i deployment/ec2_staging_keypair.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/staging/"
