@@ -22,64 +22,64 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-#  linter:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout Code Repository
-#        uses: actions/checkout@v4
-#
-#      - name: Set up Python
-#        uses: actions/setup-python@v4
-#        with:
-#          python-version: '3.11'
-#      # Consider using pre-commit.ci for open source project
-#      - name: Run pre-commit
-#        uses: pre-commit/action@v3.0.0
-#
-#  pytest:
-#    if: github.event_name == 'push'
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout Code Repository
-#        uses: actions/checkout@v4
-#
-#      - name: Build the Stack
-#        run: docker-compose -f local.yml build
-#
-#      - name: Run DB Migrations
-#        run: docker-compose -f local.yml run --rm django python manage.py migrate
-#
-#      - name: Run Django Tests
-#        run: docker-compose -f local.yml run django pytest
-#
-#      - name: Tear down the Stack
-#        run: docker-compose -f local.yml down
+  linter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
 
-#  build:
-#    runs-on: ubuntu-latest
-#    needs: pytest
-#    steps:
-#      - uses: actions/checkout@v4
-#      - name: Set short SHA
-#        id: vars
-#        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-#      - name: Check outputs
-#        run: echo ${{ steps.vars.outputs.sha_short }}
-#      - name: Configure AWS credentials
-#        uses: aws-actions/configure-aws-credentials@v1
-#        with:
-#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#          aws-region: ${{ env.AWS_REGION }}
-#      - name: Login to Amazon ECR
-#        id: login-ecr
-#        uses: aws-actions/amazon-ecr-login@v1
-#      - name: Build, tag, and push image to Amazon ECR
-#        run: |
-#          docker build -t $DOCKER_REGISTRY/$APP_NAME:staging-${SHORT_SHA} -t $DOCKER_REGISTRY/$APP_NAME:staging-latest -f ./compose/production/django/Dockerfile .
-#          docker push $DOCKER_REGISTRY/$APP_NAME:staging-${SHORT_SHA}
-#          docker push $DOCKER_REGISTRY/$APP_NAME:staging-latest
-#            echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> deployment/.env
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      # Consider using pre-commit.ci for open source project
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.0
+
+  pytest:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Build the Stack
+        run: docker-compose -f local.yml build
+
+      - name: Run DB Migrations
+        run: docker-compose -f local.yml run --rm django python manage.py migrate
+
+      - name: Run Django Tests
+        run: docker-compose -f local.yml run django pytest
+
+      - name: Tear down the Stack
+        run: docker-compose -f local.yml down
+
+  build:
+    runs-on: ubuntu-latest
+    needs: pytest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set short SHA
+        id: vars
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - name: Check outputs
+        run: echo ${{ steps.vars.outputs.sha_short }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Build, tag, and push image to Amazon ECR
+        run: |
+          docker build -t $DOCKER_REGISTRY/$APP_NAME:staging-${SHORT_SHA} -t $DOCKER_REGISTRY/$APP_NAME:staging-latest -f ./compose/production/django/Dockerfile .
+          docker push $DOCKER_REGISTRY/$APP_NAME:staging-${SHORT_SHA}
+          docker push $DOCKER_REGISTRY/$APP_NAME:staging-latest
+            echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> deployment/.env
 
     deploy:
       runs-on: ubuntu-latest
