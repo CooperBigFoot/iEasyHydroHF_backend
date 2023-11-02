@@ -1,0 +1,88 @@
+version: '3'
+
+volumes:
+  production_traefik: {}
+  sapphire_backend_staging_timescale_data: {}
+  sapphire_backend_staging_timescale_data_backups: {}
+
+services:
+  nextjs:
+    image: 098907041092.dkr.ecr.eu-central-1.amazonaws.com/sapphire_frontend:staging-latest
+    expose:
+      - 3000
+    ports:
+      - "3000:3000"
+    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.frontend.rule=Host(`whoami.localhost`)"
+#      - "traefik.http.routers.frontend.entrypoints=websecure"
+#      - "traefik.http.routers.frontend.tls.certresolver=myresolver"
+#      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+#      - "traefik.http.routers.frontend.tls=true"
+
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`18.158.219.38`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
+
+  django:
+    image: 098907041092.dkr.ecr.eu-central-1.amazonaws.com/sapphire_backend:latest
+    command: /start
+    expose:
+      - 8000
+    ports:
+      - '8000:8000'
+    labels:
+      - "traefik.enable=true"
+#      - "traefik.http.routers.backend.rule=Host(`18.158.219.38`)" # && PathPrefix(`/api`)"
+#      - "traefik.http.routers.backend.entrypoints=websecure"
+#      - "traefik.http.routers.backend.tls.certresolver=myresolver"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+
+  timescale:
+    image: timescale/timescaledb:latest-pg13
+    volumes:
+      - sapphire_backend_staging_timescale_data:/var/lib/postgresql/data
+      - sapphire_backend_staging_timescale_data_backups:/backups
+    ports:
+      - "5432:5432"
+    restart: always
+
+  traefik:
+    image: "traefik:v2.10"
+    depends_on:
+      - django
+    command:
+      - "--log.level=DEBUG"
+
+      #      - "--entrypoints.web.address=:80"
+#      - "--entrypoints.websecure.address=:443"
+#      - "--providers.docker"
+#      - "--api"
+#      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+#      #- "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+#      - "--certificatesresolvers.myresolver.acme.email=test@encode.hr"
+#      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+#    labels:
+#      # global redirect to https
+#      - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
+#      - "traefik.http.routers.http-catchall.entrypoints=web"
+#      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+#
+#      # middleware redirect
+#      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+
+networks:
+  default:
+    external:
+      name: 'sapphirenetwork'
