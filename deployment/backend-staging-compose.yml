@@ -12,7 +12,6 @@ services:
       - .backend.env
     expose:
       - 8000
-
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.django.rule=Host(`hf.ieasyhydro.org`) && PathPrefix(`/sapphire-admin`, `/api`, `/media`, `/static`)"
