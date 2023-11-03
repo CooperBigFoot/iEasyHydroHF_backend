@@ -101,7 +101,7 @@ jobs:
           ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "bash /home/ubuntu/ec2_install_docker.sh"
       - name: Deploy to EC2 via SSH
         run: |
-          ssh -o -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/staging/"
+          ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/staging/"
           ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker network create sapphirenetwork ||  echo 'sapphirenetwork already exists'"
           scp -i deployment/ec2_kp.pem deployment/backend-staging-compose.yml ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
           scp -i deployment/ec2_kp.pem deployment/.backend.env ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
