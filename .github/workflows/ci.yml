@@ -98,7 +98,7 @@ jobs:
       - name: EC2 install docker packages
         run: |
           scp -o StrictHostKeyChecking=no -i deployment/ec2_kp.pem deployment/ec2_install_docker.sh ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/
-          ssh -o -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "bash /home/ubuntu/ec2_install_docker.sh"
+          ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "bash /home/ubuntu/ec2_install_docker.sh"
       - name: Deploy to EC2 via SSH
         run: |
           ssh -o -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "mkdir -p /home/ubuntu/staging/"
