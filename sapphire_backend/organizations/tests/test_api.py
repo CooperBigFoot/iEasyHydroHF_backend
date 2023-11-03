@@ -18,8 +18,7 @@ class TestOrganizationsAPIController:
         assert response.status_code == 401
         assert response.json()["detail"] == "Unauthorized"
 
-    def test_get_organization_for_other_organization(self, authenticated_regular_user_api_client,
-                                                           other_organization):
+    def test_get_organization_for_other_organization(self, authenticated_regular_user_api_client, other_organization):
         response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{other_organization.uuid}")
 
         assert response.status_code == 403
