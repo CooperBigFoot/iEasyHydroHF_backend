@@ -17,7 +17,6 @@ class TestOrganizationsAPIController:
 
         assert response.status_code == 401
         assert response.json()["detail"] == "Unauthorized"
-        
     # TODO FIX THIS TEST, IT FAILS IN THE CI PIPELINE, RESPONSE RETURNS MULTIPLE ORGANIZATIONS
     # def test_get_organization_for_other_organization(self, authenticated_regular_user_api_client,
     # other_organization):
