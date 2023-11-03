@@ -18,7 +18,6 @@ services:
       - "traefik.http.routers.django.rule=Host(`hf.ieasyhydro.org`) && PathPrefix(`/sapphire-admin`, `/api`, `/media`, `/static`)"
       - "traefik.http.routers.django.entrypoints=websecure"
       - "traefik.http.routers.django.tls.certresolver=myresolver"
-#      - "traefik.http.services.django.loadbalancer.server.port=8000"
 
   timescale:
     image: timescale/timescaledb:latest-pg13
@@ -42,7 +41,6 @@ services:
       - "--providers.docker"
       - "--api"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      #- "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
       - "--certificatesresolvers.myresolver.acme.email=test@encode.hr"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     volumes:
