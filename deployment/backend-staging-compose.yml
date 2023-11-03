@@ -12,14 +12,13 @@ services:
       - .backend.env
     expose:
       - 8000
-    ports:
-      - '8000:8000'
+
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`$BACKEND_HOST`) && PathPrefix(`/api`)"
-#      - "traefik.http.routers.backend.entrypoints=websecure"
-#      - "traefik.http.routers.backend.tls.certresolver=myresolver"
-      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      - "traefik.http.routers.django.rule=Host(`hf.ieasyhydro.org`) && PathPrefix(`/sapphire-admin`, `/api`, `/media`, `/static`)"
+      - "traefik.http.routers.django.entrypoints=websecure"
+      - "traefik.http.routers.django.tls.certresolver=myresolver"
+#      - "traefik.http.services.django.loadbalancer.server.port=8000"
 
   timescale:
     image: timescale/timescaledb:latest-pg13
@@ -33,35 +32,30 @@ services:
     restart: always
 
   traefik:
-    image: "traefik:v2.10"
+    image: "traefik:latest"
     depends_on:
       - django
     command:
       - "--log.level=DEBUG"
-
-      #      - "--entrypoints.web.address=:80"
-#      - "--entrypoints.websecure.address=:443"
-#      - "--providers.docker"
-#      - "--api"
-#      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-#      #- "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
-#      - "--certificatesresolvers.myresolver.acme.email=test@encode.hr"
-#      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.docker"
+      - "--api"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      #- "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.myresolver.acme.email=test@encode.hr"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     volumes:
       - "./letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-#    labels:
-#      # global redirect to https
-#      - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
-#      - "traefik.http.routers.http-catchall.entrypoints=web"
-#      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
-#
-#      # middleware redirect
-#      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+    labels:
+      # global redirect to https
+      - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
+      - "traefik.http.routers.http-catchall.entrypoints=web"
+      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+
+      # middleware redirect
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
     ports:
       - "80:80"
       - "443:443"
