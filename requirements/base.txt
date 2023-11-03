@@ -16,5 +16,5 @@ django-extensions==3.2.3  # https://github.com/django-extensions/django-extensio
 # API
 # ------------------------------------------------------------------------------
 django-ninja==0.22.2  # https://github.com/vitalik/django-ninja
-django-ninja-jwt[crypto]==5.2.5  # https://github.com/eadwinCode/django-ninja-jwt
+django-ninja-jwt[crypto]==5.2.6  # https://github.com/eadwinCode/django-ninja-jwt
 django-ninja-extra==0.19.8  # https://github.com/eadwinCode/django-ninja-extra
