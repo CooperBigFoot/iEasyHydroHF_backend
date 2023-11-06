@@ -12,7 +12,7 @@ api = NinjaExtraAPI(
     title="iEasyHydroHF API",
     description=_("REST API service for the iEasyHydroHF application."),
     version="1.0",
-    docs_decorator=staff_member_required
+    docs_decorator=staff_member_required,
 )
 
 api.register_controllers(AuthController)
