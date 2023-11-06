@@ -93,6 +93,8 @@ jobs:
           echo 'POSTGRES_DB=${{ secrets.POSTGRES_DB }}' >> deployment/.backend.env
           echo 'DATABASE_URL=${{ secrets.DATABASE_URL }}' >> deployment/.backend.env
           echo 'DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}' >> deployment/.backend.env
+          echo 'SWAGGER_USERNAME=${{ vars.SWAGGER_USERNAME }}' >> deployment/.backend.env
+          echo 'SWAGGER_PASSWORD=${{ secrets.SWAGGER_PASSWORD }}' >> deployment/.backend.env
           echo '${{ secrets.EC2_STAGING_KEYPAIR }}' >> deployment/ec2_kp.pem
           chmod 400 deployment/ec2_kp.pem
       - name: EC2 install docker packages
@@ -107,11 +109,11 @@ jobs:
           scp -i deployment/ec2_kp.pem deployment/.backend.env ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }}:/home/ubuntu/staging/
           ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin $DOCKER_REGISTRY"
           ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml pull"
-          ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker rmi $(docker images -q $DOCKER_REGISTRY/sapphire_backend | grep -v $(docker images -q $DOCKER_REGISTRY/sapphire_backend | head -n 1))"
-          ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker rmi $(docker images -q timescale/timescaledb | grep -v $(docker images -q timescale/timescaledb | head -n 1))"
-          ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker rmi $(docker images -q traefik | grep -v $(docker images -q traefik | head -n 1))"
           ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml down"
           ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml up -d"
+          ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker system prune -a -f
+"
+
       - name: Database migrations
         run: |
           ssh -i deployment/ec2_kp.pem ubuntu@${{ vars.SAPPHIRE_PUBLIC_DOMAIN }} "docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml exec -T django python manage.py migrate"
