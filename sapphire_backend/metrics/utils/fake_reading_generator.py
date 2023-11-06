@@ -184,6 +184,7 @@ class FakeReadingGenerator:
 
         previous_avg = None
         current_date = start_date
+        current_date += timedelta(microseconds=sensor.id)  # shift the timestamp for each sensor by microseconds
         total_minutes_in_year = (end_date - start_date).total_seconds() / 60
         total_iterations = int(total_minutes_in_year / step)
 

@@ -4,6 +4,7 @@ from ninja_extra import permissions
 from ninja_extra.controllers import ControllerBase
 
 from sapphire_backend.organizations.models import Organization
+from sapphire_backend.stations.models import Station
 
 User = get_user_model()
 
@@ -35,3 +36,11 @@ class IsOrganizationMember(permissions.BasePermission):
 class OrganizationExists(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
         return Organization.objects.filter(uuid=controller.context.kwargs.get("organization_uuid")).exists()
+
+
+class StationBelongsToOrganization(permissions.BasePermission):
+    def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
+        return Station.objects.filter(
+            organization=controller.context.kwargs.get("organization_uuid"),
+            uuid=controller.context.kwargs.get("station_uuid"),
+        ).exists()
