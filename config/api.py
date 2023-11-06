@@ -9,7 +9,9 @@ from sapphire_backend.users.api import UsersAPIController
 from sapphire_backend.users.auth.api import AuthController
 
 api = NinjaExtraAPI(
-    title="iEasyHydroHF API", description=_("REST API service for the iEasyHydroHF application."), version="1.0",
+    title="iEasyHydroHF API",
+    description=_("REST API service for the iEasyHydroHF application."),
+    version="1.0",
     docs_decorator=staff_member_required
 )
 
