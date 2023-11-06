@@ -15,7 +15,6 @@ class OrganizationFactory(factory.django.DjangoModelFactory):
     name = fake.company()
     description = fake.catch_phrase()
     url = fake.domain_name()
-    uuid = fake.uuid4()
 
     country = fake.country()
     city = fake.city()

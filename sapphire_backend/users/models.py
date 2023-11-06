@@ -21,6 +21,7 @@ class User(UUIDMixin, AbstractUser):
     )
     organization = models.ForeignKey(
         "organizations.Organization",
+        to_field="uuid",
         verbose_name=_("Organization"),
         on_delete=models.PROTECT,
         null=True,

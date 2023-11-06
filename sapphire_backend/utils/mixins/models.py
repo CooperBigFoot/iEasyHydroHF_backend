@@ -48,7 +48,7 @@ class SlugMixin(models.Model):
 
 
 class UUIDMixin(models.Model):
-    uuid = models.UUIDField(verbose_name=_("UUID"), editable=False, default=uuid.uuid4)
+    uuid = models.UUIDField(verbose_name=_("UUID"), editable=False, default=uuid.uuid4, unique=True)
 
     class Meta:
         abstract = True

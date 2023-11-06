@@ -19,7 +19,11 @@ class Station(SlugMixin, UUIDMixin, models.Model):
         verbose_name=_("Station type"), choices=StationType.choices, default=StationType.HYDROLOGICAL
     )
     organization = models.ForeignKey(
-        "organizations.Organization", verbose_name=_("Organization"), on_delete=models.PROTECT, related_name="stations"
+        "organizations.Organization",
+        to_field="uuid",
+        verbose_name=_("Organization"),
+        on_delete=models.PROTECT,
+        related_name="stations",
     )
     station_code = models.CharField(verbose_name=_("Station code"), max_length=100)
 
@@ -65,7 +69,11 @@ class Sensor(UUIDMixin, models.Model):
     manufacturer = models.CharField(verbose_name=_("Manufacturer"), max_length=150, blank=True)
     identifier = models.CharField(verbose_name=_("Sensor identifier"), max_length=150, blank=True)
     station = models.ForeignKey(
-        "stations.Station", verbose_name=_("Station"), on_delete=models.PROTECT, related_name="sensors"
+        "stations.Station",
+        to_field="uuid",
+        verbose_name=_("Station"),
+        on_delete=models.PROTECT,
+        related_name="sensors",
     )
     installation_date = models.DateTimeField(verbose_name=_("Installation date"), blank=True, null=True)
     is_active = models.BooleanField(verbose_name=_("Is active?"), default=True)

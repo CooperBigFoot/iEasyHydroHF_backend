@@ -32,16 +32,22 @@ exclude = [
     "venv",
     ".venv",
 ]
-ignore = []
 line-length = 119
 select = [
-    # pycodestyle
-    "E",
-    # pyflakes
-    "F",
-    "W",
-    # isort
-    "I"
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501", # line to long
+    "B904",  # exception chaining
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    "W191", # indentation contains tabs
 ]
 
 
