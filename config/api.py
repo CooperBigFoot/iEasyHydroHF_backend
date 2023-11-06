@@ -1,5 +1,5 @@
-from django.utils.translation import gettext_lazy as _
 from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.translation import gettext_lazy as _
 from ninja_extra import NinjaExtraAPI
 
 from sapphire_backend.organizations.api import OrganizationsAPIController
