@@ -1,0 +1,64 @@
+version: '3'
+
+volumes:
+  sapphire_backend_staging_timescale_data: {}
+  sapphire_backend_staging_timescale_data_backups: {}
+
+services:
+  django:
+    image: 098907041092.dkr.ecr.eu-central-1.amazonaws.com/sapphire_backend:staging-latest
+    command: /start
+    env_file:
+      - .backend.env
+    expose:
+      - 8000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.django.rule=Host(`hf.ieasyhydro.org`) && PathPrefix(`/sapphire-admin`, `/api`, `/media`, `/static`)"
+      - "traefik.http.routers.django.entrypoints=websecure"
+      - "traefik.http.routers.django.tls.certresolver=myresolver"
+
+  timescale:
+    image: timescale/timescaledb:latest-pg13
+    env_file:
+      - .backend.env
+    volumes:
+      - sapphire_backend_staging_timescale_data:/var/lib/postgresql/data
+      - sapphire_backend_staging_timescale_data_backups:/backups
+    ports:
+      - "5432:5432"
+    restart: always
+
+  traefik:
+    image: "traefik:latest"
+    depends_on:
+      - django
+    command:
+      - "--log.level=DEBUG"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.docker"
+      - "--api"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=test@encode.hr"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    labels:
+      # global redirect to https
+      - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
+      - "traefik.http.routers.http-catchall.entrypoints=web"
+      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+
+      # middleware redirect
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+
+networks:
+  default:
+    external:
+      name: 'sapphirenetwork'
