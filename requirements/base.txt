@@ -1,5 +1,5 @@
 python-slugify==8.0.1  # https://github.com/un33k/python-slugify
-Pillow==10.0.1  # https://github.com/python-pillow/Pillow
+Pillow==10.1.0  # https://github.com/python-pillow/Pillow
 argon2-cffi==23.1.0  # https://github.com/hynek/argon2_cffi
 uvicorn[standard]==0.23.2  # https://github.com/encode/uvicorn
 tzdata==2023.3  # https://github.com/python/tzdata
@@ -16,5 +16,5 @@ django-extensions==3.2.3  # https://github.com/django-extensions/django-extensio
 # API
 # ------------------------------------------------------------------------------
 django-ninja==0.22.2  # https://github.com/vitalik/django-ninja
-django-ninja-jwt[crypto]==5.2.6  # https://github.com/eadwinCode/django-ninja-jwt
+django-ninja-jwt[crypto]==5.2.7  # https://github.com/eadwinCode/django-ninja-jwt
 django-ninja-extra==0.19.8  # https://github.com/eadwinCode/django-ninja-extra
