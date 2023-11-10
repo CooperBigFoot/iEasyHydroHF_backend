@@ -27,11 +27,12 @@ from sapphire_backend.utils.permissions import (
     "metrics/{organization_uuid}",
     tags=["Metrics"],
     auth=JWTAuth(),
-    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)]
+    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)],
 )
 class MetricsAPIController:
     @route.get("/stats")
-    def get_metrics_stats(self,
+    def get_metrics_stats(
+        self,
         request,
         organization_uuid: str,
     ):
@@ -59,7 +60,8 @@ class MetricsAPIController:
             }
         print(sensor)
 
-    @route.get("/{station_uuid}/timeseries/{metric}",
+    @route.get(
+        "/{station_uuid}/timeseries/{metric}",
         permissions=[StationBelongsToOrganization],
         response={200: NinjaPaginationResponseSchema[TimeseriesOutputSchema]},
     )
