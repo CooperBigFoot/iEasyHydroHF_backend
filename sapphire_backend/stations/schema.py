@@ -1,3 +1,5 @@
+from typing import Optional
+
 from ninja import Field, ModelSchema, Schema
 
 from .models import Station

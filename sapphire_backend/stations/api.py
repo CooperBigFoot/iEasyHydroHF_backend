@@ -7,9 +7,9 @@ from ninja_jwt.authentication import JWTAuth
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OrganizationExists
-
 from .models import Station
-from .schema import StationFilterSchema, StationInputSchema, StationOutputDetailSchema, StationUpdateSchema
+from .schema import StationFilterSchema, StationInputSchema, StationOutputDetailSchema, StationUpdateSchema, \
+    StationCountFilterSchema
 
 
 @api_controller(
@@ -38,6 +38,29 @@ class StationsAPIController:
             stations = stations.filter(station_type=station_type_filter.station_type.value)
 
         return stations.select_related("organization")
+
+    @route.get("stats")
+    def get_stations_stats(self, request, organization_uuid: str):
+        stats = {}
+        stations = Station.objects.filter(organization__uuid=organization_uuid, is_deleted=False)
+
+        station_type = Station.StationType
+
+        stats["cnt_total"] = stations.count()
+        stats["cnt_manual"] = stations.filter(is_automatic=False).count()
+        stats["cnt_auto"] = stations.filter(is_automatic=True).count()
+        stats["cnt_hydro_total"] = stations.filter(station_type=station_type.HYDROLOGICAL.value).count()
+        stats["cnt_hydro_auto"] = stations.filter(station_type=station_type.HYDROLOGICAL.value,
+                                                  is_automatic=True).count()
+        stats["cnt_hydro_manual"] = stations.filter(station_type=station_type.HYDROLOGICAL.value,
+                                                    is_automatic=False).count()
+        stats["cnt_meteo_total"] = stations.filter(station_type=station_type.METEOROLOGICAL.value).count()
+        stats["cnt_meteo_auto"] = stations.filter(station_type=station_type.METEOROLOGICAL.value,
+                                                  is_automatic=True).count()
+        stats["cnt_meteo_manual"] = stations.filter(station_type=station_type.METEOROLOGICAL.value,
+                                                    is_automatic=False).count()
+
+        return stats
 
     @route.get("{station_uuid}", response={200: StationOutputDetailSchema, 404: Message})
     def get_station(self, request, organization_uuid: str, station_uuid: str):
