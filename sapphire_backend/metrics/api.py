@@ -40,7 +40,7 @@ class MetricsAPIController:
         cnt_total_metrics = 0
         for metric in MetricParams:
             model_class = METRIC_MODEL_MAPPING[metric]
-            cnt_metrics = model_class.objects.count()
+            cnt_metrics = model_class.objects.filter(sensor__station__organization=organization_uuid).count()
             stats[f"cnt_{metric.value}"] = cnt_metrics
             cnt_total_metrics += cnt_metrics
         stats["cnt_total"] = cnt_total_metrics
