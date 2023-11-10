@@ -8,9 +8,12 @@ from sapphire_backend.organizations.models import Organization
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OrganizationExists
 from .models import Station
-from .schema import StationFilterSchema, StationInputSchema, StationOutputDetailSchema, StationUpdateSchema, \
-    StationCountFilterSchema
-
+from .schema import (
+    StationFilterSchema,
+    StationInputSchema,
+    StationOutputDetailSchema,
+    StationUpdateSchema,
+)
 
 @api_controller(
     "stations/{organization_uuid}",
@@ -50,15 +53,19 @@ class StationsAPIController:
         stats["cnt_manual"] = stations.filter(is_automatic=False).count()
         stats["cnt_auto"] = stations.filter(is_automatic=True).count()
         stats["cnt_hydro_total"] = stations.filter(station_type=station_type.HYDROLOGICAL.value).count()
-        stats["cnt_hydro_auto"] = stations.filter(station_type=station_type.HYDROLOGICAL.value,
-                                                  is_automatic=True).count()
-        stats["cnt_hydro_manual"] = stations.filter(station_type=station_type.HYDROLOGICAL.value,
-                                                    is_automatic=False).count()
+        stats["cnt_hydro_auto"] = stations.filter(
+            station_type=station_type.HYDROLOGICAL.value, is_automatic=True
+        ).count()
+        stats["cnt_hydro_manual"] = stations.filter(
+            station_type=station_type.HYDROLOGICAL.value, is_automatic=False
+        ).count()
         stats["cnt_meteo_total"] = stations.filter(station_type=station_type.METEOROLOGICAL.value).count()
-        stats["cnt_meteo_auto"] = stations.filter(station_type=station_type.METEOROLOGICAL.value,
-                                                  is_automatic=True).count()
-        stats["cnt_meteo_manual"] = stations.filter(station_type=station_type.METEOROLOGICAL.value,
-                                                    is_automatic=False).count()
+        stats["cnt_meteo_auto"] = stations.filter(
+            station_type=station_type.METEOROLOGICAL.value, is_automatic=True
+        ).count()
+        stats["cnt_meteo_manual"] = stations.filter(
+            station_type=station_type.METEOROLOGICAL.value, is_automatic=False
+        ).count()
 
         return stats
 

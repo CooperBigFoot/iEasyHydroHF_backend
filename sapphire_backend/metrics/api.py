@@ -27,12 +27,14 @@ from sapphire_backend.utils.permissions import (
     "metrics/{organization_uuid}",
     tags=["Metrics"],
     auth=JWTAuth(),
-    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)]  # & StationBelongsToOrganization],
-
+    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)]
 )
 class MetricsAPIController:
     @route.get("/stats")
-    def get_metrics_stats(self, request, organization_uuid: str, ):
+    def get_metrics_stats(self,
+        request,
+        organization_uuid: str,
+    ):
         stats = {}
         cnt_total_metrics = 0
         for metric in MetricParams:
@@ -57,8 +59,10 @@ class MetricsAPIController:
             }
         print(sensor)
 
-    @route.get("/{station_uuid}/timeseries/{metric}", permissions=[StationBelongsToOrganization],
-               response={200: NinjaPaginationResponseSchema[TimeseriesOutputSchema]})
+    @route.get("/{station_uuid}/timeseries/{metric}",
+        permissions=[StationBelongsToOrganization],
+        response={200: NinjaPaginationResponseSchema[TimeseriesOutputSchema]},
+    )
     @paginate(LimitOffsetPagination, page_size=100)
     def get_timeseries(
         self,
@@ -78,8 +82,9 @@ class MetricsAPIController:
         return qs.order_by(order_by)
 
     @route.get(
-        "/{station_uuid}/timeseries/{metric}/group", permissions=[StationBelongsToOrganization],
-        response={200: NinjaPaginationResponseSchema[TimeseriesGroupingOutputSchema]}
+        "/{station_uuid}/timeseries/{metric}/group",
+        permissions=[StationBelongsToOrganization],
+        response={200: NinjaPaginationResponseSchema[TimeseriesGroupingOutputSchema]},
     )
     @paginate(LimitOffsetPagination)
     def get_grouped_timeseries(
