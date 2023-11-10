@@ -24,13 +24,29 @@ from sapphire_backend.utils.permissions import (
 
 
 @api_controller(
-    "metrics/{organization_uuid}/{station_uuid}",
+    "metrics/{organization_uuid}",
     tags=["Metrics"],
     auth=JWTAuth(),
-    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin) & StationBelongsToOrganization],
+    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)],
 )
 class MetricsAPIController:
-    @route.get("/latest")
+    @route.get("/stats")
+    def get_metrics_stats(
+        self,
+        request,
+        organization_uuid: str,
+    ):
+        stats = {}
+        cnt_total_metrics = 0
+        for metric in MetricParams:
+            model_class = METRIC_MODEL_MAPPING[metric]
+            cnt_metrics = model_class.objects.filter(sensor__station__organization=organization_uuid).count()
+            stats[f"cnt_{metric.value}"] = cnt_metrics
+            cnt_total_metrics += cnt_metrics
+        stats["cnt_total"] = cnt_total_metrics
+        return stats
+
+    @route.get("/{station_uuid}/latest", permissions=[StationBelongsToOrganization])
     def get_latest_metrics(self, request, organization_uuid: str, station_uuid: str, sensor_uuid: str | None):
         try:
             if sensor_uuid:
@@ -44,7 +60,11 @@ class MetricsAPIController:
             }
         print(sensor)
 
-    @route.get("/timeseries/{metric}", response={200: NinjaPaginationResponseSchema[TimeseriesOutputSchema]})
+    @route.get(
+        "/{station_uuid}/timeseries/{metric}",
+        permissions=[StationBelongsToOrganization],
+        response={200: NinjaPaginationResponseSchema[TimeseriesOutputSchema]},
+    )
     @paginate(LimitOffsetPagination, page_size=100)
     def get_timeseries(
         self,
@@ -64,7 +84,9 @@ class MetricsAPIController:
         return qs.order_by(order_by)
 
     @route.get(
-        "/timeseries/{metric}/group", response={200: NinjaPaginationResponseSchema[TimeseriesGroupingOutputSchema]}
+        "/{station_uuid}/timeseries/{metric}/group",
+        permissions=[StationBelongsToOrganization],
+        response={200: NinjaPaginationResponseSchema[TimeseriesGroupingOutputSchema]},
     )
     @paginate(LimitOffsetPagination)
     def get_grouped_timeseries(
