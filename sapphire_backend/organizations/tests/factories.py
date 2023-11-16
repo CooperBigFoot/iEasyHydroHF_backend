@@ -2,9 +2,9 @@ import factory
 from faker import Faker
 from zoneinfo import ZoneInfo
 
-from ..models import Organization
+from ..models import Basin, Organization, Region
 
-fake = Faker()
+fake = Faker("ru_RU")
 
 
 class OrganizationFactory(factory.django.DjangoModelFactory):
@@ -29,3 +29,21 @@ class OrganizationFactory(factory.django.DjangoModelFactory):
     language = Organization.Language.ENGLISH
 
     is_active = True
+
+
+class BasinFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Basin
+        django_get_or_create = ("name",)
+
+    name = fake.region()
+    organization = factory.SubFactory(OrganizationFactory)
+
+
+class RegionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Region
+        django_get_or_create = ("name",)
+
+    name = fake.region()
+    organization = factory.SubFactory(OrganizationFactory)

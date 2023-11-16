@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Sensor, Station
+from .models import Remark, Sensor, Station
 
 
 @admin.register(Station)
@@ -17,3 +17,10 @@ class SensorAdmin(admin.ModelAdmin):
     list_filter = ["station__name", "manufacturer", "is_default"]
     search_fields = ["station__name", "manufacturer"]
     readonly_fields = ["uuid"]
+
+
+@admin.register(Remark)
+class RemarkAdmin(admin.ModelAdmin):
+    list_display = ["station", "user", "created_date"]
+    list_filter = ["created_date"]
+    readonly_fields = ["uuid", "created_date", "last_modified"]

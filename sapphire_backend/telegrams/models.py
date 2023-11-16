@@ -11,7 +11,7 @@ class Telegram(CreatedDateMixin, models.Model):
     successfully_parsed = models.BooleanField(verbose_name=_("Was parsed successfully?"), default=True)
     errors = models.TextField(verbose_name=_("Errors"), blank=True)
     station = models.ForeignKey(
-        "stations.Station", verbose_name=_("Station"), on_delete=models.CASCADE, null=True, blank=True
+        "stations.Station", verbose_name=_("Station"), on_delete=models.SET_NULL, null=True, blank=True
     )
 
     class Meta:
