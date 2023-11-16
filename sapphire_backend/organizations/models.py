@@ -71,6 +71,9 @@ class Basin(UUIDMixin, models.Model):
         verbose_name_plural = _("Basins")
         ordering = ["-name"]
 
+    def __str__(self):
+        return self.name
+
 
 class Region(UUIDMixin, models.Model):
     name = models.CharField(verbose_name=_("Region"), blank=False, max_length=200)
@@ -86,3 +89,6 @@ class Region(UUIDMixin, models.Model):
         verbose_name = _("Region")
         verbose_name_plural = _("Regions")
         ordering = ["-name"]
+
+    def __str__(self):
+        return self.name

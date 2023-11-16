@@ -1,11 +1,14 @@
+from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from timezone_field import TimeZoneField
 
-from sapphire_backend.utils.mixins.models import SlugMixin, UUIDMixin
+from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, SlugMixin, UUIDMixin
 
 from .managers import SensorQuerySet
+
+User = get_user_model()
 
 
 class Station(SlugMixin, UUIDMixin, models.Model):
@@ -79,6 +82,22 @@ class Station(SlugMixin, UUIDMixin, models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Remark(UUIDMixin, CreateLastModifiedDateMixin, models.Model):
+    comment = models.TextField(verbose_name=_("Comment"), blank=False)
+    user = models.ForeignKey(
+        User, to_field="uuid", on_delete=models.SET_NULL, null=True, blank=True, related_name="remarks"
+    )
+    station = models.ForeignKey("stations.Station", to_field="uuid", on_delete=models.CASCADE, related_name="remarks")
+
+    class Meta:
+        verbose_name = _("Remark")
+        verbose_name_plural = _("Remarks")
+        ordering = ["-last_modified"]
+
+    def __str__(self):
+        return self.comment[:50]
 
 
 class Sensor(UUIDMixin, models.Model):
