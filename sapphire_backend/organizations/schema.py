@@ -2,7 +2,7 @@ from ninja import Field, ModelSchema, Schema
 
 from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
 
-from .models import Organization
+from .models import Basin, Organization, Region
 
 
 class OrganizationInputSchema(ModelSchema):
@@ -26,3 +26,33 @@ class OrganizationOutputDetailSchema(UUIDSchemaMixin, OrganizationInputSchema):
 class OrganizationOutputListSchema(UUIDSchemaMixin, Schema):
     id: int
     name: str
+
+
+class BasinInputSchema(ModelSchema):
+    class Config:
+        model = Basin
+        model_fields = ["name"]
+
+
+class BasinOutputSchema(BasinInputSchema):
+    id: int
+    uuid: str
+
+    @staticmethod
+    def resolve_uuid(obj):
+        return str(obj.uuid)
+
+
+class RegionInputSchema(ModelSchema):
+    class Config:
+        model = Region
+        model_fields = ["name"]
+
+
+class RegionOutputSchema(RegionInputSchema):
+    id: int
+    uuid: str
+
+    @staticmethod
+    def resolve_uuid(obj):
+        return str(obj.uuid)

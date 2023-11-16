@@ -28,8 +28,24 @@ class Station(SlugMixin, UUIDMixin, models.Model):
     station_code = models.CharField(verbose_name=_("Station code"), max_length=100)
 
     country = models.CharField(verbose_name=_("Country"), max_length=100)
-    basin = models.CharField(verbose_name=_("Basin"), max_length=150)
-    region = models.CharField(verbose_name=_("Region"), max_length=150)
+    basin = models.ForeignKey(
+        "organizations.Basin",
+        to_field="uuid",
+        verbose_name=_("Basin"),
+        on_delete=models.PROTECT,
+        related_name="stations",
+        null=True,
+        blank=False,
+    )
+    region = models.ForeignKey(
+        "organizations.Region",
+        to_field="uuid",
+        verbose_name=_("Region"),
+        on_delete=models.PROTECT,
+        related_name="regions",
+        null=True,
+        blank=False,
+    )
     latitude = models.FloatField(
         verbose_name=_("Latitude"), validators=[MinValueValidator(-90), MaxValueValidator(90)]
     )
@@ -55,6 +71,7 @@ class Station(SlugMixin, UUIDMixin, models.Model):
             models.Index(fields=["organization"], name="station_organization_idx"),
             models.Index(fields=["station_code"], name="station_code_idx"),
             models.Index(fields=["uuid"], name="station_uuid_idx"),
+            models.Index(fields=["basin"], name="station_basin_idx"),
         ]
         constraints = [
             models.UniqueConstraint("station_code", "is_automatic", name="station_code_is_automatic_unique")

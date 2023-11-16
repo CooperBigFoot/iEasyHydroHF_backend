@@ -22,6 +22,7 @@ class StationOutputDetailSchema(StationInputSchema):
     organization_uuid: str
     organization_id: int
     timezone: str = Field(None, alias="get_timezone_display")
+    basin: str = Field(None, alias="basin.name")
 
     @staticmethod
     def resolve_organization_uuid(obj):

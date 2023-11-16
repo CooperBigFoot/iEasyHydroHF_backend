@@ -54,3 +54,35 @@ class Organization(UUIDMixin, models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Basin(UUIDMixin, models.Model):
+    name = models.CharField(verbose_name=_("Basin"), blank=False, max_length=200)
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        to_field="uuid",
+        verbose_name=_("Organization"),
+        on_delete=models.CASCADE,
+        related_name="basins",
+    )
+
+    class Meta:
+        verbose_name = _("Basin")
+        verbose_name_plural = _("Basins")
+        ordering = ["-name"]
+
+
+class Region(UUIDMixin, models.Model):
+    name = models.CharField(verbose_name=_("Region"), blank=False, max_length=200)
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        to_field="uuid",
+        verbose_name=_("Organization"),
+        on_delete=models.CASCADE,
+        related_name="regions",
+    )
+
+    class Meta:
+        verbose_name = _("Region")
+        verbose_name_plural = _("Regions")
+        ordering = ["-name"]

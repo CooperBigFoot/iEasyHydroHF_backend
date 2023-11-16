@@ -2,7 +2,7 @@ import factory
 from faker import Faker
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.organizations.tests.factories import OrganizationFactory
+from sapphire_backend.organizations.tests.factories import BasinFactory, OrganizationFactory, RegionFactory
 
 from ..models import Sensor, Station
 
@@ -22,8 +22,8 @@ class StationFactory(factory.django.DjangoModelFactory):
     station_code = fake.ean(length=8)
 
     country = fake.country()
-    basin = fake.city()
-    region = fake.city()
+    basin = factory.SubFactory(BasinFactory)
+    region = factory.SubFactory(RegionFactory)
     timezone = ZoneInfo("UTC")
 
     latitude = fake.latitude()
