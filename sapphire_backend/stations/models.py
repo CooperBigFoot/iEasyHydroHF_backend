@@ -4,11 +4,95 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from timezone_field import TimeZoneField
 
-from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, SlugMixin, UUIDMixin
+from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, ForecastToggleMixin, SlugMixin, UUIDMixin
 
 from .managers import SensorQuerySet
 
 User = get_user_model()
+
+
+class Site(SlugMixin, models.Model):
+    site_code = models.CharField(verbose_name=_("Site code"), max_length=100)
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        to_field="uuid",
+        verbose_name=_("Organization"),
+        on_delete=models.PROTECT,
+        related_name="stations",
+    )
+    country = models.CharField(verbose_name=_("Country"), max_length=100)
+    basin = models.ForeignKey(
+        "organizations.Basin",
+        to_field="uuid",
+        verbose_name=_("Basin"),
+        on_delete=models.PROTECT,
+        related_name="stations",
+        null=True,
+        blank=False,
+    )
+    region = models.ForeignKey(
+        "organizations.Region",
+        to_field="uuid",
+        verbose_name=_("Region"),
+        on_delete=models.PROTECT,
+        related_name="regions",
+        null=True,
+        blank=False,
+    )
+    latitude = models.FloatField(
+        verbose_name=_("Latitude"), validators=[MinValueValidator(-90), MaxValueValidator(90)]
+    )
+    longitude = models.FloatField(
+        verbose_name=_("Longitude"), validators=[MinValueValidator(-180), MaxValueValidator(180)]
+    )
+    timezone = TimeZoneField(verbose_name=_("Station timezone"), null=True, blank=True)
+    elevation = models.FloatField(verbose_name=_("Elevation in meters"), blank=True, null=True)
+
+
+class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
+    name = models.CharField(verbose_name=_("Station name"), max_length=150)
+    description = models.TextField(verbose_name=_("Description"), blank=True)
+    site = models.ForeignKey(
+        "stations.Site",
+        verbose_name=_("Hydrological Station"),
+        to_field="uuid",
+        on_delete=models.PROTECT,
+        null=False,
+        blank=False,
+        related_name="hydro_stations",
+    )
+    station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=True)
+    is_manual = models.BooleanField(verbose_name=_("Is manual station?"), default=True)
+    is_automatic = models.BooleanField(verbose_name=_("Is automatic station?"), default=False)
+    measurement_time_step = models.IntegerField(
+        verbose_name=_("Measurement time step in minutes"), blank=True, null=True
+    )
+    discharge_level_alarm = models.FloatField(verbose_name=_("Dangerous discharge level"), blank=True, null=True)
+    historical_discharge_minimum = models.FloatField(
+        verbose_name=_("Historical minimal value of discharge"), blank=True, null=True
+    )
+    historical_discharge_maximum = models.FloatField(
+        verbose_name=_("Historical maximal value of discharge"), blank=True, null=True
+    )
+    decadal_discharge_norm = models.FloatField(verbose_name=_("Decadal discharge norm"), blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+
+
+class MeteorologicalStation(UUIDMixin, models.Model):
+    name = models.CharField(verbose_name=_("Station name"), max_length=150)
+    description = models.TextField(verbose_name=_("Description"), blank=True)
+    station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=True)
+    site = models.ForeignKey(
+        "stations.Site",
+        verbose_name=_("Site"),
+        to_field="uuid",
+        on_delete=models.PROTECT,
+        null=False,
+        blank=False,
+        related_name="meteo_stations",
+    )
 
 
 class Station(SlugMixin, UUIDMixin, models.Model):
