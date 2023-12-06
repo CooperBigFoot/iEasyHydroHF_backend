@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from ninja_extra import NinjaExtraAPI
 
 from sapphire_backend.metrics.api import MetricsAPIController
-from sapphire_backend.organizations.api import OrganizationsAPIController
+from sapphire_backend.organizations.api import BasinsAPIController, OrganizationsAPIController, RegionsAPIController
 from sapphire_backend.stations.api import StationsAPIController
 from sapphire_backend.telegrams.api import TelegramsAPIController
 from sapphire_backend.users.api import UsersAPIController
@@ -17,7 +17,9 @@ api = NinjaExtraAPI(
 )
 
 api.register_controllers(AuthController)
+api.register_controllers(BasinsAPIController)
 api.register_controllers(OrganizationsAPIController)
+api.register_controllers(RegionsAPIController)
 api.register_controllers(StationsAPIController)
 api.register_controllers(TelegramsAPIController)
 api.register_controllers(UsersAPIController)

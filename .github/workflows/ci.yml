@@ -93,8 +93,6 @@ jobs:
           echo 'POSTGRES_DB=${{ secrets.POSTGRES_DB }}' >> deployment/.backend.env
           echo 'DATABASE_URL=${{ secrets.DATABASE_URL }}' >> deployment/.backend.env
           echo 'DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}' >> deployment/.backend.env
-          echo 'SWAGGER_USERNAME=${{ vars.SWAGGER_USERNAME }}' >> deployment/.backend.env
-          echo 'SWAGGER_PASSWORD=${{ secrets.SWAGGER_PASSWORD }}' >> deployment/.backend.env
           echo '${{ secrets.EC2_STAGING_KEYPAIR }}' >> deployment/ec2_kp.pem
           chmod 400 deployment/ec2_kp.pem
       - name: EC2 install docker packages

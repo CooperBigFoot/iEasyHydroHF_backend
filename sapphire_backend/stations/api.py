@@ -8,8 +8,10 @@ from sapphire_backend.organizations.models import Organization
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OrganizationExists
 
-from .models import Station
+from .models import Remark, Station
 from .schema import (
+    RemarkInputSchema,
+    RemarkOutputSchema,
     StationFilterSchema,
     StationInputSchema,
     StationOutputDetailSchema,
@@ -41,8 +43,7 @@ class StationsAPIController:
         stations = Station.objects.filter(organization__uuid=organization_uuid, is_deleted=False)
         if station_type_filter.station_type:
             stations = stations.filter(station_type=station_type_filter.station_type.value)
-
-        return stations.select_related("organization")
+        return stations.select_related("organization", "basin", "region").prefetch_related("remarks")
 
     @route.get("stats")
     def get_stations_stats(self, request, organization_uuid: str):
@@ -100,3 +101,21 @@ class StationsAPIController:
             return 200, station
         except Station.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
+
+    @route.post("{station_uuid}/remarks", response={200: RemarkOutputSchema})
+    def create_remark(self, request, organization_uuid: str, station_uuid: str, remark_data: RemarkInputSchema):
+        remark_dict = remark_data.dict()
+        remark_dict["user"] = request.user
+        remark_dict["station_id"] = station_uuid
+
+        remark = Remark.objects.create(**remark_dict)
+
+        return remark
+
+    @route.delete("remarks/{remark_uuid}", response={200: Message})
+    def delete_remark(self, request, organization_uuid: str, remark_uuid: str):
+        try:
+            Remark.objects.filter(uuid=remark_uuid).delete()
+            return 200, {"detail": _("Remark deleted successfully"), "code": "success"}
+        except IntegrityError:
+            return 400, {"detail": _("Remark could not be deleted"), "code": "error"}

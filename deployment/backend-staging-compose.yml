@@ -1,8 +1,16 @@
 version: '3'
 
 volumes:
-  sapphire_backend_staging_timescale_data: {}
-  sapphire_backend_staging_timescale_data_backups: {}
+  sapphire_backend_staging_timescale_data:
+    driver_opts:
+      type: none
+      o: bind
+      device: /ebs_volume/timescale_data
+  sapphire_backend_staging_timescale_data_backups:
+    driver_opts:
+      type: none
+      o: bind
+      device: /ebs_volume/backups
 
 services:
   django:
