@@ -20,5 +20,3 @@ sudo groupadd docker
 sudo usermod -aG docker $USER
 
 sudo apt install -y docker-compose
-
-
