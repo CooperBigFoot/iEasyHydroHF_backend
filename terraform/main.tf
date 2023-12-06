@@ -106,10 +106,6 @@ resource "aws_ebs_volume" "sapphire" {
 }
 
 # ELASTIC IP
-resource "aws_eip" "lb" {
-  instance = aws_instance.sapphire_staging_tf.id
-}
-
 resource "aws_eip_association" "eip_assoc" {
   instance_id   = aws_instance.sapphire_staging_tf.id
   allocation_id = "eipalloc-098a9d8258d4b8f79"
