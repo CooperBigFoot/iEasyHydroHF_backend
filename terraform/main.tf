@@ -19,7 +19,7 @@ provider "aws" {
 
 # ECR
 resource "aws_ecr_repository" "backend" {
-  name                 = "sapphire_backend_tf"
+  name                 = "sapphire_backend"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -28,7 +28,7 @@ resource "aws_ecr_repository" "backend" {
 }
 
 resource "aws_ecr_repository" "frontend" {
-  name                 = "sapphire_frontend_tf"
+  name                 = "sapphire_frontend"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -73,7 +73,7 @@ resource "aws_security_group_rule" "outbound_internet_access" {
   type              = "egress"
   from_port         = 0
   to_port           = 0
-  protocol          = "tcp"
+  protocol          = "-1"
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.instance.id
 }
@@ -84,6 +84,10 @@ resource "aws_instance" "sapphire_staging_tf" {
   instance_type          = "t2.micro"
   vpc_security_group_ids = [aws_security_group.instance.id]
   key_name               = "sapphire_staging_keypair"
+  ebs_block_device {
+    device_name = "/dev/sda1"
+    volume_size = 30
+  }
   tags                   = {
     Name = "sapphire_staging_tf"
   }
