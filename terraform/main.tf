@@ -1,3 +1,13 @@
+####
+# Terraform state file is handled in the S3 bucket "sapphire-hf-staging" which was manually created.
+# Also, EC2 keypair "sapphire_staging_keypair" was created manually and Elastic IP with
+# allocation_id "eipalloc-098a9d8258d4b8f79" was manually created.
+# Terraform associates the Elastic IP with the newly created EC2 instance.
+
+# If this is your first time running terraform on this project, change to this directory,
+# execute 'terraform init' and after making changes 'terraform plan' and 'terraform apply'.
+####
+
 terraform {
   required_providers {
     aws = {
@@ -38,7 +48,7 @@ resource "aws_ecr_repository" "frontend" {
 
 # SECURITY GROUP
 resource "aws_security_group" "instance" {
-  name        = "sapphire_tf_sec_group"
+  name        = "sapphire_staging_sec_group"
   description = "Used in sapphire_staging_tf EC2 instance"
 }
 
@@ -83,17 +93,18 @@ resource "aws_instance" "sapphire_staging_tf" {
   ami                    = "ami-06dd92ecc74fdfb36"
   instance_type          = "t2.micro"
   vpc_security_group_ids = [aws_security_group.instance.id]
-  key_name               = "sapphire_staging_keypair"
-  ebs_block_device {
-    device_name = "/dev/sda1"
-    volume_size = 30
+  key_name               = "sapphire_staging_keypair" # manually created keypair
+  root_block_device {
+    volume_size           = "30"
+    volume_type           = "gp2"
+    delete_on_termination = true
   }
-  tags                   = {
-    Name = "sapphire_staging_tf"
+  tags = {
+    Name = "sapphire_staging"
   }
 }
 
-# EBS volume
+# EBS volume additional
 resource "aws_volume_attachment" "sapphire" {
   device_name = "/dev/sdh"
   volume_id   = aws_ebs_volume.sapphire.id
@@ -103,9 +114,12 @@ resource "aws_volume_attachment" "sapphire" {
 resource "aws_ebs_volume" "sapphire" {
   availability_zone = aws_instance.sapphire_staging_tf.availability_zone
   size              = 30
+  tags              = {
+    Name = "Sapphire staging EBS"
+  }
 }
 
-# ELASTIC IP
+# ELASTIC IP ASSOCIATE, THE IP ALREADY EXISTS IN AWS
 resource "aws_eip_association" "eip_assoc" {
   instance_id   = aws_instance.sapphire_staging_tf.id
   allocation_id = "eipalloc-098a9d8258d4b8f79"
