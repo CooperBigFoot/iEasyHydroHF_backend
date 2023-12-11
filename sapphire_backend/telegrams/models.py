@@ -10,8 +10,12 @@ class Telegram(CreatedDateMixin, models.Model):
     automatically_ingested = models.BooleanField(verbose_name=_("Was automatically ingested?"), default=False)
     successfully_parsed = models.BooleanField(verbose_name=_("Was parsed successfully?"), default=True)
     errors = models.TextField(verbose_name=_("Errors"), blank=True)
-    station = models.ForeignKey(
-        "stations.Station", verbose_name=_("Station"), on_delete=models.SET_NULL, null=True, blank=True
+    hydro_station = models.ForeignKey(
+        "stations.HydrologicalStation",
+        verbose_name=_("Hydrological station"),
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
 
     class Meta:

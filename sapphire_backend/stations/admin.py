@@ -1,26 +1,25 @@
 from django.contrib import admin
 
-from .models import Remark, Sensor, Station
+from .models import HydrologicalStation, Remark, Site
 
 
-@admin.register(Station)
-class StationAdmin(admin.ModelAdmin):
-    list_display = ["name", "station_code", "organization", "region", "basin"]
-    list_filter = ["basin", "region", "organization", "is_automatic", "station_type", "is_automatic"]
-    search_fields = ["name", "region", "basin"]
+@admin.register(Site)
+class SiteAdmin(admin.ModelAdmin):
+    list_display = ["name", "organization", "basin", "region"]
+    list_filter = ["organization", "basin", "region"]
+    search_fields = ["name"]
     readonly_fields = ["uuid"]
 
 
-@admin.register(Sensor)
-class SensorAdmin(admin.ModelAdmin):
-    list_display = ["name", "station", "identifier", "manufacturer", "is_default"]
-    list_filter = ["station__name", "manufacturer", "is_default"]
-    search_fields = ["station__name", "manufacturer"]
+@admin.register(HydrologicalStation)
+class StationAdmin(admin.ModelAdmin):
+    list_display = ["name", "station_code", "site"]
+    list_filter = ["site", "site__basin", "site__region", "site__organization"]
     readonly_fields = ["uuid"]
 
 
 @admin.register(Remark)
 class RemarkAdmin(admin.ModelAdmin):
-    list_display = ["station", "user", "created_date"]
+    list_display = ["hydro_station", "meteo_station", "user", "created_date"]
     list_filter = ["created_date"]
     readonly_fields = ["uuid", "created_date", "last_modified"]

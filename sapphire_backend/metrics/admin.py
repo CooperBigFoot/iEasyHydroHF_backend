@@ -3,7 +3,6 @@ from django.contrib import admin
 from .models import (
     AirTemperature,
     Precipitation,
-    SensorStatus,
     WaterDischarge,
     WaterLevel,
     WaterTemperature,
@@ -12,13 +11,13 @@ from .models import (
 
 
 class MetricAdminMixin(admin.ModelAdmin):
-    list_display = ["sensor", "get_sensor_station_name", "timestamp", "average_value"]
-    list_filter = ["sensor__station__name", "timestamp"]
+    list_display = ["get_station_name", "timestamp", "average_value"]
+    list_filter = ["timestamp"]
     delete_selected_confirmation_template = "metrics/delete_selected_confirmation_template.html"
 
     @staticmethod
-    def get_sensor_station_name(obj):
-        return obj.sensor.station.name
+    def get_station_name(obj):
+        return obj.station.name
 
 
 @admin.register(WaterDischarge)
@@ -49,14 +48,3 @@ class AirTemperatureAdmin(MetricAdminMixin):
 @admin.register(Precipitation)
 class PrecipitationAdmin(MetricAdminMixin):
     pass
-
-
-@admin.register(SensorStatus)
-class SensorStatusAdmin(admin.ModelAdmin):
-    list_display = ["sensor", "get_sensor_station_name", "timestamp", "battery_status", "malfunction"]
-    list_filter = ["malfunction", "sensor__station__name"]
-    delete_selected_confirmation_template = "metrics/delete_selected_confirmation_template.html"
-
-    @staticmethod
-    def get_sensor_station_name(obj):
-        return obj.sensor.station.name

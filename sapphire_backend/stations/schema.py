@@ -2,7 +2,7 @@ from datetime import datetime
 
 from ninja import Field, ModelSchema, Schema
 
-from .models import Remark, Station
+from .models import HydrologicalStation, Remark, Site
 
 
 class RemarkInputSchema(ModelSchema):
@@ -22,53 +22,26 @@ class RemarkOutputSchema(RemarkInputSchema):
         return str(obj.uuid)
 
 
-class StationInputSchema(Schema):
-    name: str
-    description: str = None
-    station_type: str
-    station_code: str
-    country: str
-    timezone: str = None
-    basin_id: str = None
-    latitude: float
-    longitude: float
-    region_id: str = None
-    elevation: float = None
-    is_automatic: bool
-    is_virtual: bool
-    measurement_time_step: int = None
-    discharge_level_alarm: float = None
+class SiteInputSchema(ModelSchema):
+    class Meta:
+        model = Site
+        exclude = ["id", "uuid", "organization"]
 
 
-class StationUpdateSchema(ModelSchema):
-    class Config:
-        model = Station
-        model_exclude = ["id", "slug", "organization"]
-        model_fields_optional = "__all__"
+class SiteUpdateSchema(SiteInputSchema):
+    class Meta:
+        model = Site
+        exclude = ["id", "uuid", "organization"]
+        optional_fields = "__all__"
 
 
-class StationOutputDetailSchema(Schema):
+class SiteOutputSchema(SiteInputSchema):
     id: int
     uuid: str
-    slug: str
     organization_uuid: str
-    organization_id: int
-    name: str
-    description: str = None
-    station_type: str
-    station_code: str
-    country: str
-    latitude: float
-    longitude: float
-    elevation: float = None
-    is_automatic: bool
-    is_virtual: bool
-    measurement_time_step: int = None
-    discharge_level_alarm: float = None
-    timezone: str = Field(None, alias="get_timezone_display")
     basin: str = Field(None, alias="basin.name")
     region: str = Field(None, alias="region.name")
-    remarks: list[RemarkOutputSchema] = None
+    timezone: str = Field(None, alias="get_timezone_display")
 
     @staticmethod
     def resolve_organization_uuid(obj):
@@ -79,5 +52,34 @@ class StationOutputDetailSchema(Schema):
         return str(obj.uuid)
 
 
-class StationFilterSchema(Schema):
-    station_type: Station.StationType = None
+class StationInputSchema(Schema):
+    site_uuid: str = None
+    site_data: SiteInputSchema = None
+    name: str = None
+    description: str = None
+    station_type: HydrologicalStation.StationType
+    station_code: str
+    measurement_time_step: int = None
+    discharge_level_alarm: float = None
+    historical_discharge_minimum: float = None
+    historical_discharge_maximum: float = None
+    decadal_discharge_norm: float = None
+    monthly_discharge_norm: dict[int, float] = None
+
+
+class StationUpdateSchema(StationInputSchema):
+    site: SiteUpdateSchema
+
+    class Meta:
+        optional_fields = "__all__"
+
+
+class StationOutputDetailSchema(StationInputSchema):
+    site: SiteOutputSchema
+    id: int
+    uuid: str
+    remarks: list[RemarkOutputSchema] = None
+
+    @staticmethod
+    def resolve_uuid(obj):
+        return str(obj.uuid)

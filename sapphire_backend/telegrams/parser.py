@@ -6,7 +6,7 @@ from typing import Any
 from django.conf import settings
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.stations.models import Station
+from sapphire_backend.stations.models import HydrologicalStation
 from sapphire_backend.telegrams.exceptions import (
     InvalidTokenException,
     MissingSectionException,
@@ -77,8 +77,10 @@ class BaseTelegramParser(ABC):
         if not station_code.isdigit() or len(station_code) != 5:
             raise InvalidTokenException(f"Invalid station code: {station_code}")
         try:
-            self.station = Station.objects.get(station_code=station_code)
-        except Station.DoesNotExist:
+            self.station = HydrologicalStation.objects.get(
+                station_code=station_code, station_type=HydrologicalStation.StationType.MANUAL
+            )
+        except HydrologicalStation.DoesNotExist:
             raise InvalidTokenException(f"Station with code {station_code} does not exist")
 
     @classmethod

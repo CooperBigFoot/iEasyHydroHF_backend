@@ -9,9 +9,9 @@ User = get_user_model()
 
 
 class UserInputSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = User
-        model_fields = ["username", "email", "user_role", "language", "is_active"]
+        fields = ["username", "email", "user_role", "language", "is_active"]
 
     first_name: str | None
     last_name: str | None
@@ -19,9 +19,9 @@ class UserInputSchema(ModelSchema):
 
 
 class UserUpdateSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = User
-        model_fields = [
+        fields = [
             "username",
             "email",
             "user_role",
