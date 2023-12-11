@@ -22,10 +22,15 @@ class RemarkOutputSchema(RemarkInputSchema):
         return str(obj.uuid)
 
 
-class SiteInputSchema(ModelSchema):
-    class Meta:
-        model = Site
-        exclude = ["id", "uuid", "organization"]
+class SiteInputSchema(Schema):
+    name: str
+    country: str
+    latitude: float
+    longitude: float
+    timezone: str = None
+    elevation: float = None
+    region: str
+    basin: str
 
 
 class SiteUpdateSchema(SiteInputSchema):
@@ -59,12 +64,12 @@ class StationInputSchema(Schema):
     description: str = None
     station_type: HydrologicalStation.StationType
     station_code: str
-    measurement_time_step: int = None
-    discharge_level_alarm: float = None
-    historical_discharge_minimum: float = None
-    historical_discharge_maximum: float = None
-    decadal_discharge_norm: float = None
-    monthly_discharge_norm: dict[int, float] = None
+    measurement_time_step: int | None = None
+    discharge_level_alarm: float | None = None
+    historical_discharge_minimum: float | None = None
+    historical_discharge_maximum: float | None = None
+    decadal_discharge_norm: float | None = None
+    monthly_discharge_norm: dict[int, float] | None = None
 
 
 class StationUpdateSchema(StationInputSchema):

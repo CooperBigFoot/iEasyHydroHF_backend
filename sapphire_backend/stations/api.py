@@ -29,14 +29,17 @@ class StationsAPIController:
     def create_hydrological_station(self, request, organization_uuid: str, station_data: StationInputSchema):
         try:
             station_dict = station_data.dict()
-            site_uuid = station_dict.pop("site_uuid")
-            site_data = station_dict.pop("site_data")
+            site_uuid = station_dict.pop("site_uuid", None)
+            site_data = station_dict.pop("site_data", None)
             if not site_uuid:
                 site_data["organization_id"] = organization_uuid
                 site = Site.objects.create(**site_data)
                 station_dict["site_id"] = site.uuid
             else:
                 station_dict["site_id"] = site_uuid
+                site = Site.objects.get(uuid=site_uuid)
+
+            station_dict["name"] = station_dict.get("name") or site.name
             station = HydrologicalStation.objects.create(**station_dict)
         except IntegrityError:
             return 400, {
