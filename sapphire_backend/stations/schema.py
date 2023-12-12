@@ -6,9 +6,9 @@ from .models import HydrologicalStation, Remark
 
 
 class RemarkInputSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Remark
-        model_fields = ["comment"]
+        fields = ["comment"]
 
 
 class RemarkOutputSchema(RemarkInputSchema):

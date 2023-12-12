@@ -6,16 +6,16 @@ from .models import Basin, Organization, Region
 
 
 class OrganizationInputSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Organization
-        model_exclude = ["id", "uuid"]
+        exclude = ["id", "uuid"]
 
 
 class OrganizationUpdateSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Organization
-        model_exclude = ["id", "uuid"]
-        model_fields_optional = "__all__"
+        exclude = ["id", "uuid"]
+        optional_fields = "__all__"
 
 
 class OrganizationOutputDetailSchema(UUIDSchemaMixin, OrganizationInputSchema):
@@ -29,9 +29,9 @@ class OrganizationOutputListSchema(UUIDSchemaMixin, Schema):
 
 
 class BasinInputSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Basin
-        model_fields = ["name"]
+        fields = ["name"]
 
 
 class BasinOutputSchema(BasinInputSchema):
@@ -44,9 +44,9 @@ class BasinOutputSchema(BasinInputSchema):
 
 
 class RegionInputSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Region
-        model_fields = ["name"]
+        fields = ["name"]
 
 
 class RegionOutputSchema(RegionInputSchema):
