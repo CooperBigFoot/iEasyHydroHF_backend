@@ -89,6 +89,7 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
     )
     decadal_discharge_norm = models.FloatField(verbose_name=_("Decadal discharge norm"), blank=True, null=True)
     monthly_discharge_norm = models.JSONField(verbose_name=_("Monthly discharge norm"), blank=True, null=True)
+    is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
 
     class Meta:
         verbose_name = _("Hydrological station")
@@ -115,6 +116,7 @@ class MeteorologicalStation(UUIDMixin, models.Model):
         blank=False,
         related_name="meteo_stations",
     )
+    is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
 
     class Meta:
         verbose_name = _("Meteorological station")

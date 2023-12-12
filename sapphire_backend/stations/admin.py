@@ -5,16 +5,16 @@ from .models import HydrologicalStation, Remark, Site
 
 @admin.register(Site)
 class SiteAdmin(admin.ModelAdmin):
-    list_display = ["name", "organization", "basin", "region"]
+    list_display = ["name", "organization", "basin", "region", "uuid"]
     list_filter = ["organization", "basin", "region"]
     search_fields = ["name"]
     readonly_fields = ["uuid"]
 
 
 @admin.register(HydrologicalStation)
-class StationAdmin(admin.ModelAdmin):
-    list_display = ["name", "station_code", "site"]
-    list_filter = ["site", "site__basin", "site__region", "site__organization"]
+class HydrologicalStationAdmin(admin.ModelAdmin):
+    list_display = ["name", "station_code", "site", "uuid"]
+    list_filter = ["site", "site__basin", "site__region", "site__organization", "station_type"]
     readonly_fields = ["uuid"]
 
 

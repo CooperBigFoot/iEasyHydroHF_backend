@@ -2,7 +2,7 @@ from datetime import datetime
 
 from ninja import Field, ModelSchema, Schema
 
-from .models import HydrologicalStation, Remark, Site
+from .models import HydrologicalStation, Remark
 
 
 class RemarkInputSchema(ModelSchema):
@@ -22,30 +22,42 @@ class RemarkOutputSchema(RemarkInputSchema):
         return str(obj.uuid)
 
 
-class SiteInputSchema(Schema):
+class SiteBasinRegionInputSchema(Schema):
+    region_id: str
+    basin_id: str
+
+
+class SiteBasinRegionOutputSchema(Schema):
+    basin: str = Field(None, alias="basin.name")
+    region: str = Field(None, alias="region.name")
+
+
+class SiteBaseSchema(Schema):
     name: str
     country: str
     latitude: float
     longitude: float
     timezone: str = None
     elevation: float = None
-    region: str
-    basin: str
+
+
+class SiteInputSchema(SiteBaseSchema, SiteBasinRegionInputSchema):
+    pass
 
 
 class SiteUpdateSchema(SiteInputSchema):
-    class Meta:
-        model = Site
-        exclude = ["id", "uuid", "organization"]
-        optional_fields = "__all__"
+    name: str | None = None
+    country: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    region_id: str | None = None
+    basin_id: str | None = None
 
 
-class SiteOutputSchema(SiteInputSchema):
+class SiteOutputSchema(SiteBaseSchema, SiteBasinRegionOutputSchema):
     id: int
     uuid: str
     organization_uuid: str
-    basin: str = Field(None, alias="basin.name")
-    region: str = Field(None, alias="region.name")
     timezone: str = Field(None, alias="get_timezone_display")
 
     @staticmethod
@@ -57,11 +69,9 @@ class SiteOutputSchema(SiteInputSchema):
         return str(obj.uuid)
 
 
-class StationInputSchema(Schema):
-    site_uuid: str = None
-    site_data: SiteInputSchema = None
-    name: str = None
-    description: str = None
+class HydroStationBaseSchema(Schema):
+    name: str | None = None
+    description: str | None = None
     station_type: HydrologicalStation.StationType
     station_code: str
     measurement_time_step: int | None = None
@@ -72,14 +82,18 @@ class StationInputSchema(Schema):
     monthly_discharge_norm: dict[int, float] | None = None
 
 
-class StationUpdateSchema(StationInputSchema):
-    site: SiteUpdateSchema
-
-    class Meta:
-        optional_fields = "__all__"
+class HydroStationInputSchema(HydroStationBaseSchema, Schema):
+    site_uuid: str = None
+    site_data: SiteInputSchema = None
 
 
-class StationOutputDetailSchema(StationInputSchema):
+class HydroStationUpdateSchema(HydroStationBaseSchema):
+    station_type: HydrologicalStation.StationType | None = None
+    station_code: str | None = None
+    site_data: SiteUpdateSchema | None = None
+
+
+class HydroStationOutputDetailSchema(HydroStationBaseSchema):
     site: SiteOutputSchema
     id: int
     uuid: str

@@ -1,6 +1,7 @@
 from django.db import IntegrityError
 from django.db.models import Q
 from django.db.models.aggregates import Count
+from django.http import HttpRequest
 from django.utils.translation import gettext as _
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
@@ -10,11 +11,11 @@ from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin
 
 from .models import HydrologicalStation, Remark, Site
 from .schema import (
+    HydroStationInputSchema,
+    HydroStationOutputDetailSchema,
+    HydroStationUpdateSchema,
     RemarkInputSchema,
     RemarkOutputSchema,
-    StationInputSchema,
-    StationOutputDetailSchema,
-    StationUpdateSchema,
 )
 
 
@@ -25,8 +26,10 @@ from .schema import (
     permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
 )
 class StationsAPIController:
-    @route.post("", response={201: StationOutputDetailSchema, 400: Message})
-    def create_hydrological_station(self, request, organization_uuid: str, station_data: StationInputSchema):
+    @route.post("", response={201: HydroStationOutputDetailSchema, 400: Message})
+    def create_hydrological_station(
+        self, request: HttpRequest, organization_uuid: str, station_data: HydroStationInputSchema
+    ):
         try:
             station_dict = station_data.dict()
             site_uuid = station_dict.pop("site_uuid", None)
@@ -49,14 +52,14 @@ class StationsAPIController:
 
         return 201, station
 
-    @route.get("", response=list[StationOutputDetailSchema])
-    def get_hydrological_stations(self, request, organization_uuid: str):
+    @route.get("", response=list[HydroStationOutputDetailSchema])
+    def get_hydrological_stations(self, request: HttpRequest, organization_uuid: str):
         return HydrologicalStation.objects.filter(
             site__organization__uuid=organization_uuid, is_deleted=False
         ).select_related("site", "site__organization", "site__region", "site__basin")
 
     @route.get("stats")
-    def get_hydrological_stations_stats(self, request, organization_uuid: str):
+    def get_hydrological_stations_stats(self, request: HttpRequest, organization_uuid: str):
         station_type = HydrologicalStation.StationType
         stations = HydrologicalStation.objects.filter(site__organization__uuid=organization_uuid, is_deleted=False)
         stats_aggr = stations.aggregate(
@@ -67,15 +70,15 @@ class StationsAPIController:
 
         return stats_aggr
 
-    @route.get("{station_uuid}", response={200: StationOutputDetailSchema, 404: Message})
-    def get_hydrological_station(self, request, organization_uuid: str, station_uuid: str):
+    @route.get("{station_uuid}", response={200: HydroStationOutputDetailSchema, 404: Message})
+    def get_hydrological_station(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
         try:
             return 200, HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
         except HydrologicalStation.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
 
     @route.delete("{station_uuid}", response={200: Message, 400: Message, 404: Message})
-    def delete_hydrological_station(self, request, organization_uuid: str, station_uuid: str):
+    def delete_hydrological_station(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
         try:
             station = HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
             station.is_deleted = True
@@ -86,19 +89,32 @@ class StationsAPIController:
         except IntegrityError:
             return 400, {"detail": _("Station could not be deleted."), "code": "error"}
 
-    @route.put("{station_uuid}", response={200: StationOutputDetailSchema, 404: Message})
-    def update_station(self, request, organization_uuid: str, station_uuid: str, station_data: StationUpdateSchema):
+    @route.put("{station_uuid}", response={200: HydroStationOutputDetailSchema, 404: Message})
+    def update_station(
+        self, request: HttpRequest, organization_uuid: str, station_uuid: str, station_data: HydroStationUpdateSchema
+    ):
         try:
             station = HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
-            for attr, value in station_data.dict(exclude_unset=True).items():
+            station_dict = station_data.dict(exclude_unset=True)
+            site_data = station_dict.pop("site_data", {})
+            if site_data:
+                site = station.site
+                for attr, value in site_data.items():
+                    setattr(site, attr, value)
+                site.save()
+
+            for attr, value in station_dict.items():
                 setattr(station, attr, value)
+
             station.save()
             return 200, station
         except HydrologicalStation.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
 
     @route.post("{station_uuid}/remarks", response={200: RemarkOutputSchema})
-    def create_remark(self, request, organization_uuid: str, station_uuid: str, remark_data: RemarkInputSchema):
+    def create_remark(
+        self, request: HttpRequest, organization_uuid: str, station_uuid: str, remark_data: RemarkInputSchema
+    ):
         remark_dict = remark_data.dict()
         remark_dict["user"] = request.user
         remark_dict["hydro_station_id"] = station_uuid
@@ -108,7 +124,7 @@ class StationsAPIController:
         return remark
 
     @route.delete("remarks/{remark_uuid}", response={200: Message})
-    def delete_remark(self, request, organization_uuid: str, remark_uuid: str):
+    def delete_remark(self, request: HttpRequest, organization_uuid: str, remark_uuid: str):
         try:
             Remark.objects.filter(uuid=remark_uuid).delete()
             return 200, {"detail": _("Remark deleted successfully"), "code": "success"}

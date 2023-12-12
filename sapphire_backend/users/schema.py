@@ -51,4 +51,4 @@ class UserOutputListSchema(UserInputSchema, UUIDSchemaMixin):
 
 class UserOutputDetailSchema(UserOutputListSchema):
     id: int
-    organization: OrganizationOutputListSchema = None
+    organization: OrganizationOutputListSchema | None = None
