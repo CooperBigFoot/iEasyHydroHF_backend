@@ -55,12 +55,23 @@ class HydrologicalMetric(models.Model):
 
 
 class MeteorologicalMetric(models.Model):
+    class MeasurementType(models.TextChoices):
+        IMPORTED = "I", _("Imported")
+        UNKNOWN = "U", _("Unknown")
+
     class MetricName(models.TextChoices):
         AIR_TEMPERATURES = "AT", _("Air temperature")
         PRECIPITATION = "PC", _("Precipitation")
 
     timestamp = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp"))
     value = models.DecimalField(verbose_name=_("Value"), max_digits=10, decimal_places=5)
+    value_type = models.CharField(
+        verbose_name=_("Value type"),
+        choices=MeasurementType,
+        default=MeasurementType.UNKNOWN,
+        max_length=2,
+        blank=False,
+    )
     metric_name = models.CharField(
         verbose_name=_("Metric name"),
         choices=MetricName,
