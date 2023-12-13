@@ -1,88 +1,79 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from sapphire_backend.metrics.timeseries.mixins import TimeSeriesModelMixin
 
+class HydrologicalMetric(models.Model):
+    class MeasurementType(models.TextChoices):
+        MANUAL = "M", _("Manual")
+        AUTOMATIC = "A", _("Automatic")
+        CALCULATED = "C", _("Calculated")
+        IMPORTED = "I", _("Imported")
+        UNKNOWN = "U", _("Unknown")
 
-class WaterDischarge(TimeSeriesModelMixin, models.Model):
-    pass
+    class MetricName(models.TextChoices):
+        WATER_DISCHARGE = "WD", _("Water discharge")
+        WATER_LEVEL = "WL", _("Water level")
+        WATER_VELOCITY = "WV", _("Water velocity")
+        WATER_TEMPERATURE = "WT", _("Water temperature")
+        AIR_TEMPERATURES = "AT", _("Air temperature")
+        PRECIPITATION = "PC", _("Precipitation")
 
-    class Meta:
-        verbose_name = _("Water discharge metric")
-        verbose_name_plural = _("Water discharge metrics")
-        indexes = [
-            models.Index("hydro_station", "meteo_station", models.F("timestamp").desc(), name="water_discharge_idx")
-        ]
+    timestamp = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp"))
+    min_value = models.DecimalField(
+        verbose_name=_("Minimum value"), max_digits=10, decimal_places=5, null=True, blank=True
+    )
+    avg_value = models.DecimalField(verbose_name=_("Average value"), max_digits=10, decimal_places=5)
+    max_value = models.DecimalField(
+        verbose_name=_("Maximum value"), max_digits=10, decimal_places=5, null=True, blank=True
+    )
+    unit = models.CharField(verbose_name=_("Unit"), blank=True, max_length=20)
+    value_type = models.CharField(
+        verbose_name=_("Value type"),
+        choices=MeasurementType,
+        default=MeasurementType.UNKNOWN,
+        max_length=2,
+        blank=False,
+    )
+    metric_name = models.CharField(
+        verbose_name=_("Metric name"),
+        choices=MetricName,
+        max_length=2,
+        blank=False,
+    )
+    station = models.ForeignKey("stations.HydrologicalStation", verbose_name=_("Station"), on_delete=models.PROTECT)
 
-    def __str__(self):
-        return f"{self.station.name} water discharge reading on {self.timestamp}"
-
-
-class WaterLevel(TimeSeriesModelMixin, models.Model):
-    pass
-
-    class Meta:
-        verbose_name = _("Water level metric")
-        verbose_name_plural = _("Water level metrics")
-        indexes = [
-            models.Index("hydro_station", "meteo_station", models.F("timestamp").desc(), name="water_level_idx")
-        ]
-
-    def __str__(self):
-        return f"{self.station.name} water level reading on {self.timestamp}"
-
-
-class WaterTemperature(TimeSeriesModelMixin, models.Model):
-    pass
-
-    class Meta:
-        verbose_name = _("Water temperature metric")
-        verbose_name_plural = _("Water temperature metrics")
-        indexes = [
-            models.Index("hydro_station", "meteo_station", models.F("timestamp").desc(), name="water_temperature_idx")
-        ]
-
-    def __str__(self):
-        return f"{self.station.name} water temperature reading on {self.timestamp}"
-
-
-class WaterVelocity(TimeSeriesModelMixin, models.Model):
-    pass
+    sensor_identifier = models.CharField(verbose_name=_("Sensor identifier"), blank=True, max_length=50)
+    sensor_type = models.CharField(verbose_name=_("Sensor type"), blank=True, max_length=50)
 
     class Meta:
-        verbose_name = _("Water velocity metric")
-        verbose_name_plural = _("Water velocity metrics")
-        indexes = [
-            models.Index("hydro_station", "meteo_station", models.F("timestamp").desc(), name="water_velocity_idx")
-        ]
+        verbose_name = _("Hydrological metric")
+        verbose_name_plural = _("Hydrological metrics")
+        ordering = ["-timestamp"]
 
     def __str__(self):
-        return f"{self.station.name} water velocity reading on {self.timestamp}"
+        return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
 
 
-class AirTemperature(TimeSeriesModelMixin, models.Model):
-    pass
+class MeteorologicalMetric(models.Model):
+    class MetricName(models.TextChoices):
+        AIR_TEMPERATURES = "AT", _("Air temperature")
+        PRECIPITATION = "PC", _("Precipitation")
+
+    timestamp = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp"))
+    value = models.DecimalField(verbose_name=_("Value"), max_digits=10, decimal_places=5)
+    metric_name = models.CharField(
+        verbose_name=_("Metric name"),
+        choices=MetricName,
+        max_length=2,
+        blank=False,
+    )
+    unit = models.CharField(verbose_name=_("Unit"), blank=True, max_length=20)
+    station = models.ForeignKey("stations.MeteorologicalStation", verbose_name=_("Station"), on_delete=models.PROTECT)
 
     class Meta:
-        verbose_name = _("Air temperature metric")
-        verbose_name_plural = _("Air temperature metrics")
-        indexes = [
-            models.Index("hydro_station", "meteo_station", models.F("timestamp").desc(), name="air_temperature_idx")
-        ]
+        verbose_name = _("Meteorological metric")
+        verbose_name_plural = _("Meteorological metrics")
+        ordering = ["-timestamp"]
 
     def __str__(self):
-        return f"{self.station.name} air temperature reading on {self.timestamp}"
-
-
-class Precipitation(TimeSeriesModelMixin, models.Model):
-    pass
-
-    class Meta:
-        verbose_name = _("Precipitation metric")
-        verbose_name_plural = _("Precipitation metrics")
-        indexes = [
-            models.Index("hydro_station", "meteo_station", models.F("timestamp").desc(), name="precipitation_idx")
-        ]
-
-    def __str__(self):
-        return f"{self.station.name} precipitation reading on {self.timestamp}"
+        return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
