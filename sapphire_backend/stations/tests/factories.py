@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from sapphire_backend.organizations.tests.factories import BasinFactory, OrganizationFactory, RegionFactory
 
-from ..models import HydrologicalStation, Site
+from ..models import HydrologicalStation, MeteorologicalStation, Site
 
 fake = Faker()
 
@@ -30,10 +30,21 @@ class SiteFactory(factory.django.DjangoModelFactory):
 class HydrologicalStationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = HydrologicalStation
-        django_get_or_create = ("site",)
+        django_get_or_create = ("site", "name")
 
     site = factory.SubFactory(SiteFactory)
     name = fake.company()
     description = fake.catch_phrase()
     station_type = HydrologicalStation.StationType.MANUAL
+    station_code = fake.ean(length=8)
+
+
+class MeteorologicalStationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = MeteorologicalStation
+        django_get_or_create = ("site", "name")
+
+    site = factory.SubFactory(SiteFactory)
+    name = fake.company()
+    description = fake.catch_phrase()
     station_code = fake.ean(length=8)

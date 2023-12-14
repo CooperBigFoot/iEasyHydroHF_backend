@@ -15,7 +15,7 @@ class HydrologicalMetric(models.Model):
         WATER_LEVEL = "WL", _("Water level")
         WATER_VELOCITY = "WV", _("Water velocity")
         WATER_TEMPERATURE = "WT", _("Water temperature")
-        AIR_TEMPERATURES = "AT", _("Air temperature")
+        AIR_TEMPERATURE = "AT", _("Air temperature")
         PRECIPITATION = "PC", _("Precipitation")
 
     timestamp = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp"))
@@ -60,7 +60,7 @@ class MeteorologicalMetric(models.Model):
         UNKNOWN = "U", _("Unknown")
 
     class MetricName(models.TextChoices):
-        AIR_TEMPERATURES = "AT", _("Air temperature")
+        AIR_TEMPERATURE = "AT", _("Air temperature")
         PRECIPITATION = "PC", _("Precipitation")
 
     timestamp = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp"))

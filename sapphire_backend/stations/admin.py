@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import HydrologicalStation, Remark, Site
+from .models import HydrologicalStation, MeteorologicalStation, Remark, Site
 
 
 @admin.register(Site)
@@ -14,7 +14,14 @@ class SiteAdmin(admin.ModelAdmin):
 @admin.register(HydrologicalStation)
 class HydrologicalStationAdmin(admin.ModelAdmin):
     list_display = ["name", "station_code", "site", "uuid"]
-    list_filter = ["site", "site__basin", "site__region", "site__organization", "station_type"]
+    list_filter = ["site__basin", "site__region", "site__organization", "station_type"]
+    readonly_fields = ["uuid"]
+
+
+@admin.register(MeteorologicalStation)
+class MeteorologicalStationAdmin(admin.ModelAdmin):
+    list_display = ["name", "station_code", "site", "uuid"]
+    list_filter = ["site__basin", "site__region", "site__organization"]
     readonly_fields = ["uuid"]
 
 
