@@ -32,7 +32,7 @@ User = get_user_model()
     "basins/{organization_uuid}",
     tags=["Basins"],
     auth=JWTAuth(),
-    permissions=[OrganizationExists],
+    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)],
 )
 class BasinsAPIController:
     @route.post("", response={201: BasinOutputSchema})
@@ -79,7 +79,7 @@ class BasinsAPIController:
     "regions/{organization_uuid}",
     tags=["Regions"],
     auth=JWTAuth(),
-    permissions=[OrganizationExists],
+    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)],
 )
 class RegionsAPIController:
     @route.post("", response={201: RegionOutputSchema})

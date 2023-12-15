@@ -2,11 +2,15 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
 from ninja_jwt.tokens import AccessToken
+from pytest_factoryboy import register
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.organizations.tests.factories import OrganizationFactory
 from sapphire_backend.users.tests.factories import UserFactory
+
+register(UserFactory)
+register(OrganizationFactory)
 
 User = get_user_model()
 
@@ -49,6 +53,13 @@ def superadmin(db, user_factory):
 
 
 @pytest.fixture
+def other_organization_user(db, user_factory, backup_organization):
+    return user_factory.create(
+        username="other_organization_user", user_role=User.UserRoles.REGULAR_USER, organization=backup_organization
+    )
+
+
+@pytest.fixture
 def api_client():
     return Client()
 
@@ -70,5 +81,12 @@ def authenticated_organization_user_api_client(organization_admin):
 @pytest.fixture
 def authenticated_superadmin_user_api_client(superadmin):
     token = AccessToken.for_user(superadmin)
+    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
+    return client
+
+
+@pytest.fixture
+def authenticated_regular_user_other_organization_api_client(other_organization_user):
+    token = AccessToken.for_user(other_organization_user)
     client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
     return client
