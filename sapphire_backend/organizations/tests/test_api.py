@@ -1,6 +1,9 @@
 import pytest
+from django.contrib.auth import get_user_model
 
 from ..models import Basin, Region
+
+User = get_user_model()
 
 
 class TestOrganizationsAPIController:
@@ -156,4 +159,62 @@ class TestRegionsAPIController:
             f"{self.endpoint}/{region.organization.uuid}/{region.uuid}"
         )
         assert response.status_code == 403
+        assert "detail" in response.json()
+
+
+class TestOrganizationMembersAPIController:
+    endpoint = "/api/v1/organizations"
+    new_user_data = {
+        "username": "user123",
+        "email": "user123@user.com",
+        "user_role": User.UserRoles.REGULAR_USER,
+        "language": User.Language.ENGLISH,
+    }
+
+    @pytest.mark.django_db
+    def test_get_organization_members(self, authenticated_regular_user_api_client, organization):
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{organization.uuid}/members")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+
+    @pytest.mark.django_db
+    def test_add_organization_member_as_regular_user(self, authenticated_regular_user_api_client, organization):
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{organization.uuid}/members/add",
+            data=self.new_user_data,
+            content_type="application/json",
+        )
+        assert response.status_code == 403  # forbidden
+
+    @pytest.mark.django_db
+    def test_add_organization_member_as_organization_admin(
+        self, authenticated_organization_user_api_client, organization
+    ):
+        response = authenticated_organization_user_api_client.post(
+            f"{self.endpoint}/{organization.uuid}/members/add",
+            data=self.new_user_data,
+            content_type="application/json",
+        )
+        assert response.status_code == 201
+        assert "id" in response.json()
+        assert User.objects.filter(username="user123").exists()
+
+    @pytest.mark.django_db
+    def test_add_organization_member_as_superadmin(self, authenticated_superadmin_user_api_client, organization):
+        response = authenticated_superadmin_user_api_client.post(
+            f"{self.endpoint}/{organization.uuid}/members/add",
+            data=self.new_user_data,
+            content_type="application/json",
+        )
+        assert response.status_code == 201
+        assert "id" in response.json()
+        assert User.objects.filter(username="user123").exists()
+
+    @pytest.mark.django_db
+    def test_add_organization_member_missing_data(self, authenticated_organization_user_api_client, organization):
+        invalid_user_data = {"username": "", "email": "", "user_role": "", "language": ""}
+        response = authenticated_organization_user_api_client.post(
+            f"{self.endpoint}/{organization.uuid}/members/add", data=invalid_user_data, content_type="application/json"
+        )
+        assert response.status_code == 422
         assert "detail" in response.json()

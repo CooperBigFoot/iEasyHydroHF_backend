@@ -179,7 +179,7 @@ class OrganizationsAPIController:
 
     @route.post(
         "{organization_uuid}/members/add",
-        response={200: UserOutputDetailSchema, 400: FieldMessage},
+        response={201: UserOutputDetailSchema, 400: FieldMessage},
         permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
         url_name="add-organization-member",
     )
@@ -192,4 +192,4 @@ class OrganizationsAPIController:
         except IntegrityError:
             return 400, {"message": _("Username already taken"), "field": "username"}
 
-        return user
+        return 201, user
