@@ -3,6 +3,7 @@ from django.db.models import Q
 from django.db.models.aggregates import Count
 from django.http import HttpRequest
 from django.utils.translation import gettext as _
+from ninja import Query
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
@@ -53,10 +54,16 @@ class StationsAPIController:
         return 201, station
 
     @route.get("", response=list[HydroStationOutputDetailSchema])
-    def get_hydrological_stations(self, request: HttpRequest, organization_uuid: str):
-        return HydrologicalStation.objects.filter(
-            site__organization__uuid=organization_uuid, is_deleted=False
-        ).select_related("site", "site__organization", "site__region", "site__basin")
+    def get_hydrological_stations(
+        self,
+        request: HttpRequest,
+        organization_uuid: str,
+        station_type_filter: Query[HydrologicalStation.StationType] = None,
+    ):
+        stations = HydrologicalStation.objects.filter(site__organization__uuid=organization_uuid, is_deleted=False)
+        if station_type_filter:
+            stations = stations.filter(station_type=station_type_filter)
+        return stations.select_related("site", "site__organization", "site__region", "site__basin")
 
     @route.get("stats")
     def get_hydrological_stations_stats(self, request: HttpRequest, organization_uuid: str):

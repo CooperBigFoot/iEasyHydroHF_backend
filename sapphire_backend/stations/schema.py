@@ -2,6 +2,8 @@ from datetime import datetime
 
 from ninja import Field, ModelSchema, Schema
 
+from sapphire_backend.organizations.schema import BasinOutputSchema, RegionOutputSchema
+
 from .models import HydrologicalStation, Remark
 
 
@@ -28,8 +30,8 @@ class SiteBasinRegionInputSchema(Schema):
 
 
 class SiteBasinRegionOutputSchema(Schema):
-    basin: str = Field(None, alias="basin.name")
-    region: str = Field(None, alias="region.name")
+    basin: BasinOutputSchema
+    region: RegionOutputSchema
 
 
 class SiteBaseSchema(Schema):
