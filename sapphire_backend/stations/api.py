@@ -12,6 +12,7 @@ from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin
 
 from .models import HydrologicalStation, Remark, Site
 from .schema import (
+    HydrologicalStationFilterSchema,
     HydroStationInputSchema,
     HydroStationOutputDetailSchema,
     HydroStationUpdateSchema,
@@ -34,7 +35,7 @@ class StationsAPIController:
         try:
             station_dict = station_data.dict()
             site_uuid = station_dict.pop("site_uuid", None)
-            site_data = station_dict.pop("site_data", None)
+            site_data = station_dict.pop("site_data", {})
             if not site_uuid:
                 site_data["organization_id"] = organization_uuid
                 site = Site.objects.create(**site_data)
@@ -58,11 +59,11 @@ class StationsAPIController:
         self,
         request: HttpRequest,
         organization_uuid: str,
-        station_type_filter: Query[HydrologicalStation.StationType] = None,
+        filters: Query[HydrologicalStationFilterSchema],
     ):
-        stations = HydrologicalStation.objects.filter(site__organization__uuid=organization_uuid, is_deleted=False)
-        if station_type_filter:
-            stations = stations.filter(station_type=station_type_filter)
+        stations = HydrologicalStation.objects.filter(
+            site__organization__uuid=organization_uuid, is_deleted=False, **filters.dict(exclude_unset=True)
+        )
         return stations.select_related("site", "site__organization", "site__region", "site__basin")
 
     @route.get("stats")
