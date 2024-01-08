@@ -70,7 +70,7 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
     description = models.TextField(verbose_name=_("Description"), blank=True)
     site = models.ForeignKey(
         "stations.Site",
-        verbose_name=_("Hydrological Station"),
+        verbose_name=_("Site"),
         to_field="uuid",
         on_delete=models.PROTECT,
         null=False,
@@ -90,6 +90,7 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
     decadal_discharge_norm = models.FloatField(verbose_name=_("Decadal discharge norm"), blank=True, null=True)
     monthly_discharge_norm = models.JSONField(verbose_name=_("Monthly discharge norm"), blank=True, null=True)
     is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
+    bulletin_order = models.PositiveIntegerField(verbose_name=_("Bulletin order"), default=0)
 
     class Meta:
         verbose_name = _("Hydrological station")

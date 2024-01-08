@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from ninja import Field, ModelSchema, Schema
+from ninja import Field, FilterSchema, ModelSchema, Schema
 
 from sapphire_backend.organizations.schema import BasinOutputSchema, RegionOutputSchema
 
@@ -80,8 +80,7 @@ class HydroStationBaseSchema(Schema):
     discharge_level_alarm: float | None = None
     historical_discharge_minimum: float | None = None
     historical_discharge_maximum: float | None = None
-    decadal_discharge_norm: float | None = None
-    monthly_discharge_norm: dict[int, float] | None = None
+    bulletin_order: int | None = 0
 
 
 class HydroStationInputSchema(HydroStationBaseSchema, Schema):
@@ -104,3 +103,8 @@ class HydroStationOutputDetailSchema(HydroStationBaseSchema):
     @staticmethod
     def resolve_uuid(obj):
         return str(obj.uuid)
+
+
+class HydrologicalStationFilterSchema(FilterSchema):
+    site__uuid: str | None = None
+    station_type: HydrologicalStation.StationType | None = None
