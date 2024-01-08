@@ -63,6 +63,10 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
         AUTOMATIC = "A", _("Automatic")
 
     name = models.CharField(verbose_name=_("Station name"), blank=True, max_length=150)
+    station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=True)
+    station_type = models.CharField(
+        verbose_name=_("Station type"), choices=StationType, default=StationType.MANUAL, max_length=2, blank=False
+    )
     description = models.TextField(verbose_name=_("Description"), blank=True)
     site = models.ForeignKey(
         "stations.Site",
@@ -72,10 +76,6 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
         null=False,
         blank=False,
         related_name="hydro_stations",
-    )
-    station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=False)
-    station_type = models.CharField(
-        verbose_name=_("Station type"), choices=StationType, default=StationType.MANUAL, max_length=2, blank=False
     )
     measurement_time_step = models.IntegerField(
         verbose_name=_("Measurement time step in minutes"), blank=True, null=True
@@ -104,9 +104,15 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
 
 
 class MeteorologicalStation(UUIDMixin, models.Model):
+    class StationType(models.TextChoices):
+        MANUAL = "M", _("Manual")
+        AUTOMATIC = "A", _("Automatic")
+
     name = models.CharField(verbose_name=_("Station name"), blank=True, max_length=150)
-    description = models.TextField(verbose_name=_("Description"), blank=True)
     station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=True)
+    station_type = models.CharField(
+        verbose_name=_("Station type"), choices=StationType, default=StationType.MANUAL, max_length=2, blank=False
+    )
     site = models.ForeignKey(
         "stations.Site",
         verbose_name=_("Site"),
@@ -116,6 +122,7 @@ class MeteorologicalStation(UUIDMixin, models.Model):
         blank=False,
         related_name="meteo_stations",
     )
+    description = models.TextField(verbose_name=_("Description"), blank=True)
     is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
 
     class Meta:
