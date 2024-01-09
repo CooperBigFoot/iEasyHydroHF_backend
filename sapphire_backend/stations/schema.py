@@ -35,12 +35,11 @@ class SiteBasinRegionOutputSchema(Schema):
 
 
 class SiteBaseSchema(Schema):
-    name: str
     country: str
-    latitude: float
-    longitude: float
-    timezone: str = None
-    elevation: float = None
+    latitude: float | None = None
+    longitude: float | None = None
+    timezone: str | None = None
+    elevation: float | None = None
 
 
 class SiteInputSchema(SiteBaseSchema, SiteBasinRegionInputSchema):
@@ -48,7 +47,6 @@ class SiteInputSchema(SiteBaseSchema, SiteBasinRegionInputSchema):
 
 
 class SiteUpdateSchema(SiteInputSchema):
-    name: str | None = None
     country: str | None = None
     latitude: float | None = None
     longitude: float | None = None
@@ -60,7 +58,7 @@ class SiteOutputSchema(SiteBaseSchema, SiteBasinRegionOutputSchema):
     id: int
     uuid: str
     organization_uuid: str
-    timezone: str = Field(None, alias="get_timezone_display")
+    timezone: str | None = Field(None, alias="get_timezone_display")
 
     @staticmethod
     def resolve_organization_uuid(obj):
@@ -72,7 +70,7 @@ class SiteOutputSchema(SiteBaseSchema, SiteBasinRegionOutputSchema):
 
 
 class HydroStationBaseSchema(Schema):
-    name: str | None = None
+    name: str
     description: str | None = None
     station_type: HydrologicalStation.StationType
     station_code: str
@@ -89,6 +87,7 @@ class HydroStationInputSchema(HydroStationBaseSchema, Schema):
 
 
 class HydroStationUpdateSchema(HydroStationBaseSchema):
+    name: str | None = None
     station_type: HydrologicalStation.StationType | None = None
     station_code: str | None = None
     site_data: SiteUpdateSchema | None = None

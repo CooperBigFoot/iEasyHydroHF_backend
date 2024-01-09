@@ -44,7 +44,6 @@ class StationsAPIController:
                 station_dict["site_id"] = site_uuid
                 site = Site.objects.get(uuid=site_uuid)
 
-            station_dict["name"] = station_dict.get("name") or site.name
             station = HydrologicalStation.objects.create(**station_dict)
         except IntegrityError:
             return 400, {

@@ -14,9 +14,9 @@ class UserInputSchema(Schema):
     user_role: User.UserRoles
     language: User.Language
     is_active: bool | None = True
-    first_name: str | None = None
-    last_name: str | None = None
-    contact_phone: str | None = None
+    first_name: str | None = ""
+    last_name: str | None = ""
+    contact_phone: str | None = ""
 
 
 class UserUpdateSchema(UserInputSchema):
