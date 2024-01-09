@@ -1,5 +1,4 @@
-# -*- encoding: UTF-8 -*-
-from sqlalchemy import Column, ForeignKey, Float, Text, UniqueConstraint
+from sqlalchemy import Column, Float, ForeignKey, Text, UniqueConstraint
 
 from .orm import ImomoBase
 from .variables import Variable
@@ -19,10 +18,9 @@ class Category(ImomoBase):
                     for the associated variable.
         category_description: Textual description of the category.
     """
+
     variable_id = Column(ForeignKey(Variable.id))
     data_value = Column(Float)
     category_description = Column(Text, nullable=False)
 
-    __table_args__ = (
-        UniqueConstraint(variable_id, data_value),
-    )
+    __table_args__ = (UniqueConstraint(variable_id, data_value),)

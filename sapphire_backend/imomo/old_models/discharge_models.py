@@ -1,5 +1,4 @@
-# -*- encoding: UTF-8 -*-
-from sqlalchemy import Column, Float, String, ForeignKey, Index, Boolean, UniqueConstraint
+from sqlalchemy import Boolean, Column, Float, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from .monitoring_site_locations import Site
@@ -25,6 +24,7 @@ class DischargeModel(ImomoBase):
         site_id: Foreign key to the site for which the model was created.
         site: ORM relationship to the site.
     """
+
     model_name = Column(String(255), nullable=False)
     param_a = Column(Float, nullable=False)
     param_b = Column(Float, nullable=False, default=2)
@@ -36,16 +36,16 @@ class DischargeModel(ImomoBase):
     site = relationship(Site)
 
     __table_args__ = (
-        Index('ix_discharge_model_valid_from_desc', valid_from.desc()),
-        Index('ix_discharge_model_site_id', site_id),
-        UniqueConstraint('site_id', 'valid_from', name='discharge_model_site_id_valid_from_key'),
+        Index("ix_discharge_model_valid_from_desc", valid_from.desc()),
+        Index("ix_discharge_model_site_id", site_id),
+        UniqueConstraint("site_id", "valid_from", name="discharge_model_site_id_valid_from_key"),
     )
 
     def calculate_discharge(self, water_level):
         return self.param_c * (water_level + self.param_a) ** self.param_b
 
     def __repr__(self):
-        return '<DischargeModel ({id}): Q = {c} (H + {a} ) ^ {b} , valid from: {valid_from}>'.format(
+        return "<DischargeModel ({id}): Q = {c} (H + {a} ) ^ {b} , valid from: {valid_from}>".format(
             a=self.param_a,
             b=self.param_b,
             c=self.param_c,
@@ -68,6 +68,7 @@ class DischargeCurveSettings(ImomoBase):
         discharge_model_id: Foreign key to the discharge curve model this setting refers to
         discharge_model: ORM relationship to the discharge curve.
     """
+
     min_water_level = Column(Float, nullable=False)
     max_water_level = Column(Float, nullable=False)
     min_discharge = Column(Float, nullable=False)

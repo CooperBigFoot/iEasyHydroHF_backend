@@ -1,6 +1,4 @@
-# -*- encoding: UTF-8 -*-
 import cherrypy
-
 from imomo.utils.strings import camel_to_snake
 
 

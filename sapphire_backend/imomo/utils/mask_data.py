@@ -1,5 +1,3 @@
-
-
 def mask_sensitive_data(in_data):
     SENSITIVE_KEYS = [
         "password",
@@ -14,7 +12,7 @@ def mask_sensitive_data(in_data):
             if isinstance(value, dict) or isinstance(value, list):
                 out_data[key] = mask_sensitive_data(value)
             elif isinstance(value, basestring) and key in SENSITIVE_KEYS:
-                out_data[key] = '***'
+                out_data[key] = "***"
             else:
                 out_data[key] = value
     elif isinstance(in_data, list):

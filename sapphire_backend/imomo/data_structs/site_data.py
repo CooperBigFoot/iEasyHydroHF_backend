@@ -1,8 +1,4 @@
-# -*- encoding: UTF-8 -*-
-
-
-class SiteData(object):
-
+class SiteData:
     def __init__(self, site_id, groups):
         self._site_id = site_id
         self._groups = groups
@@ -24,5 +20,4 @@ class SiteData(object):
         self._groups = value
 
     def to_jsonizable(self):
-        return {'siteId': self.site_id,
-                'groups': [group.to_jsonizable() for group in self.groups]}
+        return {"siteId": self.site_id, "groups": [group.to_jsonizable() for group in self.groups]}

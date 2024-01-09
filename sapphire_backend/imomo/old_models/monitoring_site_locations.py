@@ -1,9 +1,8 @@
-# -*- encoding: UTF-8 -*-
-from sqlalchemy import Column, Integer, ForeignKey, String, Float, Text,\
-    Boolean, Sequence, UniqueConstraint, DECIMAL
+from sqlalchemy import DECIMAL, Boolean, Column, Float, ForeignKey, Integer, Sequence, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
+
 from .data_sources import Source
-from .orm import ImomoBase, CVMixin, session_required
+from .orm import CVMixin, ImomoBase, session_required
 
 
 class SpatialReference(ImomoBase):
@@ -21,6 +20,7 @@ class SpatialReference(ImomoBase):
         notes: Additional descriptive information about the Spatial Reference
                System.
     """
+
     srs_id = Column(Integer)
     srs_name = Column(String(255), nullable=False, index=True)
     is_geographic = Column(Boolean)
@@ -32,34 +32,23 @@ class VerticalDatumCV(ImomoBase, CVMixin):
 
     The attributes are as defined in the CVMixin class.
     """
+
     pass
 
 
 class VirtualSiteAssociation(ImomoBase):
-    id = Column(Integer, Sequence('virtualsiteassociation_id_seq'), primary_key=True)
-    aggregation_id = Column(Integer, ForeignKey('site.id'), primary_key=True)
-    virtual_site_id = Column(Integer, ForeignKey('site.id'), primary_key=True)
+    id = Column(Integer, Sequence("virtualsiteassociation_id_seq"), primary_key=True)
+    aggregation_id = Column(Integer, ForeignKey("site.id"), primary_key=True)
+    virtual_site_id = Column(Integer, ForeignKey("site.id"), primary_key=True)
     weighting = Column(DECIMAL(5, 2), nullable=False)
-    __table_args__ = (UniqueConstraint('aggregation_id', 'virtual_site_id'), )
+    __table_args__ = (UniqueConstraint("aggregation_id", "virtual_site_id"),)
 
-    virtual_site = relationship(
-        'Site',
-        foreign_keys=virtual_site_id,
-        lazy="joined"
-    )
+    virtual_site = relationship("Site", foreign_keys=virtual_site_id, lazy="joined")
 
-    aggregation = relationship(
-        'Site',
-        foreign_keys=aggregation_id,
-        lazy="joined"
-    )
+    aggregation = relationship("Site", foreign_keys=aggregation_id, lazy="joined")
 
     def __repr__(self):
-        return '<VirtualSiteAssociation: {real_id} -> {virtual_id} ({weighting} %)>'.format(
-            real_id=self.aggregation_id,
-            virtual_id=self.virtual_site_id,
-            weighting=self.weighting
-        )
+        return f"<VirtualSiteAssociation: {self.aggregation_id} -> {self.virtual_site_id} ({self.weighting} %)>"
 
 
 class Site(ImomoBase):
@@ -92,17 +81,16 @@ class Site(ImomoBase):
         region: Administrative region according to the data source.
         comments: Additional comments for the site.
     """
-    METEO_SUFFIX = 'm'
 
-    id = Column(Integer, Sequence('site_id_seq'), primary_key=True)
+    METEO_SUFFIX = "m"
+
+    id = Column(Integer, Sequence("site_id_seq"), primary_key=True)
     site_code = Column(String(50), nullable=False, index=True, unique=True)
     site_name = Column(String(255), nullable=False, index=True, unique=False)
-    source_id = Column(ForeignKey(Source.id), nullable=False,
-                       index=True)
+    source_id = Column(ForeignKey(Source.id), nullable=False, index=True)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
-    lat_long_datum_id = Column(ForeignKey(SpatialReference.id),
-                               nullable=False)
+    lat_long_datum_id = Column(ForeignKey(SpatialReference.id), nullable=False)
     elevation_m = Column(Float, default=0.0)
     vertical_datum_id = Column(ForeignKey(VerticalDatumCV.id))
     local_x = Column(Float)
@@ -111,7 +99,7 @@ class Site(ImomoBase):
     pos_accuracy_m = Column(Float)
     country = Column(String(255), nullable=False)
     basin = Column(String(255), nullable=False)
-    region = Column(String(255), nullable=False, default='Unknown')
+    region = Column(String(255), nullable=False, default="Unknown")
     comments = Column(Text)
 
     catchment_area_id = Column(Integer)
@@ -119,7 +107,7 @@ class Site(ImomoBase):
     is_virtual = Column(Boolean, default=False, nullable=False)
 
     aggregation_site_associations = relationship(
-        'VirtualSiteAssociation',
+        "VirtualSiteAssociation",
         primaryjoin=id == VirtualSiteAssociation.virtual_site_id,
         lazy="joined",
         order_by=VirtualSiteAssociation.id,
@@ -127,7 +115,7 @@ class Site(ImomoBase):
     )
 
     virtual_site_associations = relationship(
-        'VirtualSiteAssociation',
+        "VirtualSiteAssociation",
         primaryjoin=id == VirtualSiteAssociation.aggregation_id,
         lazy="joined",
         order_by=VirtualSiteAssociation.id,
@@ -135,7 +123,7 @@ class Site(ImomoBase):
     )
 
     virtual_sites = relationship(
-        'Site',
+        "Site",
         secondary=VirtualSiteAssociation.__table__,
         primaryjoin=VirtualSiteAssociation.aggregation_id == id,
         secondaryjoin=VirtualSiteAssociation.virtual_site_id == id,
@@ -144,7 +132,7 @@ class Site(ImomoBase):
     )
 
     aggregations = relationship(
-        'Site',
+        "Site",
         secondary=VirtualSiteAssociation.__table__,
         primaryjoin=VirtualSiteAssociation.virtual_site_id == id,
         secondaryjoin=VirtualSiteAssociation.aggregation_id == id,
@@ -152,15 +140,15 @@ class Site(ImomoBase):
         lazy="joined",
     )
 
-    data_values = relationship('DataValue', cascade="all,delete")
+    data_values = relationship("DataValue", cascade="all,delete")
     discharge_models = relationship(
-        'DischargeModel',
+        "DischargeModel",
         cascade="all,delete",
-        lazy='dynamic',
+        lazy="dynamic",
     )
-    discharge_curve_settings = relationship('DischargeCurveSettings', cascade="all,delete")
-    forecast_models = relationship('ForecastModel', cascade="all,delete")
-    forecast_results = relationship('ForecastResult', cascade="all,delete")
+    discharge_curve_settings = relationship("DischargeCurveSettings", cascade="all,delete")
+    forecast_models = relationship("ForecastModel", cascade="all,delete")
+    forecast_results = relationship("ForecastResult", cascade="all,delete")
 
     @property
     def site_code_repr(self):
@@ -171,20 +159,20 @@ class Site(ImomoBase):
 
     @classmethod
     def is_not_meteo_(cls):
-        return cls.site_code.notilike('%{}'.format(cls.METEO_SUFFIX))
+        return cls.site_code.notilike(f"%{cls.METEO_SUFFIX}")
 
     @classmethod
     def is_meteo_(cls):
-        return cls.site_code.like('%{}'.format(cls.METEO_SUFFIX))
+        return cls.site_code.like(f"%{cls.METEO_SUFFIX}")
 
     @property
     def site_type(self):
         if self.is_meteo_site:
-            return 'meteo'
+            return "meteo"
         elif self.is_virtual:
-            return 'virtual-discharge'
+            return "virtual-discharge"
         else:
-            return 'discharge'
+            return "discharge"
 
     @property
     def is_meteo_site(self):
@@ -204,38 +192,36 @@ class Site(ImomoBase):
         Args:
             session: The session object to use to query the database.
         """
-        self.lat_long_datum_id = session.query(
-            SpatialReference.id).filter(
-            SpatialReference.srs_id == 4326).scalar()
+        self.lat_long_datum_id = session.query(SpatialReference.id).filter(SpatialReference.srs_id == 4326).scalar()
 
     def to_jsonizable(self, exclude=None):
-        jsonizable = super(Site, self).to_jsonizable(exclude)
+        jsonizable = super().to_jsonizable(exclude)
 
-        if jsonizable['site_code'].endswith(self.METEO_SUFFIX):
-            jsonizable['site_code'] = jsonizable['site_code'][:-1]
+        if jsonizable["site_code"].endswith(self.METEO_SUFFIX):
+            jsonizable["site_code"] = jsonizable["site_code"][:-1]
 
-        jsonizable['site_type'] = self.site_type
+        jsonizable["site_type"] = self.site_type
 
         if self.is_virtual:
-            jsonizable['aggregations'] = []
+            jsonizable["aggregations"] = []
             for aggregation_ass in self.aggregation_site_associations:
-                jsonizable['aggregations'].append(
+                jsonizable["aggregations"].append(
                     {
-                        'id': aggregation_ass.aggregation_id,
-                        'weighting': float(aggregation_ass.weighting),
-                        'site_code': aggregation_ass.aggregation.site_code,
-                        'site_name': aggregation_ass.aggregation.site_name,
+                        "id": aggregation_ass.aggregation_id,
+                        "weighting": float(aggregation_ass.weighting),
+                        "site_code": aggregation_ass.aggregation.site_code,
+                        "site_name": aggregation_ass.aggregation.site_name,
                     }
                 )
         else:
-            jsonizable['virtual_stations'] = []
+            jsonizable["virtual_stations"] = []
             for virtual_sites_ass in self.virtual_site_associations:
-                jsonizable['virtual_stations'].append(
+                jsonizable["virtual_stations"].append(
                     {
-                        'id': virtual_sites_ass.virtual_site_id,
-                        'weighting': float(virtual_sites_ass.weighting),
-                        'site_code': virtual_sites_ass.virtual_site.site_code,
-                        'site_name': virtual_sites_ass.virtual_site.site_name,
+                        "id": virtual_sites_ass.virtual_site_id,
+                        "weighting": float(virtual_sites_ass.weighting),
+                        "site_code": virtual_sites_ass.virtual_site.site_code,
+                        "site_name": virtual_sites_ass.virtual_site.site_name,
                     }
                 )
         return jsonizable
@@ -245,10 +231,5 @@ class Site(ImomoBase):
         return str(self.site_code)
 
     def __repr__(self):
-        site_name = str(self.site_name.encode('utf-8'))
-        return '<Site ({site_type}): {name} (code: {code}, id: {id})>'.format(
-            name=site_name,
-            code=self.site_code,
-            id=self.id,
-            site_type=self.site_type,
-        )
+        site_name = str(self.site_name.encode("utf-8"))
+        return f"<Site ({self.site_type}): {site_name} (code: {self.site_code}, id: {self.id})>"

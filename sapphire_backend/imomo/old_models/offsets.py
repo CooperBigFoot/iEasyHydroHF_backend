@@ -1,4 +1,3 @@
-# -*- encoding: UTF-8 -*-
 from sqlalchemy import Column, ForeignKey, Text
 
 from .orm import ImomoBase
@@ -15,5 +14,6 @@ class OffsetType(ImomoBase):
         offset_units_id: Foreign key to the corresponding unit.
         offset_description: Text description of the offset.
     """
+
     offset_units_id = Column(ForeignKey(Unit.id), nullable=False)
     offset_description = Column(Text, nullable=False)

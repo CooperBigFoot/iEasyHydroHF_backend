@@ -1,14 +1,13 @@
-# -*- encoding: UTF-8 -*-
-
 import datetime
 from enum import Enum as pyEnum
 
-from sqlalchemy import Column, String, Text, ForeignKey, Boolean, or_, Enum
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, String, Text, or_
 from sqlalchemy.orm import validates
 
-from .orm import ImomoBase, CVMixin, UTCDateTime
 from sapphire_backend.imomo.utils import validators
 from sapphire_backend.imomo.utils.strings import to_str
+
+from .orm import CVMixin, ImomoBase, UTCDateTime
 
 
 class TopicCategoryCV(ImomoBase, CVMixin):
@@ -16,6 +15,7 @@ class TopicCategoryCV(ImomoBase, CVMixin):
 
     The attributes are as defined in the CVMixin class.
     """
+
     pass
 
 
@@ -33,17 +33,17 @@ class ISOMetadata(ImomoBase):
         profile_version: Name of the metadata profile used by the source.
         metadata_link: URL link to any additional metadata information.
     """
-    topic_category_id = Column(ForeignKey(TopicCategoryCV.id),
-                               nullable=False)
-    title = Column(String(255), nullable=False, default='Unknown')
-    abstract = Column(Text, nullable=False, default='Unknown')
-    profile_version = Column(String(255), nullable=False, default='Unknown')
+
+    topic_category_id = Column(ForeignKey(TopicCategoryCV.id), nullable=False)
+    title = Column(String(255), nullable=False, default="Unknown")
+    abstract = Column(Text, nullable=False, default="Unknown")
+    profile_version = Column(String(255), nullable=False, default="Unknown")
     metadata_link = Column(String(500))
 
 
 class YearTypeEnum(pyEnum):
-    calendar_year = 'calendar_year'
-    hydro_year = 'hydro_year'
+    calendar_year = "calendar_year"
+    hydro_year = "hydro_year"
 
 
 class Source(ImomoBase):
@@ -71,15 +71,15 @@ class Source(ImomoBase):
         citation: Optional citation text.
         metadata_id: Foreign key to the additional ISO metadata.
     """
+
     organization = Column(String(255), nullable=False)
     source_description = Column(Text, nullable=True)
     source_link = Column(String(500))
-    contact_name = Column(String(255), nullable=False, default='Unknown')
-    phone = Column(String(255), nullable=False, default='Unknown')
-    email = Column(String(255), nullable=False, default='Unknown')
-    citation = Column(Text, nullable=False, default='Unknown')
-    iso_metadata_id = Column(ForeignKey(ISOMetadata.id),
-                             nullable=False, default=0)
+    contact_name = Column(String(255), nullable=False, default="Unknown")
+    phone = Column(String(255), nullable=False, default="Unknown")
+    email = Column(String(255), nullable=False, default="Unknown")
+    citation = Column(Text, nullable=False, default="Unknown")
+    iso_metadata_id = Column(ForeignKey(ISOMetadata.id), nullable=False, default=0)
     timezone = Column(String(50))
     language = Column(String(50), nullable=True)
 
@@ -99,7 +99,7 @@ class Source(ImomoBase):
 
     # hydro year selection
     year_type = Column(
-        Enum(*[type_.name for type_ in YearTypeEnum], name='year_type_enum'),
+        Enum(*[type_.name for type_ in YearTypeEnum], name="year_type_enum"),
         nullable=False,
         default=YearTypeEnum.hydro_year.name,
     )
@@ -108,7 +108,7 @@ class Source(ImomoBase):
     def not_deleted(cls):
         return or_(Source.deleted == False, Source.deleted == None)
 
-    @validates('timezone')
+    @validates("timezone")
     def validate_timezone(self, key, timezone):
         if timezone is not None:
             return validators.timezone_validator(timezone, key)
@@ -128,16 +128,14 @@ class Source(ImomoBase):
             return self.expires_in_days >= 0
 
     def to_jsonizable(self, exclude=None):
-        rtn_json = super(Source, self).to_jsonizable(exclude=exclude)
+        rtn_json = super().to_jsonizable(exclude=exclude)
 
-        rtn_json['active'] = self.active
+        rtn_json["active"] = self.active
 
-        if rtn_json['expires_at'] is not None:
-            rtn_json['expires_at'] = rtn_json['expires_at'].isoformat()
+        if rtn_json["expires_at"] is not None:
+            rtn_json["expires_at"] = rtn_json["expires_at"].isoformat()
 
         return rtn_json
 
     def __repr__(self):
-        return '<Source: {name} (id: {id})>'.format(
-            name=to_str(self.organization), id=self.id
-        )
+        return f"<Source: {to_str(self.organization)} (id: {self.id})>"

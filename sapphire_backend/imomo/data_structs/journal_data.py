@@ -1,13 +1,13 @@
-# -*- encoding: UTF-8 -*-
 # Data structures for the operational journal.
 
 
-class DataPair(object):
+class DataPair:
     """
     Attributes:
         water_level
         discharge
     """
+
     def __init__(self, water_level, discharge):
         self.water_level = water_level
         self.discharge = discharge
@@ -26,17 +26,14 @@ class DataPair(object):
 
     @discharge.setter
     def discharge(self, value):
-        assert value > 0, 'Negative discharge values are invalid.'
+        assert value > 0, "Negative discharge values are invalid."
         self._discharge = value
 
     def to_jsonizable(self):
-        return {
-            'water_level': self.water_level,
-            'discharge': self.discharge
-        }
+        return {"water_level": self.water_level, "discharge": self.discharge}
 
 
-class DecadeAverageTuple(object):
+class DecadeAverageTuple:
     """
     Attributes:
         decade_in_month
@@ -65,7 +62,4 @@ class DecadeAverageTuple(object):
         self._average_data = value
 
     def to_jsonizable(self):
-        return {
-            'decade_in_month': self.decade_in_month,
-            'average_data': self.average_data.to_jsonizable()
-        }
+        return {"decade_in_month": self.decade_in_month, "average_data": self.average_data.to_jsonizable()}

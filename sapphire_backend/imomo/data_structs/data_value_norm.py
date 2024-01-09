@@ -1,7 +1,4 @@
-# -*- encoding: UTF-8 -*-
-
-
-class DataValueNorm(object):
+class DataValueNorm:
     """Data structure for the data_value norm data for a single site.
 
     Attributes:
@@ -13,6 +10,7 @@ class DataValueNorm(object):
         start_year (int):
         end_year (int):
     """
+
     def __init__(self, norm_url, norm_data, site_id, start_year, end_year):
         self.norm_url = norm_url
         self.norm_data = norm_data
@@ -27,9 +25,9 @@ class DataValueNorm(object):
             Dictionary that can be serialized into JSON.
         """
         return {
-            'norm_url': self.norm_url,
-            'norm_data': self.norm_data,
-            'site_id': self.site_id,
-            'start_year': self.start_year,
-            'end_year': self.end_year
+            "norm_url": self.norm_url,
+            "norm_data": self.norm_data,
+            "site_id": self.site_id,
+            "start_year": self.start_year,
+            "end_year": self.end_year,
         }

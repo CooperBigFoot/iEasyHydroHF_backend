@@ -1,5 +1,4 @@
-from django.db import models, connection
-
+from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
 
 
@@ -78,43 +77,42 @@ class HydrologicalMetric(models.Model):
     def __str__(self):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
 
-    def save(self
-
-             ) -> None:
+    def save(self) -> None:
         min_value = self.min_value
         max_value = self.max_value
         avg_value = self.avg_value
 
         if self.min_value is None:
-            min_value = 'NULL'
+            min_value = "NULL"
         max_value = self.max_value
         if self.max_value is None:
-            max_value = 'NULL'
+            max_value = "NULL"
         if self.avg_value is None:
-            avg_value = 'NULL'
+            avg_value = "NULL"
         sql_query = """
         INSERT INTO metrics_hydrologicalmetric
         (timestamp, station_id, metric_name, min_value, avg_value, max_value,
         unit, value_type, sensor_identifier, sensor_type)
         VALUES ('{timestamp}'::timestamp, {station_id}, '{metric_name}', {min_value},
         {avg_value}, {max_value}, '{unit}', '{value_type}', '{sensor_identifier}', '{sensor_type}');
-        """.format(timestamp=self.timestamp,
-                   station_id=self.station_id,
-                   metric_name=self.metric_name,
-                   min_value=min_value,
-                   avg_value=avg_value,
-                   max_value=max_value,
-                   unit=self.unit,
-                   value_type=self.value_type,
-                   sensor_identifier=self.sensor_identifier,
-                   sensor_type=self.sensor_type,
-                   )
+        """.format(
+            timestamp=self.timestamp,
+            station_id=self.station_id,
+            metric_name=self.metric_name,
+            min_value=min_value,
+            avg_value=avg_value,
+            max_value=max_value,
+            unit=self.unit,
+            value_type=self.value_type,
+            sensor_identifier=self.sensor_identifier,
+            sensor_type=self.sensor_type,
+        )
 
         with connection.cursor() as cursor:
             try:
                 cursor.execute(sql_query)
             except:
-                raise Exception('Hydro metric problem')
+                raise Exception("Hydro metric problem")
 
 
 class MeteorologicalMetric(models.Model):
@@ -158,20 +156,18 @@ class MeteorologicalMetric(models.Model):
     def __str__(self):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
 
-    def save(self
-
-             ) -> None:
+    def save(self) -> None:
         sql_query = """
         INSERT INTO metrics_meteorologicalmetric (timestamp, station_id, metric_name, value, value_type, unit )
         VALUES ('{timestamp}'::timestamp, {station_id}, '{metric_name}', {value}, '{value_type}', '{unit}');
-        """.format(timestamp=self.timestamp,
-                   station_id=self.station_id,
-                   metric_name=self.metric_name,
-                   value=self.value,
-                   value_type=self.value_type,
-                   unit=self.unit)
+        """.format(
+            timestamp=self.timestamp,
+            station_id=self.station_id,
+            metric_name=self.metric_name,
+            value=self.value,
+            value_type=self.value_type,
+            unit=self.unit,
+        )
 
         with connection.cursor() as cursor:
             cursor.execute(sql_query)
-
-

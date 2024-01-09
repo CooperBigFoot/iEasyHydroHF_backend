@@ -1,8 +1,7 @@
-# -*- encoding: UTF-8 -*-
-from sqlalchemy import Column, ForeignKey, String, Boolean, Float
+from sqlalchemy import Boolean, Column, Float, ForeignKey, String
 from sqlalchemy.orm import relationship
 
-from .orm import ImomoBase, CVMixin
+from .orm import CVMixin, ImomoBase
 from .units import Unit
 
 
@@ -11,6 +10,7 @@ class VariableNameCV(ImomoBase, CVMixin):
 
     The attributes are as defined in the CVMixin class.
     """
+
     pass
 
 
@@ -19,6 +19,7 @@ class SpeciationCV(ImomoBase, CVMixin):
 
     The attributes are as defined in the CVMixin class.
     """
+
     pass
 
 
@@ -27,6 +28,7 @@ class SampleMediumCV(ImomoBase, CVMixin):
 
     The attributes are as defined in the CVMixin class.
     """
+
     pass
 
 
@@ -35,6 +37,7 @@ class ValueTypeCV(ImomoBase, CVMixin):
 
     The attributes are as defined in the CVMixin class.
     """
+
     pass
 
 
@@ -43,6 +46,7 @@ class DataTypeCV(ImomoBase, CVMixin):
 
     The attributes are as defined in the CVMixin class.
     """
+
     pass
 
 
@@ -51,6 +55,7 @@ class GeneralCategoryCV(ImomoBase, CVMixin):
 
     The attributes are as defined in the CVMixin class.
     """
+
     pass
 
 
@@ -78,6 +83,7 @@ class Variable(ImomoBase):
         no_data_value: Numeric value used to encode no data value in this
                        variable.
     """
+
     variable_code = Column(String(50), nullable=False, unique=True, index=True)
     variable_name_id = Column(ForeignKey(VariableNameCV.id), nullable=False)
     speciation_id = Column(ForeignKey(SpeciationCV.id), nullable=False)
@@ -88,19 +94,15 @@ class Variable(ImomoBase):
     time_support = Column(Float, default=0, nullable=False)
     time_unit_id = Column(ForeignKey(Unit.id), nullable=False, default=103)
     data_type_id = Column(ForeignKey(DataTypeCV.id), nullable=False)
-    general_category_id = Column(ForeignKey(GeneralCategoryCV.id),
-                                 nullable=False)
+    general_category_id = Column(ForeignKey(GeneralCategoryCV.id), nullable=False)
     no_data_value = Column(Float, default=-9999, nullable=False)
 
-    variable_name = relationship(VariableNameCV, lazy='joined')
+    variable_name = relationship(VariableNameCV, lazy="joined")
     variable_unit = relationship(
         Unit,
-        lazy='joined',
+        lazy="joined",
         foreign_keys=variable_unit_id,
     )
 
     def to_jsonizable(self):
-        return {
-            'variableId': self.id,
-            'variableCode': self.variable_code
-        }
+        return {"variableId": self.id, "variableCode": self.variable_code}

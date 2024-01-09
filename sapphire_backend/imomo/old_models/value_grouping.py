@@ -1,6 +1,5 @@
-# -*- encoding: UTF-8 -*-
 from sqlalchemy import Column, ForeignKey, Index, Text, UniqueConstraint
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import backref, relationship
 
 from .observation_values import DataValue
 from .orm import ImomoBase
@@ -15,13 +14,14 @@ class GroupDescription(ImomoBase):
     Attributes:
         group_description: Description of the created group.
     """
+
     group_description = Column(Text, nullable=False)
 
     data_values = relationship(
         DataValue,
-        secondary='group',
+        secondary="group",
         lazy="dynamic",
-        backref=backref('groups', lazy="dynamic"),
+        backref=backref("groups", lazy="dynamic"),
     )
 
 
@@ -38,14 +38,14 @@ class Group(ImomoBase):
         group: ORM relation to the group instance.
         value: ORM relation to the data value instance.
     """
-    __table_args__ = (
-        UniqueConstraint('group_id', 'value_id'),
-        Index('ix_groups_value_id_group_id', 'value_id', 'group_id')
-        )
 
-    group_id = Column(ForeignKey(GroupDescription.id),
-                      nullable=False)
+    __table_args__ = (
+        UniqueConstraint("group_id", "value_id"),
+        Index("ix_groups_value_id_group_id", "value_id", "group_id"),
+    )
+
+    group_id = Column(ForeignKey(GroupDescription.id), nullable=False)
     value_id = Column(ForeignKey(DataValue.id), nullable=False)
 
-    group = relationship(GroupDescription, innerjoin=True, lazy='joined')
-    value = relationship(DataValue, innerjoin=True, lazy='joined')
+    group = relationship(GroupDescription, innerjoin=True, lazy="joined")
+    value = relationship(DataValue, innerjoin=True, lazy="joined")

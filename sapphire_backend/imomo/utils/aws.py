@@ -1,14 +1,12 @@
-# -*- encoding: UTF-8 -*-
 import base64
 import datetime
 import hashlib
 import hmac
 
+import pytz
+from boto.exception import *
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
-from boto.exception import *
-import pytz
-
 from imomo import config
 
 """MONKEY PATCH
@@ -19,58 +17,39 @@ See: https://github.com/boto/boto/issues/2836
 """
 import ssl
 
-if hasattr(ssl, 'match_hostname'):
+if hasattr(ssl, "match_hostname"):
     _old_match_hostname = ssl.match_hostname
 
     def _new_match_hostname(cert, hostname):
-        if hostname.endswith('.s3.amazonaws.com'):
-            pos = hostname.find('.s3.amazonaws.com')
-            hostname = hostname[:pos].replace('.', '') + hostname[pos:]
-        elif hostname.endswith('.s3.eu-central-1.amazonaws.com'):
-            pos = hostname.find('.s3.eu-central-1.amazonaws.com')
-            hostname = hostname[:pos].replace('.', '') + hostname[pos:]
+        if hostname.endswith(".s3.amazonaws.com"):
+            pos = hostname.find(".s3.amazonaws.com")
+            hostname = hostname[:pos].replace(".", "") + hostname[pos:]
+        elif hostname.endswith(".s3.eu-central-1.amazonaws.com"):
+            pos = hostname.find(".s3.eu-central-1.amazonaws.com")
+            hostname = hostname[:pos].replace(".", "") + hostname[pos:]
         return _old_match_hostname(cert, hostname)
 
     ssl.match_hostname = _new_match_hostname
 
 
 def get_key_name(source_id, user_id, historical_data_filename):
-    return u'{source_id}/{user_id}/{historical_data_filename}'.format(
-        source_id=source_id,
-        user_id=user_id,
-        historical_data_filename=historical_data_filename,
-    )
+    return f"{source_id}/{user_id}/{historical_data_filename}"
 
 
 def get_bulk_key(source_id, file_name):
-    return u'{source_id}/bulk_data/{file_name}'.format(
-        source_id=source_id,
-        file_name=file_name,
-    )
+    return f"{source_id}/bulk_data/{file_name}"
 
 
 def get_snow_data_key_name(source_id, user_id, filename):
-    return u'{source_id}/snow_data/{user_id}/{filename}'.format(
-        source_id=source_id,
-        user_id=user_id,
-        filename=filename,
-    )
+    return f"{source_id}/snow_data/{user_id}/{filename}"
 
 
 def get_forecast_bulletin_key_name(source_id, user_id, filename):
-    return u'{source_id}/forecast_bulletins/{user_id}/{filename}'.format(
-        source_id=source_id,
-        user_id=user_id,
-        filename=filename,
-    )
+    return f"{source_id}/forecast_bulletins/{user_id}/{filename}"
 
 
 def get_forecasting_key_name(source_id, site_id, filename):
-    return u'{source_id}/forecasting/{site_id}/{filename}'.format(
-        source_id=source_id,
-        site_id=site_id,
-        filename=filename,
-    )
+    return f"{source_id}/forecasting/{site_id}/{filename}"
 
 
 def get_key(key_name, file_object):
@@ -84,15 +63,16 @@ def get_key(key_name, file_object):
         file_object: File-like object where the downloaded file will be loaded.
     """
     secrets = config.get_secrets()
-    if secrets.AWS_UPLOAD_REGION == 'eu-central-1':
+    if secrets.AWS_UPLOAD_REGION == "eu-central-1":
         s3_conn = S3Connection(
             aws_access_key_id=secrets.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=secrets.AWS_SECRET_ACCESS_KEY,
-            host='s3.eu-central-1.amazonaws.com')
+            host="s3.eu-central-1.amazonaws.com",
+        )
     else:
         s3_conn = S3Connection(
-            aws_access_key_id=secrets.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=secrets.AWS_SECRET_ACCESS_KEY)
+            aws_access_key_id=secrets.AWS_ACCESS_KEY_ID, aws_secret_access_key=secrets.AWS_SECRET_ACCESS_KEY
+        )
     bucket = s3_conn.get_bucket(secrets.AWS_UPLOAD_BUCKET)
     key = Key(bucket=bucket, name=key_name)
     key.get_contents_to_file(fp=file_object)
@@ -112,18 +92,19 @@ def get_signed_url_for_upload(key_name, duration=1800):
         Any AWS error that may occur.
     """
     secrets = config.get_secrets()
-    if secrets.AWS_UPLOAD_REGION == 'eu-central-1':
+    if secrets.AWS_UPLOAD_REGION == "eu-central-1":
         s3_conn = S3Connection(
             aws_access_key_id=secrets.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=secrets.AWS_SECRET_ACCESS_KEY,
-            host='s3.eu-central-1.amazonaws.com')
+            host="s3.eu-central-1.amazonaws.com",
+        )
     else:
         s3_conn = S3Connection(
-            aws_access_key_id=secrets.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=secrets.AWS_SECRET_ACCESS_KEY)
+            aws_access_key_id=secrets.AWS_ACCESS_KEY_ID, aws_secret_access_key=secrets.AWS_SECRET_ACCESS_KEY
+        )
     bucket = s3_conn.get_bucket(secrets.AWS_UPLOAD_BUCKET)
     key = Key(bucket=bucket, name=key_name)
-    return key.generate_url(expires_in=duration, method='PUT')
+    return key.generate_url(expires_in=duration, method="PUT")
 
 
 def get_form_data_for_upload(key_prefix):
@@ -139,9 +120,9 @@ def get_form_data_for_upload(key_prefix):
         key_prefix: The condition of what should be the prefix of the key.
     """
     date = datetime.date.today()
-    datestamp = date.strftime('%Y%m%d')
-    long_datestamp = date.strftime('%Y%m%dT000000Z')
-    service = 's3'
+    datestamp = date.strftime("%Y%m%d")
+    long_datestamp = date.strftime("%Y%m%dT000000Z")
+    service = "s3"
     secrets = config.get_secrets()
     region = secrets.AWS_UPLOAD_REGION
     bucket = secrets.AWS_UPLOAD_BUCKET
@@ -151,24 +132,22 @@ def get_form_data_for_upload(key_prefix):
     signing_key = calculate_signing_key()
     signature = _sign(signing_key, policy_string, hex=True)
     fields = {
-        'acl': 'private',
-        'bucket': bucket,
-        'x-amz-date': long_datestamp,
-        'x-amz-algorithm': 'AWS4-HMAC-SHA256',
-        'x-amz-signature': signature,
-        'x-amz-credential': '%s/%s/%s/%s/aws4_request' % (access_key,
-                                                          datestamp,
-                                                          region, service),
-        'policy': policy_string,
-        'key': key_prefix
+        "acl": "private",
+        "bucket": bucket,
+        "x-amz-date": long_datestamp,
+        "x-amz-algorithm": "AWS4-HMAC-SHA256",
+        "x-amz-signature": signature,
+        "x-amz-credential": f"{access_key}/{datestamp}/{region}/{service}/aws4_request",
+        "policy": policy_string,
+        "key": key_prefix,
     }
-    url = 'https://s3.%s.amazonaws.com/%s' % (region, bucket)
-    return {'action': url, 'fields': fields}
+    url = f"https://s3.{region}.amazonaws.com/{bucket}"
+    return {"action": url, "fields": fields}
 
 
-def build_policy(key_prefix, service='s3',
-                 expires_in=3600, max_content_length=None,
-                 acl='private', content_type_prefix=''):
+def build_policy(
+    key_prefix, service="s3", expires_in=3600, max_content_length=None, acl="private", content_type_prefix=""
+):
     """Build a policy string according to the Amazon AWS guidelines.
 
     The details are available in: http://goo.gl/2hDBJG
@@ -183,11 +162,11 @@ def build_policy(key_prefix, service='s3',
         content_type_prefix: Prefix for the admitted content types.
     """
     date = datetime.date.today()
-    datestamp = date.strftime('%Y%m%d')
-    long_datestamp = date.strftime('%Y%m%dT000000Z')
-    expires_absolute = (datetime.datetime.now(tz=pytz.utc) +
-                        datetime.timedelta(seconds=expires_in)).strftime(
-                        '%Y-%m-%dT%H:%M:%S.%fZ')
+    datestamp = date.strftime("%Y%m%d")
+    long_datestamp = date.strftime("%Y%m%dT000000Z")
+    expires_absolute = (datetime.datetime.now(tz=pytz.utc) + datetime.timedelta(seconds=expires_in)).strftime(
+        "%Y-%m-%dT%H:%M:%S.%fZ"
+    )
 
     secrets = config.get_secrets()
     region = secrets.AWS_UPLOAD_REGION
@@ -211,15 +190,13 @@ def build_policy(key_prefix, service='s3',
     x_amz_algorithm = '{"x-amz-algorithm": "AWS4-HMAC-SHA256"}'
     conditions.append(x_amz_algorithm)
     x_amz_credential = '{"x-amz-credential": "%s/%s/%s/%s/aws4_request"}'
-    conditions.append(x_amz_credential % (access_key, datestamp,
-                                          region, service))
+    conditions.append(x_amz_credential % (access_key, datestamp, region, service))
     x_amz_date = '{"x-amz-date": "%s"}'
     conditions.append(x_amz_date % long_datestamp)
-    conditions_string = ','.join(conditions)
+    conditions_string = ",".join(conditions)
 
-    policy = """{"expiration": "%s",\n"conditions": [%s]}""" % (
-        expires_absolute, conditions_string)
-    return base64.b64encode(policy.encode('utf-8'))
+    policy = f"""{{"expiration": "{expires_absolute}",\n"conditions": [{conditions_string}]}}"""
+    return base64.b64encode(policy.encode("utf-8"))
 
 
 def _sign(key, msg, hex=False):
@@ -235,8 +212,8 @@ def _sign(key, msg, hex=False):
         The signed value.
     """
     if hex:
-        return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).hexdigest()
-    return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
+        return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).hexdigest()
+    return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
 
 
 def calculate_signing_key():
@@ -258,14 +235,13 @@ def calculate_signing_key():
     secrets = config.get_secrets()
     secret_key = secrets.AWS_SECRET_ACCESS_KEY
     region = secrets.AWS_UPLOAD_REGION
-    datestamp = datetime.date.today().strftime('%Y%m%d')
-    service = 's3'
+    datestamp = datetime.date.today().strftime("%Y%m%d")
+    service = "s3"
 
-    date_key = _sign(('AWS4' + secret_key).encode('utf-8'),
-                     datestamp)
+    date_key = _sign(("AWS4" + secret_key).encode("utf-8"), datestamp)
     date_region_key = _sign(date_key, region)
     date_region_service_key = _sign(date_region_key, service)
-    signing_key = _sign(date_region_service_key, 'aws4_request')
+    signing_key = _sign(date_region_service_key, "aws4_request")
     return signing_key
 
 
@@ -277,7 +253,7 @@ def get_tmp_url(aws_path, expires_in=3600):
     return key.generate_url(expires_in=expires_in)
 
 
-def store_file(contents, filename, public=False, file_type='xlsx'):
+def store_file(contents, filename, public=False, file_type="xlsx"):
     """Stores a file in the configured AWS bucket, the file's ACL is set to
     private but a temporary signed URL is generated to retrieve it.
 
@@ -294,11 +270,8 @@ def store_file(contents, filename, public=False, file_type='xlsx'):
     bucket = s3_conn.get_bucket(secrets.AWS_UPLOAD_BUCKET)
     key = Key(bucket=bucket, name=filename)
 
-    if file_type == 'xlsx':
-        headers = {
-            'Content-Type': 'application/vnd.openxmlformats-'
-                            'officedocument.spreadsheetml.sheet'
-        }
+    if file_type == "xlsx":
+        headers = {"Content-Type": "application/vnd.openxmlformats-" "officedocument.spreadsheetml.sheet"}
     else:
         headers = None
 
@@ -308,21 +281,18 @@ def store_file(contents, filename, public=False, file_type='xlsx'):
         return key.generate_url(expires_in=3600)
     else:
         key.make_public()
-        return 'https://{host}/{bucket}/{key}'.format(
-            host=s3_conn.server_name(),
-            bucket=secrets.AWS_UPLOAD_BUCKET,
-            key=key.key
-        )
+        return f"https://{s3_conn.server_name()}/{secrets.AWS_UPLOAD_BUCKET}/{key.key}"
 
 
 def get_s3_conn():
     secrets = config.get_secrets()
-    if secrets.AWS_UPLOAD_REGION == 'eu-central-1':
+    if secrets.AWS_UPLOAD_REGION == "eu-central-1":
         return S3Connection(
             aws_access_key_id=secrets.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=secrets.AWS_SECRET_ACCESS_KEY,
-            host='s3.eu-central-1.amazonaws.com')
+            host="s3.eu-central-1.amazonaws.com",
+        )
     else:
         return S3Connection(
-            aws_access_key_id=secrets.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=secrets.AWS_SECRET_ACCESS_KEY)
+            aws_access_key_id=secrets.AWS_ACCESS_KEY_ID, aws_secret_access_key=secrets.AWS_SECRET_ACCESS_KEY
+        )

@@ -1,4 +1,3 @@
-# -*- encoding: UTF-8 -*-
 """The MIT License (MIT)
 
 Copyright (c) 2014 Hydrosolutions GmbH
@@ -23,8 +22,7 @@ THE SOFTWARE.
 """
 import datetime
 
-from imomo.models import DataValues, Groups, GroupDescriptions,\
-    GroupDescriptionsCodes
+from imomo.models import DataValues, GroupDescriptions, GroupDescriptionsCodes, Groups
 from imomo.utils.basic_data import connect
 
 
@@ -39,17 +37,18 @@ def main(imomo_init):
         date_time_utc=utc,
         site_id=1,
         variable_id=1,
-        censor_code='nc',
+        censor_code="nc",
         method_id=100,
         source_id=1,
-        quality_control_level_id=1)
+        quality_control_level_id=1,
+    )
     group_eight_description = GroupDescriptions(
-        group_description_code=
-        GroupDescriptionsCodes.daily_water_level_record.value)
-    group_eight = Groups(value=new_value,
-                         group=group_eight_description)
+        group_description_code=GroupDescriptionsCodes.daily_water_level_record.value
+    )
+    group_eight = Groups(value=new_value, group=group_eight_description)
     imomo_init.session.add(group_eight)
     imomo_init.session.commit()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

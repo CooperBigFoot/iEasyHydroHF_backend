@@ -33,13 +33,13 @@ from openpyxl.worksheet import *
 
 
 def insert_rows(
-        self,
-        row_idx,
-        cnt,
-        above=False,
-        copy_style=True,
-        fill_formulae=True,
-        max_column=None,
+    self,
+    row_idx,
+    cnt,
+    above=False,
+    copy_style=True,
+    fill_formulae=True,
+    max_column=None,
 ):
     """Inserts new (empty) rows into worksheet at specified row index.
 
@@ -56,7 +56,7 @@ def insert_rows(
     * insert_rows(2, 10, above=True, copy_style=False)
 
     """
-    cell_re = re.compile("(?P<col>\$?[A-Z]+)(?P<row>\$?\d+)")
+    cell_re = re.compile(r"(?P<col>\$?[A-Z]+)(?P<row>\$?\d+)")
 
     row_idx = row_idx - 1 if above else row_idx
     # store the current row_idx
@@ -65,11 +65,11 @@ def insert_rows(
     max_column = max_column or self.max_column
 
     def replace(m):
-        current_row = m.group('row')
+        current_row = m.group("row")
         prefix = "$" if current_row.find("$") != -1 else ""
         current_row = int(current_row.replace("$", ""))
         current_row += cnt if current_row > initial_row_idx else 0
-        return m.group('col') + prefix + str(current_row)
+        return m.group("col") + prefix + str(current_row)
 
     # First, we shift all cells down cnt rows...
     old_cells = set()
@@ -77,20 +77,15 @@ def insert_rows(
     new_cells = dict()
     new_fas = dict()
     for c in self._cells.values():
-
         old_coor = c.coordinate
 
         # Shift all references to anything below row_idx
         if c.data_type == Cell.TYPE_FORMULA:
-            c.value = cell_re.sub(
-                replace,
-                c.value
-            )
+            c.value = cell_re.sub(replace, c.value)
             # Here, we need to properly update the formula references to reflect new row indices
-            if old_coor in self.formula_attributes and 'ref' in self.formula_attributes[old_coor]:
-                self.formula_attributes[old_coor]['ref'] = cell_re.sub(
-                    replace,
-                    self.formula_attributes[old_coor]['ref']
+            if old_coor in self.formula_attributes and "ref" in self.formula_attributes[old_coor]:
+                self.formula_attributes[old_coor]["ref"] = cell_re.sub(
+                    replace, self.formula_attributes[old_coor]["ref"]
                 )
 
         # Do the magic to set up our actual shift
@@ -128,9 +123,9 @@ def insert_rows(
         self.row_dimensions[row] = new_rd
         for col in range(1, max_column):
             col = get_column_letter(col)
-            cell = self.cell('%s%d' % (col, row))
+            cell = self.cell("%s%d" % (col, row))
             cell.value = None
-            source = self.cell('%s%d' % (col, row - 1))
+            source = self.cell("%s%d" % (col, row - 1))
             if copy_style:
                 cell.number_format = source.number_format
                 cell.font = source.font.copy()
@@ -139,15 +134,11 @@ def insert_rows(
                 cell.fill = source.fill.copy()
             if fill_formulae and source.data_type == Cell.TYPE_FORMULA:
                 s_coor = source.coordinate
-                if s_coor in self.formula_attributes and 'ref' not in self.formula_attributes[s_coor]:
+                if s_coor in self.formula_attributes and "ref" not in self.formula_attributes[s_coor]:
                     fa = self.formula_attributes[s_coor].copy()
                     self.formula_attributes[cell.coordinate] = fa
                 # print("Copying formula from cell %s%d to %s%d"%(col,row-1,col,row))
-                cell.value = re.sub(
-                    "(\$?[A-Z]{1,3}\$?)%d" % (row - 1),
-                    lambda m: m.group(1) + str(row),
-                    source.value
-                )
+                cell.value = re.sub(r"(\$?[A-Z]{1,3}\$?)%d" % (row - 1), lambda m: m.group(1) + str(row), source.value)
                 cell.data_type = Cell.TYPE_FORMULA
 
     # Check for Merged Cell Ranges that need to be expanded to contain new cells

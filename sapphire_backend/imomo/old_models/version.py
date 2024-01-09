@@ -1,4 +1,3 @@
-# -*- encoding: UTF-8 -*-
 from sqlalchemy import Column, String
 
 from .orm import ImomoBase
@@ -13,5 +12,5 @@ class ODMVersion(ImomoBase):
     Attributes:
         version_number: The version code for the schema (50 char limit).
     """
-    version_number = Column(String(50), default='1.1-imomo',
-                            nullable=False, unique=True)
+
+    version_number = Column(String(50), default="1.1-imomo", nullable=False, unique=True)

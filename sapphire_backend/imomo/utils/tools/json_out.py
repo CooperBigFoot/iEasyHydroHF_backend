@@ -1,4 +1,3 @@
-# -*- encoding: UTF-8 -*-
 import calendar
 import datetime
 import json
@@ -13,6 +12,7 @@ class ImomoEncoder(json.JSONEncoder):
     Currently it can process datetime.datetime objects by converting them
     to a UNIX timestamp.
     """
+
     def default(self, obj):
         if isinstance(obj, datetime.datetime):
             return calendar.timegm(obj.utctimetuple())

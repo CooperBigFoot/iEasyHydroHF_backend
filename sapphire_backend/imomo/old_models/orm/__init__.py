@@ -1,6 +1,4 @@
-# -*- encoding: UTF-8 -*-
-from .base import ImomoBase, CVMixin, session_required
-from .types import UTCDateTime, PasswordType
+from .base import CVMixin, ImomoBase, session_required
+from .types import PasswordType, UTCDateTime
 
-__all__ = ['ImomoBase', 'CVMixin', 'PasswordType', 'session_required',
-           'UTCDateTime']
+__all__ = ["ImomoBase", "CVMixin", "PasswordType", "session_required", "UTCDateTime"]

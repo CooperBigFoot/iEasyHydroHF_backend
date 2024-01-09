@@ -1,4 +1,3 @@
-# -*- encoding: UTF-8 -*-
 import datetime
 
 import pytz
@@ -16,8 +15,7 @@ def hydroyear_for_date(date_object):
     return date_object.year + 1
 
 
-def hydroyear_start_date(hydroyear, return_datetime=True,
-                         utc=True):
+def hydroyear_start_date(hydroyear, return_datetime=True, utc=True):
     """Retrieve the starting date for a given hydroyear.
 
     Args:

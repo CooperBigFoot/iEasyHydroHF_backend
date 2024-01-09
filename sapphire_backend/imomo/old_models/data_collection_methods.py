@@ -1,8 +1,8 @@
-# -*- encoding: UTF-8 -*-
 from enum import Enum as pyEnum
-from sqlalchemy import Column, Text, String, ForeignKey
 
-from .orm import ImomoBase, CVMixin
+from sqlalchemy import Column, ForeignKey, String, Text
+
+from .orm import CVMixin, ImomoBase
 
 
 class StandardMethods(pyEnum):
@@ -23,6 +23,7 @@ class Method(ImomoBase):
         method_description: Textual description of the method.
         method_link: URL to more information on the method (500 char limit).
     """
+
     method_description = Column(Text, nullable=False)
     method_link = Column(String(500))
 
@@ -32,6 +33,7 @@ class SampleTypeCV(ImomoBase, CVMixin):
 
     The attributes are as defined in the CVMixin class.
     """
+
     pass
 
 
@@ -50,10 +52,11 @@ class LabMethod(ImomoBase):
         lab_method_link: URL to more information on the method
                          (500 char limit).
     """
-    lab_name = Column(String(255), nullable=False, default='Unknown')
-    lab_organization = Column(String(255), nullable=False, default='Unknown')
-    lab_method_name = Column(String(255), nullable=False, default='Unknown')
-    lab_method_description = Column(Text, nullable=False, default='Unknown')
+
+    lab_name = Column(String(255), nullable=False, default="Unknown")
+    lab_organization = Column(String(255), nullable=False, default="Unknown")
+    lab_method_name = Column(String(255), nullable=False, default="Unknown")
+    lab_method_description = Column(Text, nullable=False, default="Unknown")
     lab_method_link = Column(String(500))
 
 
@@ -71,7 +74,7 @@ class Sample(ImomoBase):
                          the laboratory (50 char limit).
         lab_method_id: Foreign key to the associated laboratory method.
     """
+
     sample_type_id = Column(ForeignKey(SampleTypeCV.id), nullable=False)
     lab_sample_code = Column(String(50), nullable=False, unique=True)
-    lab_method_id = Column(ForeignKey(LabMethod.id),
-                           nullable=False, default=0)
+    lab_method_id = Column(ForeignKey(LabMethod.id), nullable=False, default=0)

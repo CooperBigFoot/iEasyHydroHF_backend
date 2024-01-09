@@ -1,27 +1,27 @@
-# -*- encoding: UTF-8 -*-
 import calendar
 import math
-
 from enum import Enum as pyEnum
-from sqlalchemy import Column, DateTime, Float, ForeignKey, UniqueConstraint, String
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import relationship
+
+from sapphire_backend.imomo.data_structs.standard_data import Variables
 
 from .data_collection_methods import Method, Sample
 from .data_qualifiers import Qualifier, QualityControlLevel
 from .data_sources import Source
 from .monitoring_site_locations import Site
-from .orm import ImomoBase, CVMixin, session_required
 from .offsets import OffsetType
+from .orm import CVMixin, ImomoBase, session_required
 from .variables import Variable
-from sapphire_backend.imomo.data_structs.standard_data import Variables
 
 
 class StandardCensorCodes(pyEnum):
-    not_censored = 'nc'
-    greater_than = 'gt'
-    non_detect = 'nd'
-    present_but_not_quantified = 'pnq'
-    less_than = 'lt'
+    not_censored = "nc"
+    greater_than = "gt"
+    non_detect = "nd"
+    present_but_not_quantified = "pnq"
+    less_than = "lt"
 
     @classmethod
     def default_censor_code_term(cls):
@@ -33,6 +33,7 @@ class CensorCodeCV(ImomoBase, CVMixin):
 
     The attributes are as defined in the CVMixin class.
     """
+
     pass
 
 
@@ -44,6 +45,7 @@ class DerivedFrom(ImomoBase):
     transactional integrity at the schema level, rather than at the application
     level.
     """
+
     pass
 
 
@@ -81,12 +83,18 @@ class DataValue(ImomoBase):
         derived_from: ORM relationship to the originating data value, if any.
         quality_control_level: ORM relationship to the quality control
                                qualifier.
-     """
+    """
 
     __table_args__ = (
-        UniqueConstraint('local_date_time', 'site_id', 'variable_id',
-                         'source_id', 'quality_control_level_id',
-                         name='repeated_data_integrity_check'),)
+        UniqueConstraint(
+            "local_date_time",
+            "site_id",
+            "variable_id",
+            "source_id",
+            "quality_control_level_id",
+            name="repeated_data_integrity_check",
+        ),
+    )
 
     data_value = Column(Float, nullable=False)
     value_accuracy = Column(Float)
@@ -95,8 +103,7 @@ class DataValue(ImomoBase):
     date_time_utc = Column(DateTime, nullable=False)
     ice_phenomena_string = Column(String, nullable=True)
     site_id = Column(ForeignKey(Site.id), nullable=False, index=True)
-    variable_id = Column(ForeignKey(Variable.id),
-                         nullable=False, index=True)
+    variable_id = Column(ForeignKey(Variable.id), nullable=False, index=True)
     offset_value = Column(Float)
     offset_type_id = Column(ForeignKey(OffsetType.id))
     censor_code_id = Column(ForeignKey(CensorCodeCV.id), nullable=False)
@@ -105,8 +112,7 @@ class DataValue(ImomoBase):
     source_id = Column(ForeignKey(Source.id), nullable=False)
     sample_id = Column(ForeignKey(Sample.id))
     derived_from_id = Column(ForeignKey(DerivedFrom.id))
-    quality_control_level_id = Column(ForeignKey(QualityControlLevel.id),
-                                      nullable=False)
+    quality_control_level_id = Column(ForeignKey(QualityControlLevel.id), nullable=False)
 
     site = relationship(Site)
     method = relationship(Method)
@@ -114,43 +120,37 @@ class DataValue(ImomoBase):
     source = relationship(Source)
     derived_from = relationship(DerivedFrom)
     quality_control_level = relationship(QualityControlLevel)
-    group_assoc = relationship('Group', cascade="all,delete")
+    group_assoc = relationship("Group", cascade="all,delete")
 
     def __repr__(self):
         if self.variable:
             variable_type = Variables(self.variable.variable_code).name
             unit = self.variable.variable_unit.unit_abbv
         else:
-            variable_type = ''
-            unit = ''
+            variable_type = ""
+            unit = ""
 
-        return '<DataValue: {value} {unit} @ "{date}" ' \
-               '(variable: {variable}, site_id: {site_id})>'.format(
-                    value=self.data_value,
-                    unit=unit,
-                    date=self.date_time_utc,
-                    site_id=self.site_id,
-                    variable=variable_type,
-                )
+        return (
+            f'<DataValue: {self.data_value} {unit} @ "{self.date_time_utc}" '
+            f"(variable: {variable_type}, site_id: {self.site_id})>"
+        )
 
     def to_jsonizable(self):
         if self.ice_phenomena_string is not None:
             return self.jsonize_ice_phenomenae()
         else:
-            json_ = super(DataValue, self).to_jsonizable(
-                ['ice_phenomena_string'])
+            json_ = super().to_jsonizable(["ice_phenomena_string"])
 
             if math.isnan(self.data_value):
-                json_['data_value'] = None
+                json_["data_value"] = None
 
             return json_
 
     def jsonize_ice_phenomenae(self):
-
         ice_phenomenae = list()
         for data_value in self.ice_phenomena_data_values:
-            ice_phenomena_data_value_json = super(DataValue, self).to_jsonizable(['ice_phenomena_string'])
-            ice_phenomena_data_value_json['data_value'] = data_value
+            ice_phenomena_data_value_json = super().to_jsonizable(["ice_phenomena_string"])
+            ice_phenomena_data_value_json["data_value"] = data_value
             ice_phenomenae.append(ice_phenomena_data_value_json)
 
         return ice_phenomenae
@@ -182,31 +182,29 @@ class DataValue(ImomoBase):
         Args:
             session: The session object to use to query the database.
         """
-        self.quality_control_level_id = session.query(
-            QualityControlLevel.id).filter(
-            QualityControlLevel.quality_control_level_code == '0').scalar()
+        self.quality_control_level_id = (
+            session.query(QualityControlLevel.id)
+            .filter(QualityControlLevel.quality_control_level_code == "0")
+            .scalar()
+        )
 
     @session_required
     def set_default_censor_code_id(self, session):
-        """"Sets the censor_code_id attribute to the default value.
+        """ "Sets the censor_code_id attribute to the default value.
 
         The value assigned refers to the censor code for not censored data.
 
         Args:
             session: The session object to use to query the database.
         """
-        self.censor_code_id = session.query(
-            CensorCodeCV.id).filter(
-            CensorCodeCV.term == 'nc').scalar()
+        self.censor_code_id = session.query(CensorCodeCV.id).filter(CensorCodeCV.term == "nc").scalar()
 
     def to_xml(self, element):
-        element.set('dataValue', str(self.data_value))
-        element.set('dateTimeUtc',
-                    str(calendar.timegm(self.date_time_utc.timetuple())))
-        element.set('localDateTime',
-                    str(calendar.timegm(self.local_date_time.timetuple())))
-        element.set('utcOffset',
-                    str(self.utc_offset))
+        element.set("dataValue", str(self.data_value))
+        element.set("dateTimeUtc", str(calendar.timegm(self.date_time_utc.timetuple())))
+        element.set("localDateTime", str(calendar.timegm(self.local_date_time.timetuple())))
+        element.set("utcOffset", str(self.utc_offset))
+
 
 class DerivedFromGroup(ImomoBase):
     """Table for the specific values from which another value was derived.
@@ -220,9 +218,8 @@ class DerivedFromGroup(ImomoBase):
         derived_from: ORM relationship to the derived from instance.
         value: ORM relationship to the originating data value instance.
     """
-    __table_args__ = (
-        UniqueConstraint('derived_from_id', 'value_id'),
-        )
+
+    __table_args__ = (UniqueConstraint("derived_from_id", "value_id"),)
 
     derived_from_id = Column(ForeignKey(DerivedFrom.id))
     value_id = Column(ForeignKey(DataValue.id))

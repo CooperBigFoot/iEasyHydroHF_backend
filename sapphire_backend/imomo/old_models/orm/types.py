@@ -1,8 +1,7 @@
-# -*- encoding: UTF-8 -*-
 import datetime
 
 # import pytz
-from sqlalchemy import DateTime, func, String, type_coerce, TypeDecorator
+from sqlalchemy import DateTime, String, TypeDecorator, func, type_coerce
 
 
 class PasswordType(TypeDecorator):
@@ -12,6 +11,7 @@ class PasswordType(TypeDecorator):
     https://bitbucket.org/zzzeek/sqlalchemy/wiki/UsageRecipes/DatabaseCrypt
     It is stored as a String of 60 characters in the database.
     """
+
     impl = String(60)
 
     def bind_expression(self, bindvalue):
@@ -19,7 +19,7 @@ class PasswordType(TypeDecorator):
 
         This uses the default encryption as defined by the PWD_CONTEXT global.
         """
-        return func.crypt(bindvalue, func.gen_salt('bf'))
+        return func.crypt(bindvalue, func.gen_salt("bf"))
 
     class comparator_factory(String.comparator_factory):
         def __eq__(self, other):
@@ -40,14 +40,22 @@ class UTCDateTime(TypeDecorator):
     the database because otherwise psycopg will store it in local time
     rather than the original UTC value.
     """
+
     impl = DateTime
 
     def process_bind_param(self, value, engine):
         if value is not None:
-            return value.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+            return value.astimezone(datetime.UTC).replace(tzinfo=None)
 
     def process_result_value(self, value, engine):
         if value is not None:
-            return datetime.datetime(value.year, value.month, value.day,
-                                     value.hour, value.minute, value.second,
-                                     value.microsecond, tzinfo=datetime.timezone.utc)
+            return datetime.datetime(
+                value.year,
+                value.month,
+                value.day,
+                value.hour,
+                value.minute,
+                value.second,
+                value.microsecond,
+                tzinfo=datetime.UTC,
+            )

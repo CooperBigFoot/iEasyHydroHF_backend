@@ -1,4 +1,3 @@
-# -*- encoding: UTF-8 -*-
 """The MIT License (MIT)
 
 Copyright (c) 2014 Hydrosolutions GmbH
@@ -21,16 +20,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
-from sqlalchemy import func, update
-
 from imomo.models import Units
 from imomo.utils.basic_data import connect
+from sqlalchemy import func, update
 
 
 @connect
 def trim_units(imomo_init):
-    statement = update(Units)\
-        .values(UnitsName=func.trim(Units.units_name))
+    statement = update(Units).values(UnitsName=func.trim(Units.units_name))
     conn = imomo_init._engine.connect()
     trans = conn.begin()
     try:
@@ -43,7 +40,7 @@ def trim_units(imomo_init):
 
 @connect
 def update_methods_seq(imomo_init):
-    statement = 'ALTER SEQUENCE methodid_methods_seq RESTART WITH 103'
+    statement = "ALTER SEQUENCE methodid_methods_seq RESTART WITH 103"
     conn = imomo_init._engine.connect()
     trans = conn.begin()
     try:

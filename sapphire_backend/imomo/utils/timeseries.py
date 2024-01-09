@@ -1,8 +1,9 @@
-
 import calendar
 import datetime
+
 # import pytz
 from datetime import timedelta
+
 from dateutil.relativedelta import relativedelta
 
 from sapphire_backend.imomo import errors
@@ -19,7 +20,7 @@ def get_year_decade_from_data(date_time):
     try:
         current_month_decade = day_to_decade_map[date_time.day]
     except IndexError:
-        raise errors.IMomoError('Invalid decade date time')
+        raise errors.IMomoError("Invalid decade date time")
 
     return full_month_decades + current_month_decade
 
@@ -71,21 +72,21 @@ def get_day_in_period_fiveday(date):
 
 def get_period_date(date, frequency):
     date = datetime.date(date.year, date.month, date.day)
-    if frequency == 'monthly':
+    if frequency == "monthly":
         return get_month_period(date)
-    if frequency == 'decade':
+    if frequency == "decade":
         return get_decade_period(date)
-    if frequency == 'pentadal':
+    if frequency == "pentadal":
         return get_fiveday_period(date)
 
 
 def get_day_in_period(date, frequency):
     date = datetime.date(date.year, date.month, date.day)
-    if frequency == 'monthly':
+    if frequency == "monthly":
         return get_day_in_period_month(date)
-    if frequency == 'decade':
+    if frequency == "decade":
         return get_day_in_period_decade(date)
-    if frequency == 'pentadal':
+    if frequency == "pentadal":
         return get_day_in_period_fiveday(date)
 
 
@@ -112,8 +113,7 @@ def get_current_period_details(date, issue_date_offset, frequency):
     date = datetime.datetime(date.year, date.month, date.day, tzinfo=pytz.utc)
     first_day, last_day = get_period_date(date, frequency)
 
-    issue_date = get_issue_date(
-        first_day, last_day, issue_date_offset, frequency)
+    issue_date = get_issue_date(first_day, last_day, issue_date_offset, frequency)
 
     return first_day, last_day, issue_date
 
@@ -125,8 +125,7 @@ def get_next_period_details(date, issue_date_offset, frequency):
 
     first_day, last_day = get_period_date(first_day_in_next_period, frequency)
 
-    issue_date = get_issue_date(
-        first_day, last_day, issue_date_offset, frequency)
+    issue_date = get_issue_date(first_day, last_day, issue_date_offset, frequency)
 
     return first_day, last_day, issue_date
 
@@ -151,14 +150,11 @@ def get_fiveday_interval(date):
 
     for interval_start, fiveday_date, interval_end in five_day_intervals:
         if interval_start <= date.day <= interval_end:
-            interval_start = date.replace(
-                day=interval_start, hour=12, minute=0, second=0, microsecond=0)
+            interval_start = date.replace(day=interval_start, hour=12, minute=0, second=0, microsecond=0)
 
-            fiveday_datetime = date.replace(
-                day=fiveday_date, hour=12, minute=0, second=0, microsecond=0)
+            fiveday_datetime = date.replace(day=fiveday_date, hour=12, minute=0, second=0, microsecond=0)
 
-            interval_end = date.replace(
-                day=interval_end, hour=12, minute=0, second=0, microsecond=0)
+            interval_end = date.replace(day=interval_end, hour=12, minute=0, second=0, microsecond=0)
 
             return interval_start, fiveday_datetime, interval_end
 
@@ -221,12 +217,9 @@ def get_decade_interval(date):
 
     for interval_start, decade_date, interval_end in decade_intervals:
         if interval_start <= date.day <= interval_end:
-            interval_start = date.replace(
-                day=interval_start, hour=12, minute=0, second=0, microsecond=0)
-            decade_datetime = date.replace(
-                day=decade_date, hour=12, minute=0, second=0, microsecond=0)
-            interval_end = date.replace(
-                day=interval_end, hour=12, minute=0, second=0, microsecond=0)
+            interval_start = date.replace(day=interval_start, hour=12, minute=0, second=0, microsecond=0)
+            decade_datetime = date.replace(day=decade_date, hour=12, minute=0, second=0, microsecond=0)
+            interval_end = date.replace(day=interval_end, hour=12, minute=0, second=0, microsecond=0)
 
             return interval_start, decade_datetime, interval_end
 
@@ -287,9 +280,7 @@ def get_decade_date_from_params(year, month, decade_in_month):
         2: 15,
         3: 25,
     }
-    _, date, _ = get_decade_interval(datetime.datetime(
-        year, month, decade_to_date[decade_in_month], tzinfo=pytz.utc
-    ))
+    _, date, _ = get_decade_interval(datetime.datetime(year, month, decade_to_date[decade_in_month], tzinfo=pytz.utc))
     return date
 
 
@@ -300,12 +291,9 @@ def get_month_date_from_params(year, month):
 
 def get_month_interval(date):
     month_range = calendar.monthrange(date.year, date.month)[1]
-    interval_start_datetime = date.replace(
-        day=1, hour=12, minute=0, second=0, microsecond=0)
-    decade_datetime = date.replace(
-        day=15, hour=12, minute=0, second=0, microsecond=0)
-    interval_end_datetime = date.replace(
-        day=month_range, hour=12, minute=0, second=0, microsecond=0)
+    interval_start_datetime = date.replace(day=1, hour=12, minute=0, second=0, microsecond=0)
+    decade_datetime = date.replace(day=15, hour=12, minute=0, second=0, microsecond=0)
+    interval_end_datetime = date.replace(day=month_range, hour=12, minute=0, second=0, microsecond=0)
     return interval_start_datetime, decade_datetime, interval_end_datetime
 
 
