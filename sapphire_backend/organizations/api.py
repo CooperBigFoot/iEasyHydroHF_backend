@@ -189,7 +189,8 @@ class OrganizationsAPIController:
         user_dict["organization"] = organization
         try:
             user = User.objects.create(**user_dict)
-        except IntegrityError:
+        except IntegrityError as e:
+            print(e)
             return 400, {"message": _("Username already taken"), "field": "username"}
 
         return 201, user

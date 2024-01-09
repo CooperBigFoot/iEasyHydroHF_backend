@@ -20,7 +20,7 @@ class OrganizationUpdateSchema(ModelSchema):
 
 class OrganizationOutputDetailSchema(UUIDSchemaMixin, OrganizationInputSchema):
     id: int
-    timezone: str = Field(None, alias="get_timezone_display")
+    timezone: str | None = Field(None, alias="get_timezone_display")
 
 
 class OrganizationOutputListSchema(UUIDSchemaMixin, Schema):

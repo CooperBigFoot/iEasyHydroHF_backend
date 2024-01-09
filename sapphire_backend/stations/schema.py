@@ -58,7 +58,7 @@ class SiteOutputSchema(SiteBaseSchema, SiteBasinRegionOutputSchema):
     id: int
     uuid: str
     organization_uuid: str
-    timezone: str = Field(None, alias="get_timezone_display")
+    timezone: str | None = Field(None, alias="get_timezone_display")
 
     @staticmethod
     def resolve_organization_uuid(obj):
