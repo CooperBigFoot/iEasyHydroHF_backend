@@ -19,7 +19,7 @@ services:
       - "traefik.http.routers.django.tls.certresolver=myresolver"
 
   timescale:
-    image: timescale/timescaledb:latest-pg13
+    image: timescale/timescaledb:latest-pg16
     env_file:
       - .backend.env
     volumes:
