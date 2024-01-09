@@ -20,15 +20,17 @@ from sapphire_backend.metrics.models import MeteorologicalMetric, HydrologicalMe
 from sapphire_backend.organizations.models import Organization, Basin, Region
 from sapphire_backend.stations.models import Site, HydrologicalStation, MeteorologicalStation
 
-LIST_SITES_ALREADY_EXISTING = []
 nan_count = 0
+
+MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ = {}
+MAP_OLD_SITE_CODE_TO_NEW_SITE_OBJ = {}
+LIMITER = -100 # FOR DEBUGGING PURPOSES, FOR PRODUCTION NEEDS TO BE 0
 
 
 def migrate_organizations(old_session):
-    old_data = old_session.query(OldSource).all()
+    old_data = old_session.query(OldSource).order_by(OldSource.id).all()
     # Configure Django connection to the new database
     for old in tqdm(old_data, desc='Organizations'):
-        # print(old)
         if old.year_type == 'hydro_year':
             year_type = Organization.YearType.HYDROLOGICAL
         else:
@@ -38,7 +40,6 @@ def migrate_organizations(old_session):
         else:
             language = Organization.Language.ENGLISH
         new_record = Organization(
-            id=old.id,
             name=old.organization,
             description=old.source_description or "",
             url=old.source_link or "",
@@ -56,6 +57,7 @@ def migrate_organizations(old_session):
             is_active=True
         )
         new_record.save()
+        MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ[old.id] = new_record
 
 
 def get_or_create_basin(basin_name: str, organization: Organization):
@@ -77,8 +79,7 @@ def get_or_create_region(region_name: str, organization: Organization):
     return region
 
 
-def get_or_create_site(name,
-                       original_code,
+def get_or_create_site(old_site_code_repr,
                        organization: Organization,
                        country,
                        basin: Basin,
@@ -88,10 +89,9 @@ def get_or_create_site(name,
                        elevation,  # TODO figure out
                        timezone=None,  # TODO figure out
                        ):
-    site = Site.objects.filter(name=name).first()
+    site = MAP_OLD_SITE_CODE_TO_NEW_SITE_OBJ.get(old_site_code_repr, None)
     if site is None:
         site = Site(
-            name=name,
             organization=organization,
             country=country,
             basin=basin,
@@ -102,8 +102,7 @@ def get_or_create_site(name,
             elevation=elevation,  # TODO not available in old,figure out
         )
         site.save()
-    else:
-        LIST_SITES_ALREADY_EXISTING.append(original_code)
+        MAP_OLD_SITE_CODE_TO_NEW_SITE_OBJ[old_site_code_repr] = site
     return site
 
 
@@ -172,12 +171,12 @@ def get_metric_name_unit(variable: Variable):
 
 
 def migrate_sites_and_stations(old_session):
-    old_data = old_session.query(OldSite).all()
+    old_data = old_session.query(OldSite).order_by(OldSite.id).all()
     cnt_hydro = 0
     cnt_meteo = 0
     cnt_virtual = 0
     for old in tqdm(old_data, desc='Stations', position=0):
-        organization = Organization.objects.get(id=old.source_id)
+        organization = MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ[old.source_id]
 
         # logic for basins, hydro stations basins are prioritized, so if there are both hydro and meteo
         # of the same code, the hydro basin will be created in DB and referenced by Site model
@@ -194,8 +193,7 @@ def migrate_sites_and_stations(old_session):
             basin = get_or_create_basin(basin_name=old.basin,
                                         organization=organization)
         site = get_or_create_site(
-            name=old.site_code_repr,
-            original_code=old.site_code,
+            old_site_code_repr=old.site_code_repr,
             organization=organization,
             country=old.country,
             basin=basin,
@@ -243,10 +241,11 @@ def migrate_sites_and_stations(old_session):
 def migrate_meteo_metrics(old_session):
     old_data = old_session.query(OldSite).all()
     meteo_stations = [station for station in old_data if station.site_type == 'meteo']
-    for old in tqdm(meteo_stations, desc='Meteo stations', position=0): # TODO limiter remove
+    for old in tqdm(meteo_stations, desc='Meteo stations', position=0):  # TODO limiter remove
         meteo_station = MeteorologicalStation.objects.get(station_code=old.site_code_repr)
 
-        for data_row in tqdm(old.data_values[:], desc='Meteo metrics', position=1, leave=False): # TODO remove limit
+        for data_row in tqdm(old.data_values[LIMITER:], desc='Meteo metrics', position=1,
+                             leave=False):  # TODO remove limit
             naive_datetime = data_row.date_time_utc
             aware_datetime_utc = timezone.make_aware(naive_datetime,
                                                      timezone=zoneinfo.ZoneInfo('UTC'))  # TODO double check this
@@ -268,9 +267,10 @@ def migrate_hydro_metrics(old_session):
     global nan_count
     old_data = old_session.query(OldSite).all()
     hydro_stations = [station for station in old_data if station.site_type == 'discharge']
-    for old in tqdm(hydro_stations, desc='Hydro stations', position=0): # TODO remove limiter
+    for old in tqdm(hydro_stations, desc='Hydro stations', position=0):
         hydro_station = HydrologicalStation.objects.get(station_code=old.site_code_repr)
-        for data_row in tqdm(old.data_values[:], desc='Hydro metrics', position=1, leave=False): # TODO remove limit
+        for data_row in tqdm(old.data_values[LIMITER:], desc='Hydro metrics', position=1,
+                             leave=False):  # TODO remove limit
             naive_datetime = data_row.date_time_utc
             aware_datetime_utc = timezone.make_aware(naive_datetime,
                                                      timezone=zoneinfo.ZoneInfo('UTC'))  # TODO double check this
@@ -282,7 +282,6 @@ def migrate_hydro_metrics(old_session):
                 hydro_station.discharge_level_alarm = data_value
                 hydro_station.save()
                 continue
-
 
             metric_name, metric_unit = get_metric_name_unit(data_row.variable)
 
@@ -352,13 +351,13 @@ def migrate():
     Session = sessionmaker(bind=old_db_engine)
     old_session = Session()
     cleanup_all()
+    if LIMITER != 0:
+        logging.info(f"Starting migrations in debugging mode (LIMITER = {LIMITER})")
     migrate_organizations(old_session)
     migrate_sites_and_stations(old_session)
     migrate_meteo_metrics(old_session)
     migrate_hydro_metrics(old_session)
-
-    migrate_virtual_metrics(old_session)  # TODO
-    print(LIST_SITES_ALREADY_EXISTING)
-    print(len(LIST_SITES_ALREADY_EXISTING))
+    #
+    # migrate_virtual_metrics(old_session)  # TODO
     old_session.close()
     print("Data migration completed successfully.")
