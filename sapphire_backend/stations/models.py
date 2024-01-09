@@ -11,7 +11,6 @@ User = get_user_model()
 
 
 class Site(UUIDMixin, models.Model):
-    name = models.CharField(verbose_name=_("Name"), blank=False, max_length=150)
     organization = models.ForeignKey(
         "organizations.Organization",
         to_field="uuid",
@@ -39,10 +38,13 @@ class Site(UUIDMixin, models.Model):
         blank=False,
     )
     latitude = models.FloatField(
-        verbose_name=_("Latitude"), validators=[MinValueValidator(-90), MaxValueValidator(90)]
+        verbose_name=_("Latitude"), validators=[MinValueValidator(-90), MaxValueValidator(90)], null=True, blank=True
     )
     longitude = models.FloatField(
-        verbose_name=_("Longitude"), validators=[MinValueValidator(-180), MaxValueValidator(180)]
+        verbose_name=_("Longitude"),
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        null=True,
+        blank=True,
     )
     timezone = TimeZoneField(verbose_name=_("Station timezone"), null=True, blank=True)
     elevation = models.FloatField(verbose_name=_("Elevation in meters"), blank=True, null=True)
@@ -50,11 +52,10 @@ class Site(UUIDMixin, models.Model):
     class Meta:
         verbose_name = _("Site")
         verbose_name_plural = _("Sites")
-        ordering = ["name"]
         indexes = [models.Index("uuid", name="site_uuid_idx")]
 
     def __str__(self):
-        return self.name
+        return str(self.uuid)
 
 
 class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
@@ -62,7 +63,7 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
         MANUAL = "M", _("Manual")
         AUTOMATIC = "A", _("Automatic")
 
-    name = models.CharField(verbose_name=_("Station name"), blank=True, max_length=150)
+    name = models.CharField(verbose_name=_("Station name"), max_length=150)
     description = models.TextField(verbose_name=_("Description"), blank=True)
     site = models.ForeignKey(
         "stations.Site",
@@ -101,11 +102,11 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
         indexes = [models.Index("uuid", name="hydro_station_uuid_idx")]
 
     def __str__(self):
-        return self.name or self.site.name
+        return self.name
 
 
 class MeteorologicalStation(UUIDMixin, models.Model):
-    name = models.CharField(verbose_name=_("Station name"), blank=True, max_length=150)
+    name = models.CharField(verbose_name=_("Station name"), max_length=150)
     description = models.TextField(verbose_name=_("Description"), blank=True)
     station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=True)
     site = models.ForeignKey(
@@ -126,7 +127,7 @@ class MeteorologicalStation(UUIDMixin, models.Model):
         indexes = [models.Index("uuid", name="meteo_station_uuid_idx")]
 
     def __str__(self):
-        return self.name or self.site.name
+        return self.name
 
 
 class Remark(UUIDMixin, CreateLastModifiedDateMixin, models.Model):

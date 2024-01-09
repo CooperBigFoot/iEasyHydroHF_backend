@@ -5,9 +5,8 @@ from .models import HydrologicalStation, MeteorologicalStation, Remark, Site
 
 @admin.register(Site)
 class SiteAdmin(admin.ModelAdmin):
-    list_display = ["name", "organization", "basin", "region", "uuid"]
+    list_display = ["organization", "basin", "region", "uuid"]
     list_filter = ["organization", "basin", "region"]
-    search_fields = ["name"]
     readonly_fields = ["uuid"]
 
 
