@@ -32,7 +32,7 @@ User = get_user_model()
     "basins/{organization_uuid}",
     tags=["Basins"],
     auth=JWTAuth(),
-    permissions=[OrganizationExists],
+    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)],
 )
 class BasinsAPIController:
     @route.post("", response={201: BasinOutputSchema})
@@ -79,7 +79,7 @@ class BasinsAPIController:
     "regions/{organization_uuid}",
     tags=["Regions"],
     auth=JWTAuth(),
-    permissions=[OrganizationExists],
+    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)],
 )
 class RegionsAPIController:
     @route.post("", response={201: RegionOutputSchema})
@@ -179,7 +179,7 @@ class OrganizationsAPIController:
 
     @route.post(
         "{organization_uuid}/members/add",
-        response={200: UserOutputDetailSchema, 400: FieldMessage},
+        response={201: UserOutputDetailSchema, 400: FieldMessage},
         permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
         url_name="add-organization-member",
     )
@@ -189,7 +189,8 @@ class OrganizationsAPIController:
         user_dict["organization"] = organization
         try:
             user = User.objects.create(**user_dict)
-        except IntegrityError:
+        except IntegrityError as e:
+            print(e)
             return 400, {"message": _("Username already taken"), "field": "username"}
 
-        return user
+        return 201, user

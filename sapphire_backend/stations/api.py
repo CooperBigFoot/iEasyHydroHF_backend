@@ -1,119 +1,137 @@
 from django.db import IntegrityError
+from django.db.models import Q
+from django.db.models.aggregates import Count
+from django.http import HttpRequest
 from django.utils.translation import gettext as _
 from ninja import Query
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
-from sapphire_backend.organizations.models import Organization
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OrganizationExists
 
-from .models import Remark, Station
+from .models import HydrologicalStation, Remark, Site
 from .schema import (
+    HydrologicalStationFilterSchema,
+    HydroStationInputSchema,
+    HydroStationOutputDetailSchema,
+    HydroStationUpdateSchema,
     RemarkInputSchema,
     RemarkOutputSchema,
-    StationFilterSchema,
-    StationInputSchema,
-    StationOutputDetailSchema,
-    StationUpdateSchema,
 )
 
 
 @api_controller(
-    "stations/{organization_uuid}",
-    tags=["Stations"],
+    "stations/{organization_uuid}/hydrological",
+    tags=["Hydrological stations"],
     auth=JWTAuth(),
     permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
 )
 class StationsAPIController:
-    @route.post("", response={201: StationOutputDetailSchema, 400: Message})
-    def create_station(self, request, organization_uuid: str, station_data: StationInputSchema):
+    @route.post("", response={201: HydroStationOutputDetailSchema, 400: Message})
+    def create_hydrological_station(
+        self, request: HttpRequest, organization_uuid: str, station_data: HydroStationInputSchema
+    ):
         try:
-            organization = Organization.objects.get(uuid=organization_uuid)
             station_dict = station_data.dict()
-            station_dict["organization"] = organization
-            station = Station.objects.create(**station_dict)
+            site_uuid = station_dict.pop("site_uuid", None)
+            site_data = station_dict.pop("site_data", {})
+            if not site_uuid:
+                site_data["organization_id"] = organization_uuid
+                site = Site.objects.create(**site_data)
+                station_dict["site_id"] = site.uuid
+            else:
+                station_dict["site_id"] = site_uuid
+                site = Site.objects.get(uuid=site_uuid)
+
+            station = HydrologicalStation.objects.create(**station_dict)
         except IntegrityError:
-            return 400, {"detail": _("Station with the same code already exists."), "code": "duplicate_station"}
+            return 400, {
+                "detail": _("Hydrological station with the same code already exists."),
+                "code": "duplicate_station",
+            }
 
         return 201, station
 
-    @route.get("", response=list[StationOutputDetailSchema])
-    def get_stations(self, request, organization_uuid: str, station_type_filter: StationFilterSchema = Query(...)):
-        stations = Station.objects.filter(organization__uuid=organization_uuid, is_deleted=False)
-        if station_type_filter.station_type:
-            stations = stations.filter(station_type=station_type_filter.station_type.value)
-        return stations.select_related("organization", "basin", "region").prefetch_related("remarks")
+    @route.get("", response=list[HydroStationOutputDetailSchema])
+    def get_hydrological_stations(
+        self,
+        request: HttpRequest,
+        organization_uuid: str,
+        filters: Query[HydrologicalStationFilterSchema],
+    ):
+        stations = HydrologicalStation.objects.filter(
+            site__organization__uuid=organization_uuid, is_deleted=False, **filters.dict(exclude_unset=True)
+        )
+        return stations.select_related("site", "site__organization", "site__region", "site__basin")
 
     @route.get("stats")
-    def get_stations_stats(self, request, organization_uuid: str):
-        stats = {}
-        stations = Station.objects.filter(organization__uuid=organization_uuid, is_deleted=False)
+    def get_hydrological_stations_stats(self, request: HttpRequest, organization_uuid: str):
+        station_type = HydrologicalStation.StationType
+        stations = HydrologicalStation.objects.filter(site__organization__uuid=organization_uuid, is_deleted=False)
+        stats_aggr = stations.aggregate(
+            cnt_total=Count("id"),
+            cnt_manual=Count("id", filter=Q(station_type=station_type.MANUAL)),
+            cnt_auto=Count("id", filter=Q(station_type=station_type.AUTOMATIC)),
+        )
 
-        station_type = Station.StationType
+        return stats_aggr
 
-        stats["cnt_total"] = stations.count()
-        stats["cnt_manual"] = stations.filter(is_automatic=False).count()
-        stats["cnt_auto"] = stations.filter(is_automatic=True).count()
-        stats["cnt_hydro_total"] = stations.filter(station_type=station_type.HYDROLOGICAL.value).count()
-        stats["cnt_hydro_auto"] = stations.filter(
-            station_type=station_type.HYDROLOGICAL.value, is_automatic=True
-        ).count()
-        stats["cnt_hydro_manual"] = stations.filter(
-            station_type=station_type.HYDROLOGICAL.value, is_automatic=False
-        ).count()
-        stats["cnt_meteo_total"] = stations.filter(station_type=station_type.METEOROLOGICAL.value).count()
-        stats["cnt_meteo_auto"] = stations.filter(
-            station_type=station_type.METEOROLOGICAL.value, is_automatic=True
-        ).count()
-        stats["cnt_meteo_manual"] = stations.filter(
-            station_type=station_type.METEOROLOGICAL.value, is_automatic=False
-        ).count()
-
-        return stats
-
-    @route.get("{station_uuid}", response={200: StationOutputDetailSchema, 404: Message})
-    def get_station(self, request, organization_uuid: str, station_uuid: str):
+    @route.get("{station_uuid}", response={200: HydroStationOutputDetailSchema, 404: Message})
+    def get_hydrological_station(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
         try:
-            return 200, Station.objects.get(uuid=station_uuid, is_deleted=False)
-        except Station.DoesNotExist:
+            return 200, HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
+        except HydrologicalStation.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
 
     @route.delete("{station_uuid}", response={200: Message, 400: Message, 404: Message})
-    def delete_station(self, request, organization_uuid: str, station_uuid: str):
+    def delete_hydrological_station(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
         try:
-            station = Station.objects.get(uuid=station_uuid, is_deleted=False)
+            station = HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
             station.is_deleted = True
             station.save()
             return 200, {"detail": _(f"{station.name} station successfully deleted"), "code": "success"}
-        except Station.DoesNotExist:
+        except HydrologicalStation.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
         except IntegrityError:
             return 400, {"detail": _("Station could not be deleted."), "code": "error"}
 
-    @route.put("{station_uuid}", response={200: StationOutputDetailSchema, 404: Message})
-    def update_station(self, request, organization_uuid: str, station_uuid: str, station_data: StationUpdateSchema):
+    @route.put("{station_uuid}", response={200: HydroStationOutputDetailSchema, 404: Message})
+    def update_station(
+        self, request: HttpRequest, organization_uuid: str, station_uuid: str, station_data: HydroStationUpdateSchema
+    ):
         try:
-            station = Station.objects.get(uuid=station_uuid, is_deleted=False)
-            for attr, value in station_data.dict(exclude_unset=True).items():
+            station = HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
+            station_dict = station_data.dict(exclude_unset=True)
+            site_data = station_dict.pop("site_data", {})
+            if site_data:
+                site = station.site
+                for attr, value in site_data.items():
+                    setattr(site, attr, value)
+                site.save()
+
+            for attr, value in station_dict.items():
                 setattr(station, attr, value)
+
             station.save()
             return 200, station
-        except Station.DoesNotExist:
+        except HydrologicalStation.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
 
     @route.post("{station_uuid}/remarks", response={200: RemarkOutputSchema})
-    def create_remark(self, request, organization_uuid: str, station_uuid: str, remark_data: RemarkInputSchema):
+    def create_remark(
+        self, request: HttpRequest, organization_uuid: str, station_uuid: str, remark_data: RemarkInputSchema
+    ):
         remark_dict = remark_data.dict()
         remark_dict["user"] = request.user
-        remark_dict["station_id"] = station_uuid
+        remark_dict["hydro_station_id"] = station_uuid
 
         remark = Remark.objects.create(**remark_dict)
 
         return remark
 
     @route.delete("remarks/{remark_uuid}", response={200: Message})
-    def delete_remark(self, request, organization_uuid: str, remark_uuid: str):
+    def delete_remark(self, request: HttpRequest, organization_uuid: str, remark_uuid: str):
         try:
             Remark.objects.filter(uuid=remark_uuid).delete()
             return 200, {"detail": _("Remark deleted successfully"), "code": "success"}

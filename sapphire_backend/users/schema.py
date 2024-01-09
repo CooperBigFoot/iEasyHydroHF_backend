@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from ninja import Field, ModelSchema
+from ninja import Field, Schema
 
 from sapphire_backend.organizations.schema import OrganizationOutputListSchema
 from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
@@ -8,30 +8,23 @@ from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
 User = get_user_model()
 
 
-class UserInputSchema(ModelSchema):
-    class Config:
-        model = User
-        model_fields = ["username", "email", "user_role", "language", "is_active"]
+class UserInputSchema(Schema):
+    username: str
+    email: str
+    user_role: User.UserRoles
+    language: User.Language
+    is_active: bool | None = True
+    first_name: str | None = ""
+    last_name: str | None = ""
+    contact_phone: str | None = ""
 
-    first_name: str | None
-    last_name: str | None
-    contact_phone: str | None
 
-
-class UserUpdateSchema(ModelSchema):
-    class Config:
-        model = User
-        model_fields = [
-            "username",
-            "email",
-            "user_role",
-            "first_name",
-            "last_name",
-            "contact_phone",
-            "language",
-            "is_active",
-        ]
-        model_fields_optional = "__all__"
+class UserUpdateSchema(UserInputSchema):
+    username: str | None = None
+    email: str | None = None
+    user_role: User.UserRoles | None = None
+    language: User.Language | None = None
+    is_active: bool | None = None
 
 
 class UserOutputListSchema(UserInputSchema, UUIDSchemaMixin):
@@ -51,4 +44,4 @@ class UserOutputListSchema(UserInputSchema, UUIDSchemaMixin):
 
 class UserOutputDetailSchema(UserOutputListSchema):
     id: int
-    organization: OrganizationOutputListSchema = None
+    organization: OrganizationOutputListSchema | None = None

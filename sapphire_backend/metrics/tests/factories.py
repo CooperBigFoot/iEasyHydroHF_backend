@@ -2,67 +2,38 @@ import factory
 from faker import Faker
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.stations.tests.factories import SensorFactory
+from sapphire_backend.stations.tests.factories import HydrologicalStationFactory, MeteorologicalStationFactory
 
-from ..models import AirTemperature, Precipitation, WaterDischarge, WaterLevel, WaterTemperature, WaterVelocity
+from ..models import HydrologicalMetric, MeteorologicalMetric
 
 fake = Faker()
 
 
-class MetricFactoryMixin(factory.django.DjangoModelFactory):
+class HydrologicalMetricFactory(factory.django.DjangoModelFactory):
     timestamp = fake.date_time(tzinfo=ZoneInfo("UTC"))
-    sensor = factory.SubFactory(SensorFactory)
-
-
-class AirTemperatureFactory(MetricFactoryMixin):
-    value = fake.pydecimal(left_digits=2, right_digits=6, min_value=0, max_value=45)
-    unit = "°C"
-
-    class Meta:
-        model = AirTemperature
-        django_get_or_create = ("timestamp", "sensor")
-
-
-class PrecipitationFactory(MetricFactoryMixin):
-    value = fake.pydecimal(left_digits=2, right_digits=6, min_value=0, max_value=20)
-    unit = "mm"
+    station = factory.SubFactory(HydrologicalStationFactory)
+    min_value = fake.pydecimal(left_digits=2, right_digits=6, min_value=0, max_value=10)
+    avg_value = fake.pydecimal(left_digits=2, right_digits=6, min_value=10, max_value=20)
+    max_value = fake.pydecimal(left_digits=2, right_digits=6, min_value=20, max_value=30)
+    value_type = HydrologicalMetric.MeasurementType.UNKNOWN
+    metric_name = HydrologicalMetric.MetricName.WATER_LEVEL
+    sensor_identifier = fake.ean(length=8)
+    sensor_type = fake.color_name()
+    unit = ""
 
     class Meta:
-        model = Precipitation
-        django_get_or_create = ("timestamp", "sensor")
+        model = HydrologicalMetric
+        django_get_or_create = ("timestamp", "station_id", "sensor_identifier", "metric_name")
 
 
-class WaterTemperatureFactory(MetricFactoryMixin):
-    value = fake.pydecimal(left_digits=2, right_digits=6, min_value=0, max_value=28)
-    unit = "°C"
-
-    class Meta:
-        model = WaterTemperature
-        django_get_or_create = ("timestamp", "sensor")
-
-
-class WaterDischargeFactory(MetricFactoryMixin):
-    value = fake.pydecimal(left_digits=3, right_digits=6, min_value=0, max_value=1000)
-    unit = "m³/s"
+class MeteorologicalMetricFactory(factory.django.DjangoModelFactory):
+    timestamp = fake.date_time(tzinfo=ZoneInfo("UTC"))
+    value = fake.pydecimal(left_digits=2, right_digits=6, min_value=10, max_value=20)
+    station = factory.SubFactory(MeteorologicalStationFactory)
+    metric_name = MeteorologicalMetric.MetricName.AIR_TEMPERATURE
+    value_type = MeteorologicalMetric.MeasurementType.UNKNOWN
+    unit = ""
 
     class Meta:
-        model = WaterDischarge
-        django_get_or_create = ("timestamp", "sensor")
-
-
-class WaterVelocityFactory(MetricFactoryMixin):
-    value = fake.pydecimal(left_digits=1, right_digits=6, min_value=1, max_value=4)
-    unit = "m/s"
-
-    class Meta:
-        model = WaterVelocity
-        django_get_or_create = ("timestamp", "sensor")
-
-
-class WaterLevelFactory(MetricFactoryMixin):
-    value = fake.pydecimal(left_digits=2, right_digits=6, min_value=1, max_value=20)
-    unit = "m"
-
-    class Meta:
-        model = WaterLevel
-        django_get_or_create = ("timestamp", "sensor")
+        model = MeteorologicalMetric
+        django_get_or_create = ("timestamp", "station_id", "metric_name")

@@ -1,5 +1,6 @@
 from ninja import Schema
 from ninja_jwt.schema import TokenObtainPairInputSchema
+from ninja_jwt.tokens import RefreshToken
 
 from ..schema import UserOutputDetailSchema
 
@@ -11,11 +12,14 @@ class TokenObtainOutputSchema(Schema):
 
 
 class TokenObtainInputSchema(TokenObtainPairInputSchema):
-    def to_response_schema(self) -> Schema:
-        _schema_type = self.get_response_schema()
-        out_dict = self.dict(exclude={"password", "username"})
-        out_dict.update(user=UserOutputDetailSchema.from_orm(self._user))
-        return _schema_type(**out_dict)
+    @classmethod
+    def get_token(cls, user) -> dict:
+        values = {}
+        refresh = RefreshToken.for_user(user)
+        values["refresh"] = str(refresh)
+        values["access"] = str(refresh.access_token)
+        values.update(user=UserOutputDetailSchema.from_orm(user))
+        return values
 
     @classmethod
     def get_response_schema(cls) -> type[Schema]:

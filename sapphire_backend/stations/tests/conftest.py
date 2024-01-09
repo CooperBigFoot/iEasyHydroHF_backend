@@ -1,44 +1,31 @@
-from datetime import datetime as dt
-
 import pytest
-from django.conf import settings
 from pytest_factoryboy import register
-from zoneinfo import ZoneInfo
 
-from .factories import SensorFactory, StationFactory
+from .factories import HydrologicalStation, HydrologicalStationFactory, SiteFactory
 
-register(SensorFactory)
-register(StationFactory)
-
-
-@pytest.fixture
-def manual_station(db, station_factory):
-    return station_factory.create(name="Manual station", is_automatic=False)
+register(SiteFactory)
+register(HydrologicalStationFactory)
 
 
 @pytest.fixture
-def automatic_station(db, station_factory):
-    return station_factory.create(name="Automatic station", is_automatic=True)
+def site_one(db, site_factory):
+    return site_factory.create("Site one")
 
 
 @pytest.fixture
-def default_sensor(db, sensor_factory, automatic_station):
-    return sensor_factory.create(
-        name=f"Default sensor {automatic_station.name}",
-        station=automatic_station,
-        installation_date=dt(2022, 1, 1, tzinfo=ZoneInfo(settings.TIME_ZONE)),
+def site_two(db, site_factory):
+    return site_factory.create("Site two")
+
+
+@pytest.fixture
+def manual_hydro_station(db, hydro_station_factory):
+    return hydro_station_factory.create(
+        name="Manual hydro station", site=site_one, station_type=HydrologicalStation.StationType.MANUAL
     )
 
 
 @pytest.fixture
-def inactive_sensor(db, sensor_factory, automatic_station):
-    return sensor_factory.create(name=f"Inactive sensor {automatic_station.name}", station=automatic_station)
-
-
-@pytest.fixture
-def extra_sensor(db, sensor_factory, automatic_station):
-    return sensor_factory.create(
-        name=f"Extra sensor {automatic_station.name}",
-        station=automatic_station,
-        installation_date=dt(2023, 1, 1, tzinfo=ZoneInfo(settings.TIME_ZONE)),
+def automatic_hydro_station(db, hydro_station_factory):
+    return hydro_station_factory.create(
+        name="Manual hydro station", site=site_one, station_type=HydrologicalStation.StationType.AUTOMATIC
     )

@@ -52,3 +52,14 @@ class UUIDMixin(models.Model):
 
     class Meta:
         abstract = True
+
+
+class ForecastToggleMixin(models.Model):
+    daily_forecast = models.BooleanField(verbose_name=_("Enable daily forecast"), default=False)
+    pentad_forecast = models.BooleanField(verbose_name=_("Enable pentad forecast"), default=False)
+    decadal_forecast = models.BooleanField(verbose_name=_("Enable decadal forecast"), default=False)
+    monthly_forecast = models.BooleanField(verbose_name=_("Enable monthly forecast"), default=False)
+    seasonal_forecast = models.BooleanField(verbose_name=_("Enable seasonal forecast"), default=False)
+
+    class Meta:
+        abstract = True

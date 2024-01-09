@@ -46,6 +46,7 @@ class UsersAPIController:
             user = User.objects.get(uuid=user_uuid, is_deleted=False)
         except User.DoesNotExist:
             return 404, {"detail": "User not found", "code": "user_not_found"}
+        print(user_data)
         for attr, value in user_data.dict(exclude_unset=True).items():
             if attr == "user_role" and not can_update_role(request.user, value):
                 return 403, {
