@@ -7,7 +7,6 @@ from sapphire_backend.utils.mixins.models import UUIDMixin
 
 class User(UUIDMixin, AbstractUser):
     class UserRoles(models.TextChoices):
-        VIEWER = "viewer", _("Viewer")
         REGULAR_USER = "regular_user", _("Regular user")
         ORGANIZATION_ADMIN = "organization_admin", _("Organization admin")
         SUPER_ADMIN = "super_admin", _("Super admin")
