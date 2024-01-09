@@ -1,0 +1,364 @@
+import logging
+
+# Configure SQLAlchemy connection to the old database
+import math
+import zoneinfo
+
+from django.core import exceptions
+from django.db import connections, IntegrityError, transaction, connection
+from django.utils import timezone
+# Import necessary libraries
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from tqdm import tqdm
+
+from sapphire_backend.imomo.old_models import Variable
+from sapphire_backend.imomo.old_models.data_sources import Source as OldSource  # Import your old SQLAlchemy model
+from sapphire_backend.imomo.old_models.monitoring_site_locations import Site as OldSite
+from sapphire_backend.imomo.old_models.observation_values import DataValue  # Import your old SQLAlchemy model
+from sapphire_backend.metrics.models import MeteorologicalMetric, HydrologicalMetric
+from sapphire_backend.organizations.models import Organization, Basin, Region
+from sapphire_backend.stations.models import Site, HydrologicalStation, MeteorologicalStation
+
+LIST_SITES_ALREADY_EXISTING = []
+nan_count = 0
+
+
+def migrate_organizations(old_session):
+    old_data = old_session.query(OldSource).all()
+    # Configure Django connection to the new database
+    for old in tqdm(old_data, desc='Organizations'):
+        # print(old)
+        if old.year_type == 'hydro_year':
+            year_type = Organization.YearType.HYDROLOGICAL
+        else:
+            year_type = Organization.YearType.CALENDAR
+        if old.language == 'ru':
+            language = Organization.Language.RUSSIAN
+        else:
+            language = Organization.Language.ENGLISH
+        new_record = Organization(
+            id=old.id,
+            name=old.organization,
+            description=old.source_description or "",
+            url=old.source_link or "",
+            country=old.country,
+            city=old.city,
+            street_address=old.address,
+            zip_code=old.zip_code,
+            latitude=None,
+            longitude=None,
+            timezone=old.timezone,
+            contact=old.contact_name,
+            contact_phone=old.phone,
+            year_type=year_type,
+            language=language,
+            is_active=True
+        )
+        new_record.save()
+
+
+def get_or_create_basin(basin_name: str, organization: Organization):
+    # TODO maybe force lowercase for basin_name, there can be duplicates otherwise
+    basin = Basin.objects.filter(name=basin_name).first()
+    if basin is None:
+        basin = Basin(name=basin_name,
+                      organization=organization)
+        basin.save()
+    return basin
+
+
+def get_or_create_region(region_name: str, organization: Organization):
+    region = Region.objects.filter(name=region_name).first()
+    if region is None:
+        region = Region(name=region_name,
+                        organization=organization)
+        region.save()
+    return region
+
+
+def get_or_create_site(name,
+                       original_code,
+                       organization: Organization,
+                       country,
+                       basin: Basin,
+                       region: Region,
+                       latitude,
+                       longitude,
+                       elevation,  # TODO figure out
+                       timezone=None,  # TODO figure out
+                       ):
+    site = Site.objects.filter(name=name).first()
+    if site is None:
+        site = Site(
+            name=name,
+            organization=organization,
+            country=country,
+            basin=basin,
+            region=region,
+            latitude=latitude,
+            longitude=longitude,
+            timezone=None,  # TODO not available in old, figure out
+            elevation=elevation,  # TODO not available in old,figure out
+        )
+        site.save()
+    else:
+        LIST_SITES_ALREADY_EXISTING.append(original_code)
+    return site
+
+
+def get_metric_name_unit(variable: Variable):
+    var_code = variable.variable_code
+    if var_code == '0001':
+        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY_MEASUREMENT
+        metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
+    elif var_code == '0002':
+        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY_AVERAGE_MEASUREMENT
+        metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
+    elif var_code == '0003':
+        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY_AVERAGE_ESTIMATION
+        metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
+    elif var_code == '0004':
+        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY_MEASUREMENT
+        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
+    elif var_code == '0005':
+        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY_ESTIMATION
+        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
+    elif var_code == '0006':
+        metric_name = HydrologicalMetric.MetricName.RIVER_CROSS_SECTION_AREA_MEASUREMENT
+        metric_unit = HydrologicalMetric.MetricUnit.AREA
+    elif var_code == '0007':
+        metric_name = HydrologicalMetric.MetricName.MAXIMUM_DEPTH_MEASUREMENT
+        metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
+    elif var_code == '0008':
+        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DECADE_AVERAGE
+        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
+    elif var_code == '0009':
+        return "", ""  # this will be at HydroStation level WATER_DISCHARGE_MAXIMUM_RECOMMENDATION
+    elif var_code == '0010':
+        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY_AVERAGE_ESTIMATION
+        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
+    elif var_code == '0011':
+        metric_name = HydrologicalMetric.MetricName.ICE_PHENOMENA_OBSERVATION
+        metric_unit = HydrologicalMetric.MetricUnit.ICE_PHENOMENA_OBSERVATION
+    elif var_code == '0012':
+        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DECADAL_MEASUREMENT
+        metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
+    elif var_code == '0013':
+        metric_name = HydrologicalMetric.MetricName.WATER_TEMPERATURE_OBSERVATION
+        metric_unit = HydrologicalMetric.MetricUnit.TEMPERATURE
+    elif var_code == '0014':
+        metric_name = HydrologicalMetric.MetricName.AIR_TEMPERATURE_OBSERVATION
+        metric_unit = HydrologicalMetric.MetricUnit.TEMPERATURE
+    elif var_code == '0015':
+        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE
+        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
+    elif var_code == '0016':
+        metric_name = MeteorologicalMetric.MetricName.AIR_TEMPERATURE_DECADE_AVERAGE
+        metric_unit = MeteorologicalMetric.MetricUnit.TEMPERATURE
+    elif var_code == '0017':
+        metric_name = MeteorologicalMetric.MetricName.AIR_TEMPERATURE_MONTH_AVERAGE
+        metric_unit = MeteorologicalMetric.MetricUnit.TEMPERATURE
+    elif var_code == '0018':
+        metric_name = MeteorologicalMetric.MetricName.PRECIPITATION_DECADE_AVERAGE
+        metric_unit = MeteorologicalMetric.MetricUnit.PRECIPITATION
+    elif var_code == '0019':
+        metric_name = MeteorologicalMetric.MetricName.PRECIPITATION_MONTH_AVERAGE
+        metric_unit = MeteorologicalMetric.MetricUnit.PRECIPITATION
+    elif var_code == '0020':
+        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DECADE_AVERAGE_HISTORICAL
+        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
+    return metric_name, metric_unit
+
+
+def migrate_sites_and_stations(old_session):
+    old_data = old_session.query(OldSite).all()
+    cnt_hydro = 0
+    cnt_meteo = 0
+    cnt_virtual = 0
+    for old in tqdm(old_data, desc='Stations', position=0):
+        organization = Organization.objects.get(id=old.source_id)
+
+        # logic for basins, hydro stations basins are prioritized, so if there are both hydro and meteo
+        # of the same code, the hydro basin will be created in DB and referenced by Site model
+        # TODO ask them to standardize basin names according to the official list
+        # so that we remove all the duplicates and redundant names
+        if old.site_type == 'meteo':
+            shared_hydro_station = old_session.query(OldSite).filter(OldSite.site_code == old.site_code_repr).first()
+            if shared_hydro_station is not None:
+                basin = get_or_create_basin(basin_name=shared_hydro_station.basin, organization=organization)
+            else:
+                basin = get_or_create_basin(basin_name=old.basin,
+                                            organization=organization)
+        else:
+            basin = get_or_create_basin(basin_name=old.basin,
+                                        organization=organization)
+        site = get_or_create_site(
+            name=old.site_code_repr,
+            original_code=old.site_code,
+            organization=organization,
+            country=old.country,
+            basin=basin,
+            region=get_or_create_region(region_name=old.region, organization=organization),
+            latitude=old.latitude,
+            longitude=old.longitude,
+            timezone=None,  # TODO figure out
+            elevation=old.elevation_m,  # TODO figure out
+        )
+
+        if old.site_type == 'meteo':
+            meteo_station = MeteorologicalStation(
+                name=old.site_name,
+                station_code=old.site_code_repr,  # TODO blank could be fine, or blank name in Site model
+                station_type=MeteorologicalStation.StationType.MANUAL,
+                site=site,
+                description=old.comments or "",
+                is_deleted=False,
+            )
+            meteo_station.save()
+            cnt_meteo = cnt_meteo + 1
+        elif old.site_type == 'discharge':
+            hydro_station = HydrologicalStation(
+                name=old.site_name,
+                station_code=old.site_code_repr,  # TODO blank could be fine, or blank name in Site model
+                station_type=HydrologicalStation.StationType.MANUAL,
+                site=site,
+                description=old.comments or "",
+                measurement_time_step=None,  # TODO figure out for manual stations
+                discharge_level_alarm=None,
+                historical_discharge_minimum=None,
+                historical_discharge_maximum=None,
+                decadal_discharge_norm=None,
+                monthly_discharge_norm=None,
+                is_deleted=False,
+            )
+            hydro_station.save()
+            cnt_hydro = cnt_hydro + 1
+        elif old.site_type == 'virtual-discharge':
+            # TODO what to do with virtual stations
+            cnt_virtual = cnt_virtual + 1
+    logging.info(f'Meteo count: {cnt_meteo}, hydro count: {cnt_hydro}, virtual: {cnt_virtual}')
+
+
+def migrate_meteo_metrics(old_session):
+    old_data = old_session.query(OldSite).all()
+    meteo_stations = [station for station in old_data if station.site_type == 'meteo']
+    for old in tqdm(meteo_stations, desc='Meteo stations', position=0): # TODO limiter remove
+        meteo_station = MeteorologicalStation.objects.get(station_code=old.site_code_repr)
+
+        for data_row in tqdm(old.data_values[:], desc='Meteo metrics', position=1, leave=False): # TODO remove limit
+            naive_datetime = data_row.date_time_utc
+            aware_datetime_utc = timezone.make_aware(naive_datetime,
+                                                     timezone=zoneinfo.ZoneInfo('UTC'))  # TODO double check this
+            metric_name, metric_unit = get_metric_name_unit(data_row.variable)
+            if metric_name == MeteorologicalMetric.MetricName.PRECIPITATION_DECADE_AVERAGE:
+                pass
+            new_meteo_metric = MeteorologicalMetric(
+                timestamp=aware_datetime_utc,  # TODO is local time needed?
+                value=data_row.data_value,
+                value_type=MeteorologicalMetric.MeasurementType.IMPORTED,
+                metric_name=metric_name,
+                unit=metric_unit,
+                station=meteo_station,
+            )
+            new_meteo_metric.save()
+
+
+def migrate_hydro_metrics(old_session):
+    global nan_count
+    old_data = old_session.query(OldSite).all()
+    hydro_stations = [station for station in old_data if station.site_type == 'discharge']
+    for old in tqdm(hydro_stations, desc='Hydro stations', position=0): # TODO remove limiter
+        hydro_station = HydrologicalStation.objects.get(station_code=old.site_code_repr)
+        for data_row in tqdm(old.data_values[:], desc='Hydro metrics', position=1, leave=False): # TODO remove limit
+            naive_datetime = data_row.date_time_utc
+            aware_datetime_utc = timezone.make_aware(naive_datetime,
+                                                     timezone=zoneinfo.ZoneInfo('UTC'))  # TODO double check this
+
+            # exceptionally set the maximum discharge on the hydro station level, exclude from metrics
+            data_value = data_row.data_value
+
+            if data_row.variable.variable_code == '0009':
+                hydro_station.discharge_level_alarm = data_value
+                hydro_station.save()
+                continue
+
+
+            metric_name, metric_unit = get_metric_name_unit(data_row.variable)
+
+            if data_row.variable.variable_code == '0011':
+                # TODO handle ice phenomena, currently skip
+                continue
+
+            if math.isnan(data_value):
+                nan_count = nan_count + 1
+                continue  # TODO skip NaN data value rows
+
+            new_hydro_metric = HydrologicalMetric(
+                timestamp=aware_datetime_utc,  # TODO is local time needed?
+                min_value=None,
+                avg_value=data_value,
+                max_value=None,
+                unit=metric_unit,
+                value_type=HydrologicalMetric.MeasurementType.IMPORTED,
+                metric_name=metric_name,
+                station=hydro_station,
+                sensor_identifier="",
+                sensor_type=""
+            )
+            new_hydro_metric.save()
+
+    print(f"Nan count {nan_count}")
+
+
+def migrate_virtual_metrics(old_session):
+    # TODO
+    # old_data = old_session.query(OldSite).all()
+    # virtual_stations = [station for station in old_data if station.site_type=='virtual-discharge']
+    pass
+
+
+def cleanup_all():
+    logging.info("Cleaning up meteo metrics")
+    MeteorologicalMetric.objects.all().delete()
+    logging.info("Cleaning up hydro metrics")
+    HydrologicalMetric.objects.all().delete()
+    logging.info("Cleaning up hydro stations")
+    HydrologicalStation.objects.all().delete()
+    logging.info("Cleaning up meteo stations")
+    MeteorologicalStation.objects.all().delete()
+    logging.info("Cleaning up sites")
+    Site.objects.all().delete()
+    logging.info("Cleaning up basins")
+    Basin.objects.all().delete()
+    logging.info("Cleaning up regions")
+    Region.objects.all().delete()
+    logging.info("Cleaning up organizations")
+    Organization.objects.all().delete()
+    logging.info("Done")
+
+
+def migrate():
+    # now do the things that you want with your models here
+    old_db_engine = create_engine(
+        'postgresql+psycopg2://{user}:{password}@{host}:{port}/{db_name}'.format(
+            user='hydrosolutions',
+            password='hydrosolutions',
+            host='localhost',
+            port='5433',
+            db_name='hydrosolutions',
+        ))
+    # Update with your old database connection string
+    Session = sessionmaker(bind=old_db_engine)
+    old_session = Session()
+    cleanup_all()
+    migrate_organizations(old_session)
+    migrate_sites_and_stations(old_session)
+    migrate_meteo_metrics(old_session)
+    migrate_hydro_metrics(old_session)
+
+    migrate_virtual_metrics(old_session)  # TODO
+    print(LIST_SITES_ALREADY_EXISTING)
+    print(len(LIST_SITES_ALREADY_EXISTING))
+    old_session.close()
+    print("Data migration completed successfully.")
