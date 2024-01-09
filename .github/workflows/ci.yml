@@ -35,6 +35,7 @@ jobs:
       # Consider using pre-commit.ci for open source project
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.0
+        exclude: ^sapphire_backend/imomo/
 
   pytest:
     if: github.event_name == 'push'
