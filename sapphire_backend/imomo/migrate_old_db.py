@@ -358,6 +358,6 @@ def migrate():
     migrate_meteo_metrics(old_session)
     migrate_hydro_metrics(old_session)
     #
-    # migrate_virtual_metrics(old_session)  # TODO
+    migrate_virtual_metrics(old_session)  # TODO
     old_session.close()
     print("Data migration completed successfully.")

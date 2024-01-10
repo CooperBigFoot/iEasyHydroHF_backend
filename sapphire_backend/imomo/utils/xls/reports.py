@@ -631,12 +631,7 @@ class ReportGenerator:
                     end_cell = worksheet._cells[(row_idx + 1, col_idx + 1)]
 
                     worksheet.merged_cell_ranges.append(
-                        "{}{}:{}{}".format(
-                            cell_to_move.column,
-                            cell_to_move.row,
-                            end_cell.column,
-                            end_cell.row,
-                        )
+                        f"{cell_to_move.column}{cell_to_move.row}:{end_cell.column}{end_cell.row}"
                     )
 
         if not preserve_original:
