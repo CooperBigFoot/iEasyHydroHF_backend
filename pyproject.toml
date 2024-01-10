@@ -18,7 +18,7 @@ plugins = ["django_coverage_plugin"]
 [tool.black]
 line-length = 119
 target-version = ['py311']
-exclude = 'sapphire_backend/imomo'
+exclude = ['sapphire_backend/imomo']
 
 # ==== ruff ====
 [tool.ruff]
@@ -71,6 +71,7 @@ warn_unused_configs = true
 plugins = [
     "mypy_django_plugin.main",
 ]
+exclude = ['sapphire_backend/imomo']
 
 [[tool.mypy.overrides]]
 # Django migrations should not produce any errors:
