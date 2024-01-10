@@ -10,7 +10,7 @@ python_files = [
 # ==== Coverage ====
 [tool.coverage.run]
 include = ["sapphire_backend/**"]
-omit = ["*/migrations/*", "*/tests/*"]
+omit = ["*/migrations/*", "*/tests/*", "sapphire_backend/imomo"]
 plugins = ["django_coverage_plugin"]
 
 

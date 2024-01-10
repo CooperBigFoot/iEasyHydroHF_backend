@@ -106,15 +106,8 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
 
 
 class MeteorologicalStation(UUIDMixin, models.Model):
-    class StationType(models.TextChoices):
-        MANUAL = "M", _("Manual")
-        AUTOMATIC = "A", _("Automatic")
-
     name = models.CharField(verbose_name=_("Station name"), blank=True, max_length=150)
     station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=False)
-    station_type = models.CharField(
-        verbose_name=_("Station type"), choices=StationType, default=StationType.MANUAL, max_length=2, blank=False
-    )
     site = models.ForeignKey(
         "stations.Site",
         verbose_name=_("Site"),

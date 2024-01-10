@@ -6,34 +6,27 @@ class HydrologicalMetric(models.Model):
     class MeasurementType(models.TextChoices):
         MANUAL = "M", _("Manual")
         AUTOMATIC = "A", _("Automatic")
-        CALCULATED = "C", _("Calculated")
+        ESTIMATED = "E", _("Estimated")
         IMPORTED = "I", _("Imported")
         UNKNOWN = "U", _("Unknown")
 
     class MetricName(models.TextChoices):
-        WATER_LEVEL_DAILY_MEASUREMENT = "WLDM", _("Water level daily measurement")  # '0001'
-        WATER_LEVEL_DAILY_AVERAGE_MEASUREMENT = "WLADM", _("Water level daily average measurement")  # '0002'
-        WATER_LEVEL_DAILY_AVERAGE_ESTIMATION = "WLDAE", _("Water level daily average estimation")  # '0003'
+        WATER_LEVEL_DAILY = "WLD", _("Water level daily")
+        WATER_LEVEL_DAILY_AVERAGE = "WLDA", _("Water level daily average")
+        WATER_LEVEL_DECADAL = "WLDC", _("Water level decadal")
 
-        WATER_DISCHARGE_DAILY_ESTIMATION = "WDDE", _("Water discharge daily estimation")  # '0005'
-        WATER_DISCHARGE_DAILY_AVERAGE_ESTIMATION = "WDDAE", _("Water discharge daily average estimation")  # '0010'
-        WATER_DISCHARGE_FIVEDAY_AVERAGE = "WDFA", _("Water discharge fiveday average")  # '0015'
-        WATER_DISCHARGE_DECADE_AVERAGE = "WDDCA", _("Water discharge decade average")  # '0008'
+        WATER_DISCHARGE_DAILY = "WDD", _("Water discharge daily")
+        WATER_DISCHARGE_DAILY_AVERAGE = "WDDA", _("Water discharge daily average")
+        WATER_DISCHARGE_FIVEDAY_AVERAGE = "WDFA", _("Water discharge fiveday average")
+        WATER_DISCHARGE_DECADE_AVERAGE = "WDDCA", _("Water discharge decade average")
+        WATER_DISCHARGE_DECADE_AVERAGE_HISTORICAL = "WDDCAH", _("Water discharge decade average historical")
 
-        WATER_TEMPERATURE_OBSERVATION = "WTO", _("Water temperature observation")  # '0013'
-        AIR_TEMPERATURE_OBSERVATION = "ATO", _("Air temperature observation")  # '0014'
-        ICE_PHENOMENA_OBSERVATION = "IPO", _("Ice phenomena observation")  # '0011'
+        WATER_TEMPERATURE = "WTO", _("Water temperature observation")
+        AIR_TEMPERATURE = "ATO", _("Air temperature observation")
+        ICE_PHENOMENA_OBSERVATION = "IPO", _("Ice phenomena observation")
 
-        WATER_DISCHARGE_DAILY_MEASUREMENT = "WDDM", _("Water discharge daily measurement")  # '0004'
-        WATER_LEVEL_DECADAL_MEASUREMENT = "WLDCM", _("Water level decadal measurement")  # '0012'
-        RIVER_CROSS_SECTION_AREA_MEASUREMENT = "RCSAM", _("River cross section area measurement")  # '0006'
-        MAXIMUM_DEPTH_MEASUREMENT = "MDM"
-        _("Maximum depth measurement")  # '0007'
-
-        WATER_DISCHARGE_DECADE_AVERAGE_HISTORICAL = "WDDCAH", _("Water discharge decade average historical")  # '0020'
-
-        # WATER_DISCHARGE_MAXIMUM_RECOMMENDATION = "WDMR", _(
-        #    "Water discharge maximum recommendation")  # '0009' # TODO more of a HydrologicalStation model field
+        RIVER_CROSS_SECTION_AREA = "RCSA", _("River cross section area")
+        MAXIMUM_DEPTH = "MD", _("Maximum depth")
 
     class MetricUnit(models.TextChoices):
         WATER_LEVEL = "cm", _("centimeter")  # '0001'

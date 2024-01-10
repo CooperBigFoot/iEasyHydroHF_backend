@@ -11,6 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from tqdm import tqdm
 
+from sapphire_backend.imomo.data_structs.standard_data import Variables
 from sapphire_backend.imomo.old_models import Variable
 from sapphire_backend.imomo.old_models.data_sources import Source as OldSource  # Import your old SQLAlchemy model
 from sapphire_backend.imomo.old_models.monitoring_site_locations import Site as OldSite
@@ -103,68 +104,87 @@ def get_or_create_site(
     return site
 
 
-def get_metric_name_unit(variable: Variable):
+def get_metric_name_unit_type(variable: Variable):
     var_code = variable.variable_code
-    if var_code == "0001":
-        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY_MEASUREMENT
+    if var_code == Variables.gauge_height_daily_measurement.value:  # 0001
+        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY
         metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
-    elif var_code == "0002":
-        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY_AVERAGE_MEASUREMENT
+        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+    elif var_code == Variables.gauge_height_average_daily_measurement.value:  # 0002
+        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY_AVERAGE
         metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
-    elif var_code == "0003":
-        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY_AVERAGE_ESTIMATION
+        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+    elif var_code == Variables.gauge_height_average_daily_estimation.value:  # 0003
+        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY_AVERAGE
         metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
-    elif var_code == "0004":
-        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY_MEASUREMENT
+        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+    elif var_code == Variables.discharge_daily_measurement.value:  # 0004
+        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY
         metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-    elif var_code == "0005":
-        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY_ESTIMATION
+        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+    elif var_code == Variables.discharge_daily_estimation.value:  # 0005
+        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY
         metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-    elif var_code == "0006":
-        metric_name = HydrologicalMetric.MetricName.RIVER_CROSS_SECTION_AREA_MEASUREMENT
+        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+    elif var_code == Variables.river_cross_section_area_measurement.value:  # 0006:
+        metric_name = HydrologicalMetric.MetricName.RIVER_CROSS_SECTION_AREA
         metric_unit = HydrologicalMetric.MetricUnit.AREA
-    elif var_code == "0007":
-        metric_name = HydrologicalMetric.MetricName.MAXIMUM_DEPTH_MEASUREMENT
+        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+    elif var_code == Variables.maximum_depth_measurement.value:  # 0007:
+        metric_name = HydrologicalMetric.MetricName.MAXIMUM_DEPTH
         metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
-    elif var_code == "0008":
+        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+    elif var_code == Variables.discharge_decade_average.value:  # 0008
         metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DECADE_AVERAGE
         metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-    elif var_code == "0009":
-        return "", ""  # this will be at HydroStation level WATER_DISCHARGE_MAXIMUM_RECOMMENDATION
-    elif var_code == "0010":
-        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY_AVERAGE_ESTIMATION
+        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+    elif var_code == Variables.discharge_maximum_recommendation.value:  # 0009:
+        return "", "", ""  # this will be at HydroStation level WATER_DISCHARGE_MAXIMUM_RECOMMENDATION
+    elif var_code == Variables.discharge_daily_average_estimation.value:  # 0010
+        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY_AVERAGE
         metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-    elif var_code == "0011":
+        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+    elif var_code == Variables.ice_phenomena_observation.value:  # "0011":
         metric_name = HydrologicalMetric.MetricName.ICE_PHENOMENA_OBSERVATION
         metric_unit = HydrologicalMetric.MetricUnit.ICE_PHENOMENA_OBSERVATION
-    elif var_code == "0012":
-        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DECADAL_MEASUREMENT
+        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+    elif var_code == Variables.gauge_height_decadal_measurement.value:  # 0012
+        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DECADAL
         metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
-    elif var_code == "0013":
-        metric_name = HydrologicalMetric.MetricName.WATER_TEMPERATURE_OBSERVATION
+        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+    elif var_code == Variables.water_temperature_observation.value:  # 0013
+        metric_name = HydrologicalMetric.MetricName.WATER_TEMPERATURE
         metric_unit = HydrologicalMetric.MetricUnit.TEMPERATURE
-    elif var_code == "0014":
-        metric_name = HydrologicalMetric.MetricName.AIR_TEMPERATURE_OBSERVATION
+        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+    elif var_code == Variables.air_temperature_observation.value:  # 0014
+        metric_name = HydrologicalMetric.MetricName.AIR_TEMPERATURE
         metric_unit = HydrologicalMetric.MetricUnit.TEMPERATURE
-    elif var_code == "0015":
+        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+    elif var_code == Variables.discharge_fiveday_average.value:  # 0015
         metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE
         metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-    elif var_code == "0016":
+        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+    elif var_code == Variables.temperature_decade_average.value:  # 0016
         metric_name = MeteorologicalMetric.MetricName.AIR_TEMPERATURE_DECADE_AVERAGE
         metric_unit = MeteorologicalMetric.MetricUnit.TEMPERATURE
-    elif var_code == "0017":
+        measurement_type = MeteorologicalMetric.MeasurementType.IMPORTED
+    elif var_code == Variables.temperature_month_average.value:  # 0017
         metric_name = MeteorologicalMetric.MetricName.AIR_TEMPERATURE_MONTH_AVERAGE
         metric_unit = MeteorologicalMetric.MetricUnit.TEMPERATURE
-    elif var_code == "0018":
+        measurement_type = MeteorologicalMetric.MeasurementType.IMPORTED
+    elif var_code == Variables.precipitation_decade_average.value:  # 0018
         metric_name = MeteorologicalMetric.MetricName.PRECIPITATION_DECADE_AVERAGE
         metric_unit = MeteorologicalMetric.MetricUnit.PRECIPITATION
-    elif var_code == "0019":
+        measurement_type = MeteorologicalMetric.MeasurementType.IMPORTED
+    elif var_code == Variables.precipitation_month_average.value:  # 0019
         metric_name = MeteorologicalMetric.MetricName.PRECIPITATION_MONTH_AVERAGE
         metric_unit = MeteorologicalMetric.MetricUnit.PRECIPITATION
-    elif var_code == "0020":
+        measurement_type = MeteorologicalMetric.MeasurementType.IMPORTED
+    elif var_code == Variables.discharge_decade_average_historical.value:  # 0020
         metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DECADE_AVERAGE_HISTORICAL
         metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-    return metric_name, metric_unit
+        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+    return metric_name, metric_unit, measurement_type
 
 
 def migrate_sites_and_stations(old_session):
@@ -203,7 +223,6 @@ def migrate_sites_and_stations(old_session):
             meteo_station = MeteorologicalStation(
                 name=old.site_name,
                 station_code=old.site_code_repr,  # TODO blank could be fine, or blank name in Site model
-                station_type=MeteorologicalStation.StationType.MANUAL,
                 site=site,
                 description=old.comments or "",
                 is_deleted=False,
@@ -246,13 +265,12 @@ def migrate_meteo_metrics(old_session):
             aware_datetime_utc = timezone.make_aware(
                 naive_datetime, timezone=zoneinfo.ZoneInfo("UTC")
             )  # TODO double check this
-            metric_name, metric_unit = get_metric_name_unit(data_row.variable)
-            if metric_name == MeteorologicalMetric.MetricName.PRECIPITATION_DECADE_AVERAGE:
-                pass
+            metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
+
             new_meteo_metric = MeteorologicalMetric(
                 timestamp=aware_datetime_utc,  # TODO is local time needed?
                 value=data_row.data_value,
-                value_type=MeteorologicalMetric.MeasurementType.IMPORTED,
+                value_type=measurement_type,
                 metric_name=metric_name,
                 unit=metric_unit,
                 station=meteo_station,
@@ -277,14 +295,14 @@ def migrate_hydro_metrics(old_session):
             # exceptionally set the maximum discharge on the hydro station level, exclude from metrics
             data_value = data_row.data_value
 
-            if data_row.variable.variable_code == "0009":
+            if data_row.variable.variable_code == Variables.discharge_maximum_recommendation:
                 hydro_station.discharge_level_alarm = data_value
                 hydro_station.save()
                 continue
 
-            metric_name, metric_unit = get_metric_name_unit(data_row.variable)
+            metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
 
-            if data_row.variable.variable_code == "0011":
+            if data_row.variable.variable_code == Variables.ice_phenomena_observation:
                 # TODO handle ice phenomena, currently skip
                 continue
 
@@ -298,7 +316,7 @@ def migrate_hydro_metrics(old_session):
                 avg_value=data_value,
                 max_value=None,
                 unit=metric_unit,
-                value_type=HydrologicalMetric.MeasurementType.IMPORTED,
+                value_type=measurement_type,
                 metric_name=metric_name,
                 station=hydro_station,
                 sensor_identifier="",
