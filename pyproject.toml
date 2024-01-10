@@ -18,7 +18,7 @@ plugins = ["django_coverage_plugin"]
 [tool.black]
 line-length = 119
 target-version = ['py311']
-
+exclude = 'sapphire_backend/imomo'
 
 # ==== ruff ====
 [tool.ruff]
@@ -31,7 +31,7 @@ exclude = [
     "node_modules",
     "venv",
     ".venv",
-    "sapphire_backend/imomo/*"
+    "sapphire_backend/imomo",
 ]
 line-length = 119
 select = [
