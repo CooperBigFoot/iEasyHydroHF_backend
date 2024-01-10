@@ -16,7 +16,7 @@ class HydrologicalMetricFactory(factory.django.DjangoModelFactory):
     avg_value = fake.pydecimal(left_digits=2, right_digits=6, min_value=10, max_value=20)
     max_value = fake.pydecimal(left_digits=2, right_digits=6, min_value=20, max_value=30)
     value_type = HydrologicalMetric.MeasurementType.UNKNOWN
-    metric_name = HydrologicalMetric.MetricName.WATER_LEVEL
+    metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY
     sensor_identifier = fake.ean(length=8)
     sensor_type = fake.color_name()
     unit = ""
@@ -30,7 +30,7 @@ class MeteorologicalMetricFactory(factory.django.DjangoModelFactory):
     timestamp = fake.date_time(tzinfo=ZoneInfo("UTC"))
     value = fake.pydecimal(left_digits=2, right_digits=6, min_value=10, max_value=20)
     station = factory.SubFactory(MeteorologicalStationFactory)
-    metric_name = MeteorologicalMetric.MetricName.AIR_TEMPERATURE
+    metric_name = MeteorologicalMetric.MetricName.AIR_TEMPERATURE_DECADE_AVERAGE
     value_type = MeteorologicalMetric.MeasurementType.UNKNOWN
     unit = ""
 
