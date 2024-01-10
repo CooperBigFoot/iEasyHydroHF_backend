@@ -19,17 +19,28 @@ class Migration(migrations.Migration):
                 (
                     "min_value",
                     models.DecimalField(
-                        blank=True, decimal_places=5, max_digits=10, null=True, verbose_name="Minimum value"
+                        blank=True, decimal_places=5, max_digits=15, null=True, verbose_name="Minimum value"
                     ),
                 ),
-                ("avg_value", models.DecimalField(decimal_places=5, max_digits=10, verbose_name="Average value")),
+                ("avg_value", models.DecimalField(decimal_places=5, max_digits=15, verbose_name="Average value")),
                 (
                     "max_value",
                     models.DecimalField(
-                        blank=True, decimal_places=5, max_digits=10, null=True, verbose_name="Maximum value"
+                        blank=True, decimal_places=5, max_digits=15, null=True, verbose_name="Maximum value"
                     ),
                 ),
-                ("unit", models.CharField(blank=True, max_length=20, verbose_name="Unit")),
+                ("unit", models.CharField(
+                    blank=True,
+                    choices=[
+                        ("cm", "centimeter"),
+                        ("m^3/s", "cubic meters per second"),
+                        ("degC", "degree celsius"),
+                        ("dimensionless", "dimensionless"),
+                        ("m^2", "square meter"),
+                    ],
+                    max_length=20,
+                    verbose_name="Unit",
+                ),),
                 (
                     "value_type",
                     models.CharField(
@@ -56,7 +67,7 @@ class Migration(migrations.Migration):
                             ("AT", "Air temperature"),
                             ("PC", "Precipitation"),
                         ],
-                        max_length=2,
+                        max_length=20,
                         verbose_name="Metric name",
                     ),
                 ),
@@ -95,11 +106,16 @@ class Migration(migrations.Migration):
                     "metric_name",
                     models.CharField(
                         choices=[("AT", "Air temperature"), ("PC", "Precipitation")],
-                        max_length=2,
+                        max_length=20,
                         verbose_name="Metric name",
                     ),
                 ),
-                ("unit", models.CharField(blank=True, max_length=20, verbose_name="Unit")),
+                ("unit", models.CharField(
+                    blank=True,
+                    choices=[("degC", "degree celsius"), ("mm/day", "millimeters per day")],
+                    max_length=20,
+                    verbose_name="Unit",
+                )),
                 (
                     "station",
                     models.ForeignKey(

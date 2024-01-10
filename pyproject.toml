@@ -10,7 +10,7 @@ python_files = [
 # ==== Coverage ====
 [tool.coverage.run]
 include = ["sapphire_backend/**"]
-omit = ["*/migrations/*", "*/tests/*"]
+omit = ["*/migrations/*", "*/tests/*", "sapphire_backend/imomo"]
 plugins = ["django_coverage_plugin"]
 
 
@@ -18,7 +18,7 @@ plugins = ["django_coverage_plugin"]
 [tool.black]
 line-length = 119
 target-version = ['py311']
-
+exclude = ['sapphire_backend/imomo']
 
 # ==== ruff ====
 [tool.ruff]
@@ -31,6 +31,7 @@ exclude = [
     "node_modules",
     "venv",
     ".venv",
+    "sapphire_backend/imomo",
 ]
 line-length = 119
 select = [
@@ -70,6 +71,7 @@ warn_unused_configs = true
 plugins = [
     "mypy_django_plugin.main",
 ]
+exclude = ['sapphire_backend/imomo']
 
 [[tool.mypy.overrides]]
 # Django migrations should not produce any errors:
