@@ -48,7 +48,7 @@ class XLSReader:
         if sheet.ncols != 37:
             raise errors.XLSReaderError("Invalid number of columns.")
 
-        decadal_data = dict()
+        decadal_data = {}
 
         for row in xrange(1, sheet.nrows):
             year = int(sheet.cell_value(rowx=row, colx=0))

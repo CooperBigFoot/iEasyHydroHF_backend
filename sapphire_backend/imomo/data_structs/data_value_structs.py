@@ -121,7 +121,7 @@ class AdditionalMeasurementPair:
         Returns:
             Dictionary that can be serialized into JSON.
         """
-        base_dict = dict()
+        base_dict = {}
 
         if self.water_temperature:
             base_dict["water_temperature"] = self.water_temperature.to_jsonizable()

@@ -9,12 +9,12 @@ from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from imomo import config
 
-"""MONKEY PATCH
+# MONKEY PATCH
 
-This is to make things work in Python >= 2.7.9,
+# This is to make things work in Python >= 2.7.9,
 
-See: https://github.com/boto/boto/issues/2836
-"""
+# See: https://github.com/boto/boto/issues/2836
+
 import ssl
 
 if hasattr(ssl, "match_hostname"):

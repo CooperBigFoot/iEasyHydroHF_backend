@@ -147,7 +147,7 @@ class DataValue(ImomoBase):
             return json_
 
     def jsonize_ice_phenomenae(self):
-        ice_phenomenae = list()
+        ice_phenomenae = []
         for data_value in self.ice_phenomena_data_values:
             ice_phenomena_data_value_json = super().to_jsonizable(["ice_phenomena_string"])
             ice_phenomena_data_value_json["data_value"] = data_value

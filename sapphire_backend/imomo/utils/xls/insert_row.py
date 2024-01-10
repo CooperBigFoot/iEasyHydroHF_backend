@@ -74,8 +74,8 @@ def insert_rows(
     # First, we shift all cells down cnt rows...
     old_cells = set()
     old_fas = set()
-    new_cells = dict()
-    new_fas = dict()
+    new_cells = {}
+    new_fas = {}
     for c in self._cells.values():
         old_coor = c.coordinate
 

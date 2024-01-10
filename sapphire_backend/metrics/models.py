@@ -109,10 +109,7 @@ class HydrologicalMetric(models.Model):
         )
 
         with connection.cursor() as cursor:
-            try:
-                cursor.execute(sql_query)
-            except:
-                raise Exception("Hydro metric problem")
+            cursor.execute(sql_query)
 
 
 class MeteorologicalMetric(models.Model):
