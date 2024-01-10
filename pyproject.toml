@@ -31,7 +31,7 @@ exclude = [
     "node_modules",
     "venv",
     ".venv",
-    "sapphire_backend/imomo"
+    "sapphire_backend/imomo/*"
 ]
 line-length = 119
 select = [
