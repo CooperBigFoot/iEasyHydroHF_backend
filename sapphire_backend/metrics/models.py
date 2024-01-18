@@ -71,19 +71,13 @@ class HydrologicalMetric(models.Model):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
 
     def delete(self):
-        sql_query_delete = """
+        sql_query_delete = f"""
         DELETE FROM metrics_hydrologicalmetric WHERE
-        timestamp = '{timestamp}' AND
-        station_id = {station_id} AND
-        metric_name = '{metric_name}' AND
-        value_type = '{value_type}' AND
-        sensor_identifier = '{sensor_identifier}';""".format(
-            timestamp=self.timestamp,
-            station_id=self.station_id,
-            metric_name=self.metric_name,
-            value_type=self.value_type,
-            sensor_identifier=self.sensor_identifier,
-        )
+        timestamp = '{self.timestamp}' AND
+        station_id = {self.station_id} AND
+        metric_name = '{self.metric_name}' AND
+        value_type = '{self.value_type}' AND
+        sensor_identifier = '{self.sensor_identifier}';"""
 
         with connection.cursor() as cursor:
             cursor.execute(sql_query_delete)
@@ -167,15 +161,11 @@ class MeteorologicalMetric(models.Model):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
 
     def delete(self) -> None:
-        sql_query_delete = """
+        sql_query_delete = f"""
         DELETE FROM metrics_meteorologicalmetric WHERE
-        timestamp = '{timestamp}' AND
-        station_id = {station_id} AND
-        metric_name = '{metric_name}';""".format(
-            timestamp=self.timestamp,
-            station_id=self.station_id,
-            metric_name=self.metric_name
-        )
+        timestamp = '{self.timestamp}' AND
+        station_id = {self.station_id} AND
+        metric_name = '{self.metric_name}';"""
         with connection.cursor() as cursor:
             cursor.execute(sql_query_delete)
 

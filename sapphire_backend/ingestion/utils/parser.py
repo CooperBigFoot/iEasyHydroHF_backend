@@ -8,7 +8,7 @@ from sapphire_backend.stations.models import HydrologicalStation
 MAP_XML_VAR_TO_MODEL_VAR = {
     "LW": (HydrologicalMetric.MetricName.WATER_LEVEL_DAILY, HydrologicalMetric.MetricUnit.WATER_LEVEL),
     "TW": (HydrologicalMetric.MetricName.WATER_TEMPERATURE, HydrologicalMetric.MetricUnit.TEMPERATURE),
-    "TA": (HydrologicalMetric.MetricName.AIR_TEMPERATURE, HydrologicalMetric.MetricUnit.TEMPERATURE)
+    "TA": (HydrologicalMetric.MetricName.AIR_TEMPERATURE, HydrologicalMetric.MetricUnit.TEMPERATURE),
     # "LB": None, # LB Battery voltage [V]
     # "SELEM": None, # Status of the technological element
     # "DRS": None, # Open door (0 - closed 1 - open)
@@ -45,10 +45,10 @@ def parse_xml_file(file_path):
     tree = ET.parse(file_path)
     root = tree.getroot()
     for report in root:
-        timestamp = report.attrib['TIME']
+        timestamp = report.attrib["TIME"]
         for child in report:
             if child.tag == "station":
-                station_id = child.attrib['ID']
+                station_id = child.attrib["ID"]
             elif child.tag == "parameter":
                 parameter = child
                 var_name = parameter.attrib["VAR"]
