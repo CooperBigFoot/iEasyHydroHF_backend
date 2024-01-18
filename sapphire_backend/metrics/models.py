@@ -70,25 +70,43 @@ class HydrologicalMetric(models.Model):
     def __str__(self):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
 
-    def save(self) -> None:
+    def delete(self):
+        sql_query_delete = """
+        DELETE FROM metrics_hydrologicalmetric WHERE
+        timestamp = '{timestamp}' AND
+        station_id = {station_id} AND
+        metric_name = '{metric_name}' AND
+        value_type = '{value_type}' AND
+        sensor_identifier = '{sensor_identifier}';""".format(
+            timestamp=self.timestamp,
+            station_id=self.station_id,
+            metric_name=self.metric_name,
+            value_type=self.value_type,
+            sensor_identifier=self.sensor_identifier,
+        )
+
+        with connection.cursor() as cursor:
+            cursor.execute(sql_query_delete)
+
+    def save(self, upsert=True) -> None:
         min_value = self.min_value
         max_value = self.max_value
         avg_value = self.avg_value
 
         if self.min_value is None:
             min_value = "NULL"
-        max_value = self.max_value
         if self.max_value is None:
             max_value = "NULL"
         if self.avg_value is None:
             avg_value = "NULL"
-        sql_query = """
-        INSERT INTO metrics_hydrologicalmetric
-        (timestamp, station_id, metric_name, min_value, avg_value, max_value,
-        unit, value_type, sensor_identifier, sensor_type)
-        VALUES ('{timestamp}'::timestamp, {station_id}, '{metric_name}', {min_value},
-        {avg_value}, {max_value}, '{unit}', '{value_type}', '{sensor_identifier}', '{sensor_type}');
-        """.format(
+
+        sql_query_insert = """
+            INSERT INTO metrics_hydrologicalmetric
+            (timestamp, station_id, metric_name, min_value, avg_value, max_value,
+            unit, value_type, sensor_identifier, sensor_type)
+            VALUES ('{timestamp}', {station_id}, '{metric_name}', {min_value},
+            {avg_value}, {max_value}, '{unit}', '{value_type}', '{sensor_identifier}', '{sensor_type}');
+            """.format(
             timestamp=self.timestamp,
             station_id=self.station_id,
             metric_name=self.metric_name,
@@ -101,8 +119,10 @@ class HydrologicalMetric(models.Model):
             sensor_type=self.sensor_type,
         )
 
+        if upsert:
+            self.delete()
         with connection.cursor() as cursor:
-            cursor.execute(sql_query)
+            cursor.execute(sql_query_insert)
 
 
 class MeteorologicalMetric(models.Model):
@@ -146,8 +166,21 @@ class MeteorologicalMetric(models.Model):
     def __str__(self):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
 
-    def save(self) -> None:
-        sql_query = """
+    def delete(self) -> None:
+        sql_query_delete = """
+        DELETE FROM metrics_meteorologicalmetric WHERE
+        timestamp = '{timestamp}' AND
+        station_id = {station_id} AND
+        metric_name = '{metric_name}';""".format(
+            timestamp=self.timestamp,
+            station_id=self.station_id,
+            metric_name=self.metric_name
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(sql_query_delete)
+
+    def save(self, upsert=True) -> None:
+        sql_query_insert = """
         INSERT INTO metrics_meteorologicalmetric (timestamp, station_id, metric_name, value, value_type, unit )
         VALUES ('{timestamp}'::timestamp, {station_id}, '{metric_name}', {value}, '{value_type}', '{unit}');
         """.format(
@@ -159,5 +192,7 @@ class MeteorologicalMetric(models.Model):
             unit=self.unit,
         )
 
+        if upsert:
+            self.delete()
         with connection.cursor() as cursor:
-            cursor.execute(sql_query)
+            cursor.execute(sql_query_insert)
