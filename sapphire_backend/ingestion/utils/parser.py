@@ -1,43 +1,64 @@
+import datetime
 import logging
 import xml.etree.ElementTree as ET
+from abc import ABC, abstractmethod
+from typing import TypedDict
 
 from dateutil.parser import parse
+from django.core.management import CommandError
 
 from sapphire_backend.metrics.models import HydrologicalMetric
 from sapphire_backend.stations.models import HydrologicalStation
 
 
-class ParserBase:
+class MetricRecord(TypedDict):
+    timestamp: datetime.datetime
+    station: HydrologicalStation
+    sensor_type: str
+    sensor_identifier: str
+    avg_value: float
+    min_value: float
+    max_value: float
+    metric_name: str
+    value_type: HydrologicalMetric.MeasurementType
+    unit: str
+
+
+class ParserBase(ABC):
     def __init__(self, file_path):
         self.file_path = file_path
-        self.input_records = []
-        self.output_metric_objects = []
-        self.cnt_skipped_records = 0
+        self._input_records = []
+        self._output_metric_objects = []
+        self._cnt_skipped_records = 0
 
-    def get_input_records(self):
-        return self.input_records
+    @property
+    def input_records(self):
+        return self._input_records
 
-    def append_output_metric_objects(self, record: []):
-        self.output_metric_objects.append(record)
+    @property
+    def output_metric_objects(self) -> [HydrologicalMetric]:
+        return self._output_metric_objects
 
     def increment_skipped(self):
-        self.cnt_skipped_records = self.cnt_skipped_records + 1
+        self._cnt_skipped_records = self._cnt_skipped_records + 1
 
-    def count_parsed_records(self):
-        return len(self.get_input_records())
+    @property
+    def count_parsed_records(self) -> int:
+        return len(self.input_records)
 
-    def count_skipped_records(self):
-        return self.cnt_skipped_records
+    @property
+    def count_skipped_records(self) -> int:
+        return self._cnt_skipped_records
 
     @staticmethod
-    def create_metric_object(record: {}) -> HydrologicalMetric:
+    def create_metric_object(record: MetricRecord) -> HydrologicalMetric:
         new_hydro_metric = HydrologicalMetric(
             timestamp=record["timestamp"],
             min_value=record["min_value"],
             avg_value=record["avg_value"],
             max_value=record["max_value"],
             unit=record["unit"],
-            value_type=HydrologicalMetric.MeasurementType.AUTOMATIC,
+            value_type=record["value_type"],
             metric_name=record["metric_name"],
             station=record["station"],
             sensor_identifier=record["sensor_identifier"],
@@ -45,41 +66,18 @@ class ParserBase:
         )
         return new_hydro_metric
 
-    def input_append(
-        self,
-        timestamp: str,
-        station_id: str,
-        var_name: str,
-        sensor_type: str,
-        sensor_id: str,
-        avg_value: str,
-        min_value: str,
-        max_value: str,
-    ):
-        """
-        Serialize input and append the list of input records.
-        """
-        input_record = {
-            "timestamp": timestamp,
-            "station_id": station_id,
-            "var_name": var_name,
-            "sensor_type": sensor_type,
-            "sensor_id": sensor_id,
-            "avg_value": avg_value,
-            "min_value": min_value,
-            "max_value": max_value,
-        }
-        self.input_records.append(input_record)
-
+    @abstractmethod
     def run(self):
-        pass
+        """
+        Main parsing method, must be implemented by subclasses
+        """
 
     def post_run(self):
         """
         Logging processed and skipped records number.
         """
-        logging.info(f"Processed {self.count_parsed_records()} records")
-        logging.info(f"Skipped {self.count_skipped_records()} records")
+        logging.info(f"Processed {self.count_parsed_records} records")
+        logging.info(f"Skipped {self.count_skipped_records} records")
 
     def save(self):
         """
@@ -90,6 +88,16 @@ class ParserBase:
 
 
 class XMLParser(ParserBase):
+    class InputRecord(TypedDict):
+        timestamp: str
+        station_id: str
+        var_name: str
+        sensor_type: str
+        sensor_id: str
+        avg_value: str
+        min_value: str
+        max_value: str
+
     def __init__(self, file_path: str):
         super().__init__(file_path)
         self.map_xml_var_to_model_var = {
@@ -106,9 +114,14 @@ class XMLParser(ParserBase):
     def is_var_name_supported(self, var_name: str) -> bool:
         return var_name in self.map_xml_var_to_model_var
 
-    def transform_record(self, record_raw: dict) -> dict:
+    def transform_record(self, record_raw: InputRecord) -> MetricRecord:
         datetime_object = parse(record_raw["timestamp"])
-        hydro_station_obj = HydrologicalStation.objects.get(station_code=record_raw["station_id"])
+        record_raw["station_id"] = "101"
+        try:
+            hydro_station_obj = HydrologicalStation.objects.get(station_code=record_raw["station_id"])
+        except HydrologicalStation.DoesNotExist:
+            raise CommandError(f"Station with code {record_raw['station_id']} does not exist")
+
         metric_name, metric_unit = self.map_xml_var_to_model_var[record_raw["var_name"]]
         avg_value = record_raw.get("avg_value", None)
         if avg_value is not None:
@@ -119,24 +132,26 @@ class XMLParser(ParserBase):
         max_value = record_raw.get("max_value", None)
         if max_value is not None:
             max_value = float(max_value)
-        record_transformed = {
-            "timestamp": datetime_object,
-            "station": hydro_station_obj,
-            "sensor_type": record_raw.get("sensor_type", None),
-            "sensor_identifier": record_raw.get("sensor_id", None),
-            "avg_value": avg_value,
-            "min_value": min_value,
-            "max_value": max_value,
-            "metric_name": metric_name,
-            "unit": metric_unit,
-        }
+        record_transformed = MetricRecord(
+            timestamp=datetime_object,
+            station=hydro_station_obj,
+            sensor_type=record_raw.get("sensor_type", None),
+            sensor_identifier=record_raw.get("sensor_id", None),
+            avg_value=avg_value,
+            min_value=min_value,
+            max_value=max_value,
+            metric_name=metric_name,
+            value_type=HydrologicalMetric.MeasurementType.AUTOMATIC,
+            unit=metric_unit,
+        )
+
         return record_transformed
 
     def transform(self):
-        for record_serialized in self.get_input_records():
+        for record_serialized in self.input_records:
             record_transformed = self.transform_record(record_serialized)
             new_hydro_metric = self.create_metric_object(record_transformed)
-            self.append_output_metric_objects(new_hydro_metric)
+            self.output_metric_objects.append(new_hydro_metric)
 
     def extract(self):
         tree = ET.parse(self.file_path)
@@ -149,8 +164,8 @@ class XMLParser(ParserBase):
                 elif child.tag == "parameter":
                     parameter = child
                     var_name = parameter.attrib["VAR"]
-                    sensor_type = parameter.attrib.get("SENSTYPE", None)
-                    sensor_identifier = parameter.attrib.get("SENSID", None)  # TODO so far no xml files with this
+                    sensor_type = parameter.attrib.get("SENSTYPE", "")
+                    sensor_identifier = parameter.attrib.get("SENSID", "")  # TODO so far no xml files with this
                     if self.is_var_name_supported(var_name):
                         for value in parameter:
                             if value.attrib["PROC"] == "AVE":
@@ -159,16 +174,17 @@ class XMLParser(ParserBase):
                                 min_value = value.text
                             elif value.attrib["PROC"] == "MAX":
                                 max_value = value.text
-                        self.input_append(
-                            timestamp,
-                            station_id,
-                            var_name,
-                            sensor_type,
-                            sensor_identifier,
-                            avg_value,
-                            min_value,
-                            max_value,
+                        new_record = self.InputRecord(
+                            timestamp=timestamp,
+                            station_id=station_id,
+                            var_name=var_name,
+                            sensor_type=sensor_type,
+                            sensor_identifier=sensor_identifier,
+                            avg_value=avg_value,
+                            min_value=min_value,
+                            max_value=max_value,
                         )
+                        self.input_records.append(new_record)
                     else:
                         self.increment_skipped()
                         logging.info(f"Skipped parsing unsupported {var_name} variable")
