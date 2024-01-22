@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from sapphire_backend.ingestion.utils.parser import parse_xml_file
+from sapphire_backend.ingestion.utils.parser import XMLParser
 
 
 class Command(BaseCommand):
@@ -8,4 +8,5 @@ class Command(BaseCommand):
         parser.add_argument("filepath", type=str)
 
     def handle(self, *args, **options):
-        parse_xml_file(options["filepath"])
+        parser = XMLParser(file_path=options["filepath"])
+        parser.run()

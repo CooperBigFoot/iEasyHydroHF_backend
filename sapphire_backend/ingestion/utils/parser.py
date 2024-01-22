@@ -45,21 +45,30 @@ class ParserBase:
         )
         return new_hydro_metric
 
-    def input_append(self, timestamp: str, station_id: str, var_name: str, sensor_type: str, sensor_id: str,
-                     avg_value: str, min_value: str,
-                     max_value: str):
+    def input_append(
+        self,
+        timestamp: str,
+        station_id: str,
+        var_name: str,
+        sensor_type: str,
+        sensor_id: str,
+        avg_value: str,
+        min_value: str,
+        max_value: str,
+    ):
         """
         Serialize input and append the list of input records.
         """
-        input_record = {"timestamp": timestamp,
-                        "station_id": station_id,
-                        "var_name": var_name,
-                        "sensor_type": sensor_type,
-                        "sensor_id": sensor_id,
-                        "avg_value": avg_value,
-                        "min_value": min_value,
-                        "max_value": max_value,
-                        }
+        input_record = {
+            "timestamp": timestamp,
+            "station_id": station_id,
+            "var_name": var_name,
+            "sensor_type": sensor_type,
+            "sensor_id": sensor_id,
+            "avg_value": avg_value,
+            "min_value": min_value,
+            "max_value": max_value,
+        }
         self.input_records.append(input_record)
 
     def run(self):
@@ -82,7 +91,7 @@ class ParserBase:
 
 class XMLParser(ParserBase):
     def __init__(self, file_path: str):
-        super(XMLParser, self).__init__(file_path)
+        super().__init__(file_path)
         self.map_xml_var_to_model_var = {
             "LW": (HydrologicalMetric.MetricName.WATER_LEVEL_DAILY, HydrologicalMetric.MetricUnit.WATER_LEVEL),
             "TW": (HydrologicalMetric.MetricName.WATER_TEMPERATURE, HydrologicalMetric.MetricUnit.TEMPERATURE),
@@ -110,16 +119,17 @@ class XMLParser(ParserBase):
         max_value = record_raw.get("max_value", None)
         if max_value is not None:
             max_value = float(max_value)
-        record_transformed = {"timestamp": datetime_object,
-                              "station": hydro_station_obj,
-                              "sensor_type": record_raw.get("sensor_type", None),
-                              "sensor_identifier": record_raw.get("sensor_id", None),
-                              "avg_value": avg_value,
-                              "min_value": min_value,
-                              "max_value": max_value,
-                              "metric_name": metric_name,
-                              "unit": metric_unit,
-                              }
+        record_transformed = {
+            "timestamp": datetime_object,
+            "station": hydro_station_obj,
+            "sensor_type": record_raw.get("sensor_type", None),
+            "sensor_identifier": record_raw.get("sensor_id", None),
+            "avg_value": avg_value,
+            "min_value": min_value,
+            "max_value": max_value,
+            "metric_name": metric_name,
+            "unit": metric_unit,
+        }
         return record_transformed
 
     def transform(self):
@@ -149,8 +159,16 @@ class XMLParser(ParserBase):
                                 min_value = value.text
                             elif value.attrib["PROC"] == "MAX":
                                 max_value = value.text
-                        self.input_append(timestamp, station_id, var_name, sensor_type,
-                                          sensor_identifier, avg_value, min_value, max_value)
+                        self.input_append(
+                            timestamp,
+                            station_id,
+                            var_name,
+                            sensor_type,
+                            sensor_identifier,
+                            avg_value,
+                            min_value,
+                            max_value,
+                        )
                     else:
                         self.increment_skipped()
                         logging.info(f"Skipped parsing unsupported {var_name} variable")
