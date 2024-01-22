@@ -116,7 +116,6 @@ class XMLParser(ParserBase):
 
     def transform_record(self, record_raw: InputRecord) -> MetricRecord:
         datetime_object = parse(record_raw["timestamp"])
-        record_raw["station_id"] = "101"
         try:
             hydro_station_obj = HydrologicalStation.objects.get(station_code=record_raw["station_id"])
         except HydrologicalStation.DoesNotExist:
