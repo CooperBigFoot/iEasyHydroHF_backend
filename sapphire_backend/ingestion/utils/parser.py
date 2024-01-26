@@ -131,7 +131,8 @@ class XMLParser(BaseParser):
             max_value = record_raw.get("max_value", None)
         except ValueError:
             logging.error(
-                f"Value error for {record_raw['timestamp']} avg {record_raw['avg_value']} min {record_raw['min_value']} max {record_raw['max_value']}. Skipping...")
+                f"Value error for {record_raw['timestamp']} avg {record_raw['avg_value']} min {record_raw['min_value']} max {record_raw['max_value']}. Skipping..."
+            )
             return
 
         record_transformed = MetricRecord(

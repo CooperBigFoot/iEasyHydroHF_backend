@@ -43,12 +43,12 @@ class BaseIngester(ABC):
 
 class ImomoIngester(BaseIngester):
     def __init__(self, client: BaseFileManager, source_dir: str, parser: BaseParser):
-        super(ImomoIngester, self).__init__(client, source_dir, parser)
+        super().__init__(client, source_dir, parser)
         self._temp_dir = tempfile.TemporaryDirectory()
 
     def _post_cleanup(self):
         self._temp_dir.cleanup()
-        logging.info(f"Temporary directory cleaned up")
+        logging.info("Temporary directory cleaned up")
 
     def _discover_files(self):
         """
@@ -77,8 +77,7 @@ class ImomoIngester(BaseIngester):
         try:
             logging.info(f"Ingestion started for folder {self._source_dir}")
             self._discover_files()
-            self.files_downloaded = self.client.get_files(self.files_discovered,
-                                                          self._temp_dir.name)
+            self.files_downloaded = self.client.get_files(self.files_discovered, self._temp_dir.name)
             self._run_parser()
             self._flag_processed_files()
             logging.info("Ingestion finished")

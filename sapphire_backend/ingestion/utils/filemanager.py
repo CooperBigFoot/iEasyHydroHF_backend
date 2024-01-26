@@ -12,6 +12,7 @@ class BaseFileManager(ABC):
     Base class for file managers with basic file operations
     """
 
+    @abstractmethod
     def __init__(self):
         pass
 
@@ -46,8 +47,7 @@ class BaseFileManager(ABC):
 
 
 class FTPClient(BaseFileManager):
-    def __init__(self, ftp_host: str, ftp_port: int, ftp_user: str,
-                 ftp_password: str, ftp_chunk_size=10):
+    def __init__(self, ftp_host: str, ftp_port: int, ftp_user: str, ftp_password: str, ftp_chunk_size=10):
         super(BaseFileManager, self).__init__()
         self.ftp_host = ftp_host
         self.ftp_port = ftp_port
@@ -68,8 +68,7 @@ class FTPClient(BaseFileManager):
         Execute shell command on the local machine
         """
         try:
-            result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                    text=True)
+            result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
 
             if not silent:
                 logging.info(result.stdout)
@@ -86,7 +85,7 @@ class FTPClient(BaseFileManager):
         """
         downloaded_files_path = []
         for i in range(0, len(files_path), self.ftp_chunk_size):
-            files_chunk = files_path[i:i + self.ftp_chunk_size]
+            files_chunk = files_path[i : i + self.ftp_chunk_size]
             partial_commands = f"lcd {dest_folder_local}"
             for file in files_chunk:
                 directory, filename = os.path.split(file)
@@ -120,11 +119,11 @@ class FTPClient(BaseFileManager):
         """
         Filter FTP ls response and only output .xml.part files
         """
-        lines = response.split('\n')
+        lines = response.split("\n")
         files = []
-        for l in lines:
-            if l.endswith(".xml.part"):
-                f = os.path.join(path, l.split()[8])
+        for line in lines:
+            if line.endswith(".xml.part"):
+                f = os.path.join(path, line.split()[8])
                 files.append(f)
         return files
 
@@ -142,7 +141,7 @@ class FTPClient(BaseFileManager):
         Rename files within the same ftp dir in chunks
         """
         for i in range(0, len(old_new_names), self.ftp_chunk_size):
-            old_new_names_chunk = old_new_names[i:i + self.ftp_chunk_size]
+            old_new_names_chunk = old_new_names[i : i + self.ftp_chunk_size]
             partial_commands = f"cd {src_dir}"
             for old_name, new_name in old_new_names_chunk:
                 partial_commands = f"{partial_commands}\nren {old_name} {new_name}"
@@ -152,10 +151,20 @@ class FTPClient(BaseFileManager):
 
 
 class ImomoStagingFTPClient(FTPClient):
-    def __init__(self, ssh_host, ssh_user, ssh_password, ssh_port, ssh_remote_dest_dir, ftp_host, ftp_port, ftp_user,
-                 ftp_password, ftp_chunk_size=10):
-        super(ImomoStagingFTPClient, self).__init__(ftp_host, ftp_port, ftp_user,
-                                                    ftp_password, ftp_chunk_size)
+    def __init__(
+        self,
+        ssh_host,
+        ssh_user,
+        ssh_password,
+        ssh_port,
+        ssh_remote_dest_dir,
+        ftp_host,
+        ftp_port,
+        ftp_user,
+        ftp_password,
+        ftp_chunk_size=10,
+    ):
+        super().__init__(ftp_host, ftp_port, ftp_user, ftp_password, ftp_chunk_size)
         self.ssh_host = ssh_host
         self.ssh_user = ssh_user
         self.ssh_password = ssh_password
