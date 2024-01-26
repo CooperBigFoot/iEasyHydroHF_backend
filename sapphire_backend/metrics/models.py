@@ -1,3 +1,6 @@
+import logging
+
+from django import db
 from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
 
@@ -80,7 +83,12 @@ class HydrologicalMetric(models.Model):
         sensor_identifier = '{self.sensor_identifier}';"""
 
         with connection.cursor() as cursor:
-            cursor.execute(sql_query_delete)
+            try:
+                cursor.execute(sql_query_delete)
+            except db.utils.InternalError as e:
+                # If btree exception occurs, the record was probably already deleted so it doesn't affect
+                # functionality
+                logging.warning(f"Delete statement {sql_query_delete} failed. {e}")
 
     def save(self, upsert=True) -> None:
         min_value = self.min_value

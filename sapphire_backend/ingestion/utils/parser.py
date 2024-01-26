@@ -1,11 +1,12 @@
 import datetime
 import logging
+import os
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
+from types import NoneType
 from typing import TypedDict
 
 from dateutil.parser import parse
-from django.core.management import CommandError
 
 from sapphire_backend.metrics.models import HydrologicalMetric
 from sapphire_backend.stations.models import HydrologicalStation
@@ -24,12 +25,17 @@ class MetricRecord(TypedDict):
     unit: str
 
 
-class ParserBase(ABC):
-    def __init__(self, file_path):
+class BaseParser(ABC):
+    def __init__(self, file_path: str):
         self.file_path = file_path
         self._input_records = []
         self._output_metric_objects = []
         self._cnt_skipped_records = 0
+
+    @property
+    def file_name(self):
+        dir, file_name = os.path.split(self.file_path)
+        return file_name
 
     @property
     def input_records(self):
@@ -72,13 +78,6 @@ class ParserBase(ABC):
         Main parsing method, must be implemented by subclasses
         """
 
-    def post_run(self):
-        """
-        Logging processed and skipped records number.
-        """
-        logging.info(f"Processed {self.count_parsed_records} records")
-        logging.info(f"Skipped {self.count_skipped_records} records")
-
     def save(self):
         """
         Save all the created metric objects
@@ -87,7 +86,7 @@ class ParserBase(ABC):
             metric_object.save()
 
 
-class XMLParser(ParserBase):
+class XMLParser(BaseParser):
     class InputRecord(TypedDict):
         timestamp: str
         station_id: str
@@ -104,38 +103,42 @@ class XMLParser(ParserBase):
             "LW": (HydrologicalMetric.MetricName.WATER_LEVEL_DAILY, HydrologicalMetric.MetricUnit.WATER_LEVEL),
             "TW": (HydrologicalMetric.MetricName.WATER_TEMPERATURE, HydrologicalMetric.MetricUnit.TEMPERATURE),
             "TA": (HydrologicalMetric.MetricName.AIR_TEMPERATURE, HydrologicalMetric.MetricUnit.TEMPERATURE),
-            # "LB": None, # LB Battery voltage [V]
-            # "SELEM": None, # Status of the technological element
-            # "DRS": None, # Open door (0 - closed 1 - open)
-            # "CHCU": None, # Power elememnt current [mA]
-            # "TELEM": None # The temperature of the technological element [° C]
         }
+        self.log_unsupported_variables = set()
+        self.log_unknown_stations = set()
 
     def is_var_name_supported(self, var_name: str) -> bool:
         return var_name in self.map_xml_var_to_model_var
 
-    def transform_record(self, record_raw: InputRecord) -> MetricRecord:
+    def transform_record(self, record_raw: InputRecord) -> MetricRecord | NoneType:
         datetime_object = parse(record_raw["timestamp"])
+        # in case of a 6-digit station id, take only the first five digits
+        station_id_5digit = record_raw["station_id"][:5]
         try:
-            hydro_station_obj = HydrologicalStation.objects.get(station_code=record_raw["station_id"])
+            hydro_station_obj = HydrologicalStation.objects.get(station_code=station_id_5digit)
         except HydrologicalStation.DoesNotExist:
-            raise CommandError(f"Station with code {record_raw['station_id']} does not exist")
+            self.log_unknown_stations.add(station_id_5digit)
+            return
 
         metric_name, metric_unit = self.map_xml_var_to_model_var[record_raw["var_name"]]
-        avg_value = record_raw.get("avg_value", None)
-        if avg_value is not None:
-            avg_value = float(avg_value)
-        min_value = record_raw.get("min_value", None)
-        if min_value is not None:
-            min_value = float(min_value)
-        max_value = record_raw.get("max_value", None)
-        if max_value is not None:
-            max_value = float(max_value)
+        try:
+            avg_value = record_raw.get("avg_value", None)
+            if avg_value is not None:
+                avg_value = float(avg_value)
+            min_value = record_raw.get("min_value", None)
+            if min_value is not None:
+                min_value = float(min_value)
+            max_value = record_raw.get("max_value", None)
+        except ValueError:
+            logging.error(
+                f"Value error for {record_raw['timestamp']} avg {record_raw['avg_value']} min {record_raw['min_value']} max {record_raw['max_value']}. Skipping...")
+            return
+
         record_transformed = MetricRecord(
             timestamp=datetime_object,
             station=hydro_station_obj,
-            sensor_type=record_raw.get("sensor_type", None),
-            sensor_identifier=record_raw.get("sensor_id", None),
+            sensor_type=record_raw.get("sensor_type", ""),
+            sensor_identifier=record_raw.get("sensor_id", ""),
             avg_value=avg_value,
             min_value=min_value,
             max_value=max_value,
@@ -149,8 +152,9 @@ class XMLParser(ParserBase):
     def transform(self):
         for record_serialized in self.input_records:
             record_transformed = self.transform_record(record_serialized)
-            new_hydro_metric = self.create_metric_object(record_transformed)
-            self.output_metric_objects.append(new_hydro_metric)
+            if record_transformed is not None:
+                new_hydro_metric = self.create_metric_object(record_transformed)
+                self.output_metric_objects.append(new_hydro_metric)
 
     def extract(self):
         tree = ET.parse(self.file_path)
@@ -173,6 +177,7 @@ class XMLParser(ParserBase):
                                 min_value = value.text
                             elif value.attrib["PROC"] == "MAX":
                                 max_value = value.text
+
                         new_record = self.InputRecord(
                             timestamp=timestamp,
                             station_id=station_id,
@@ -186,10 +191,21 @@ class XMLParser(ParserBase):
                         self.input_records.append(new_record)
                     else:
                         self.increment_skipped()
-                        logging.info(f"Skipped parsing unsupported {var_name} variable")
+                        self.log_unsupported_variables.add(var_name)
 
     def run(self):
+        logging.info(f"Begin parsing {self.file_name}")
         self.extract()
         self.transform()
         self.save()
         self.post_run()
+        logging.info(f"Done parsing {self.file_name}")
+
+    def post_run(self):
+        """
+        Logging processed and skipped records number.
+        """
+        logging.info(f"Imported {self.count_parsed_records} records")
+        logging.error(f"Unknown stations: {self.log_unknown_stations}")
+        logging.info(f"Unsupported variables: {self.log_unsupported_variables}")
+        logging.info(f"Skipped {self.count_skipped_records} records")
