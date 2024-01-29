@@ -206,7 +206,7 @@ class ImomoStagingFTPClient(FTPClient):
         """
         scp = SCPClient(self.ssh_client.get_transport())
         local_downloaded_files = []
-        logging.info(f"SCP downloading from the SSH machine...")
+        logging.info(f"SCP downloading from the SSH machine to the local folder {dest_folder}...")
         for f in src_file_path:
             scp.get(f, dest_folder)
             ssh_directory, filename = os.path.split(f)
@@ -219,9 +219,11 @@ class ImomoStagingFTPClient(FTPClient):
         """
         Remove downloaded temporary files from the SSH server
         """
+        logging.info("Cleaning up downloaded files on the SSH server...")
         for f in ssh_file_path:
             bash_command = f"rm {f}"
             self._exec_shell_command(bash_command)
+        logging.info("Done.")
 
     def get_files(self, ftp_file_path: str, dest_folder_local: str) -> list[str]:
         """
