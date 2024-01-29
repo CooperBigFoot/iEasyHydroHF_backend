@@ -93,6 +93,14 @@ jobs:
           echo 'POSTGRES_DB=${{ secrets.POSTGRES_DB }}' >> deployment/.backend.env
           echo 'DATABASE_URL=${{ secrets.DATABASE_URL }}' >> deployment/.backend.env
           echo 'DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}' >> deployment/.backend.env
+          echo 'INGESTION_SSH_HOST=${{ secrets.INGESTION_SSH_HOST }}' >> deployment/.backend.env
+          echo 'INGESTION_SSH_USER=${{ secrets.INGESTION_SSH_USER }}' >> deployment/.backend.env
+          echo 'INGESTION_SSH_PASSWORD=${{ secrets.INGESTION_SSH_PASSWORD }}' >> deployment/.backend.env
+          echo 'INGESTION_SSH_PORT=${{ secrets.INGESTION_SSH_PORT }}' >> deployment/.backend.env
+          echo 'INGESTION_FTP_HOST=${{ secrets.INGESTION_FTP_HOST }}' >> deployment/.backend.env
+          echo 'INGESTION_FTP_PORT=${{ secrets.INGESTION_FTP_PORT }}' >> deployment/.backend.env
+          echo 'INGESTION_FTP_USER=${{ secrets.INGESTION_FTP_USER }}' >> deployment/.backend.env
+          echo 'INGESTION_FTP_PASSWORD=${{ secrets.INGESTION_FTP_PASSWORD }}' >> deployment/.backend.env
           echo '${{ secrets.EC2_STAGING_KEYPAIR }}' >> deployment/ec2_kp.pem
           chmod 400 deployment/ec2_kp.pem
       - name: EC2 install docker packages

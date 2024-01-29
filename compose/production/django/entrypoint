@@ -4,8 +4,13 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-
-
+if [ "${INGESTION_SCHEDULED:-False}" == "True" ]; then
+    service cron start
+    echo "Setting up scheduled ingestion in crontab (INGESTION_SCHEDULED=True)"
+    echo "${INGESTION_CRON_JOB} /usr/local/bin/python /app/manage.py ingest >> /app/cron-ingestion.log 2>&1" | crontab -
+else
+  echo "Ingestion not scheduled (INGESTION_SCHEDULED=False)"
+fi
 
 if [ -z "${POSTGRES_USER}" ]; then
     base_postgres_image_default_user='postgres'
