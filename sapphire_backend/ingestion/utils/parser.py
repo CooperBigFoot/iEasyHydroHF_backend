@@ -209,5 +209,6 @@ class XMLParser(BaseParser):
         logging.info(f"Imported {self.count_parsed_records} records")
         if len(self.log_unknown_stations) > 0:
             logging.error(f"Unknown stations: {self.log_unknown_stations}")
-        logging.info(f"Unsupported variables: {self.log_unsupported_variables}")
+        if len(self.log_unsupported_variables) > 0:
+            logging.info(f"Unsupported variables: {self.log_unsupported_variables}")
         logging.info(f"Skipped {self.count_skipped_records} records")
