@@ -207,6 +207,7 @@ class XMLParser(BaseParser):
         Logging processed and skipped records number.
         """
         logging.info(f"Imported {self.count_parsed_records} records")
-        logging.error(f"Unknown stations: {self.log_unknown_stations}")
+        if len(self.log_unknown_stations) > 0:
+            logging.error(f"Unknown stations: {self.log_unknown_stations}")
         logging.info(f"Unsupported variables: {self.log_unsupported_variables}")
         logging.info(f"Skipped {self.count_skipped_records} records")
