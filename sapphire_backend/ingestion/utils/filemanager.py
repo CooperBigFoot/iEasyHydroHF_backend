@@ -85,6 +85,7 @@ class FTPClient(BaseFileManager):
         """
         downloaded_files_path = []
         for i in range(0, len(files_path), self.ftp_chunk_size):
+            logging.info(f"FTP downloading {i+1}/{len(files_path)}")
             files_chunk = files_path[i : i + self.ftp_chunk_size]
             partial_commands = f"lcd {dest_folder_local}"
             for file in files_chunk:
@@ -93,7 +94,6 @@ class FTPClient(BaseFileManager):
                 downloaded_files_path.append(os.path.join(dest_folder_local, filename))
             ftp_commands = self.ftp_cmd_wrapper.format(partial_commands=partial_commands)
             self._exec_shell_command(ftp_commands)
-
         return downloaded_files_path
 
     def get_files(self, ftp_file_path: list[str], dest_folder_local: str):
@@ -206,6 +206,7 @@ class ImomoStagingFTPClient(FTPClient):
         """
         scp = SCPClient(self.ssh_client.get_transport())
         local_downloaded_files = []
+        logging.info(f"SCP downloading from the SSH machine...")
         for f in src_file_path:
             scp.get(f, dest_folder)
             ssh_directory, filename = os.path.split(f)
