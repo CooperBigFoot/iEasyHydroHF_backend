@@ -1,6 +1,5 @@
 import logging
 
-import psycopg
 from django import db
 from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
@@ -124,7 +123,6 @@ class HydrologicalMetric(models.Model):
         if upsert:
             self.delete()
         with connection.cursor() as cursor:
-            import psycopg
             try:
                 cursor.execute(sql_query_insert)
             except db.utils.NotSupportedError as e:
@@ -133,12 +131,15 @@ class HydrologicalMetric(models.Model):
                 HINT:  Make sure the TimescaleDB extension has been preloaded.
                 """
                 if 'invalid INSERT on the root table of hypertable "' in str(e):
-                    hyper_chunk_name = str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
-                    sql_query_remove_trigger = f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
+                    hyper_chunk_name = (
+                        str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
+                    )
+                    sql_query_remove_trigger = (
+                        f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
+                    )
                     logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
                     cursor.execute(sql_query_remove_trigger)
                     cursor.execute(sql_query_insert)
-
 
 
 class MeteorologicalMetric(models.Model):
