@@ -1,5 +1,6 @@
 import logging
 
+import psycopg
 from django import db
 from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
@@ -104,27 +105,40 @@ class HydrologicalMetric(models.Model):
 
         sql_query_insert = """
             INSERT INTO metrics_hydrologicalmetric
-            (timestamp, station_id, metric_name, min_value, avg_value, max_value,
-            unit, value_type, sensor_identifier, sensor_type)
-            VALUES ('{timestamp}', {station_id}, '{metric_name}', {min_value},
-            {avg_value}, {max_value}, '{unit}', '{value_type}', '{sensor_identifier}', '{sensor_type}');
+            (timestamp, station_id, metric_name, value_type, sensor_identifier, min_value, avg_value, max_value,
+            unit, sensor_type)
+            VALUES ('{timestamp}', {station_id}, '{metric_name}', '{value_type}', '{sensor_identifier}', {min_value},
+            {avg_value}, {max_value}, '{unit}', '{sensor_type}');
             """.format(
             timestamp=self.timestamp,
             station_id=self.station_id,
             metric_name=self.metric_name,
+            value_type=self.value_type,
+            sensor_identifier=self.sensor_identifier,
             min_value=min_value,
             avg_value=avg_value,
             max_value=max_value,
             unit=self.unit,
-            value_type=self.value_type,
-            sensor_identifier=self.sensor_identifier,
             sensor_type=self.sensor_type,
         )
-
         if upsert:
             self.delete()
         with connection.cursor() as cursor:
-            cursor.execute(sql_query_insert)
+            import psycopg
+            try:
+                cursor.execute(sql_query_insert)
+            except db.utils.NotSupportedError as e:
+                """
+                invalid INSERT on the root table of hypertable "_hyper_1_104_chunk"
+                HINT:  Make sure the TimescaleDB extension has been preloaded.
+                """
+                if 'invalid INSERT on the root table of hypertable "' in str(e):
+                    hyper_chunk_name = str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
+                    sql_query_remove_trigger = f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
+                    logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
+                    cursor.execute(sql_query_remove_trigger)
+                    cursor.execute(sql_query_insert)
+
 
 
 class MeteorologicalMetric(models.Model):
