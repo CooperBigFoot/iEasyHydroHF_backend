@@ -42,7 +42,6 @@ RUN addgroup --system django \
 RUN apt-get update && apt-get install --no-install-recommends -y \
   # psycopg dependencies
   libpq-dev \
-  cron  \
   nano \
   # Translations dependencies
   gettext \
@@ -76,6 +75,8 @@ COPY --chown=django:django . ${APP_HOME}
 RUN chown django:django ${APP_HOME}
 
 USER django
+
+RUN apt-get update && apt-get install --no-install-recommends -y cron
 
 RUN DATABASE_URL="" \
   DJANGO_SETTINGS_MODULE="config.settings.test" \
