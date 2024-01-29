@@ -5,6 +5,7 @@ set -o pipefail
 set -o nounset
 
 if [ "${INGESTION_SCHEDULED:-False}" == "True" ]; then
+    env >> /etc/environment
     service cron start
     echo "Setting up scheduled ingestion in crontab (INGESTION_SCHEDULED=True)"
     echo "${INGESTION_CRON_JOB} /usr/local/bin/python /app/manage.py ingest >> /app/cron-ingestion.log 2>&1" | crontab -
