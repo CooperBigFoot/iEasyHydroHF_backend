@@ -25,6 +25,8 @@ services:
       - "traefik.http.routers.django.rule=Host(`hf.ieasyhydro.org`) && PathPrefix(`/sapphire-admin`, `/api`, `/media`, `/static`)"
       - "traefik.http.routers.django.entrypoints=websecure"
       - "traefik.http.routers.django.tls.certresolver=myresolver"
+    volumes:
+      - /ebs_volume/logs/cron-ingestion.log:/app/cron-ingestion.log
 
   timescale:
     image: timescale/timescaledb:latest-pg16

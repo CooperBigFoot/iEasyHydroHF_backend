@@ -65,5 +65,6 @@ RUN chmod +x /start
 
 # copy application code to WORKDIR
 COPY . ${APP_HOME}
+RUN touch /app/cron-ingestion.log
 
 ENTRYPOINT ["/entrypoint"]

@@ -5,7 +5,7 @@ sudo mount /dev/xvdh /ebs_volume/ || echo '/ebs_volume already mounted'
 sudo chown -R $USER:$USER /ebs_volume
 mkdir /ebs_volume/timescale_data || echo '/ebs_volume/timescale_data already created'
 mkdir /ebs_volume/backups || echo '/ebs_volume/backups already created'
-
+mkdir /ebs_volume/logs || echo '/ebs_volume/logs already created'
 sudo apt update
 sudo apt install -y curl zip
 
