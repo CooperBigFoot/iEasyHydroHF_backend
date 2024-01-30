@@ -91,7 +91,7 @@ resource "aws_security_group_rule" "outbound_internet_access" {
 # EC2 instance
 resource "aws_instance" "sapphire_staging_tf" {
   ami                    = "ami-06dd92ecc74fdfb36"
-  instance_type          = "t2.micro"
+  instance_type          = "t2.small"
   vpc_security_group_ids = [aws_security_group.instance.id]
   key_name               = "sapphire_staging_keypair" # manually created keypair
   root_block_device {
@@ -114,7 +114,7 @@ resource "aws_volume_attachment" "sapphire" {
 resource "aws_ebs_volume" "sapphire" {
   availability_zone = aws_instance.sapphire_staging_tf.availability_zone
   size              = 30
-  tags              = {
+  tags = {
     Name = "Sapphire staging EBS"
   }
 }

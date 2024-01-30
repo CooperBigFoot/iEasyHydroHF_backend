@@ -145,7 +145,11 @@ class HydrologicalMetric(models.Model):
                         cursor.execute(sql_query_insert)
                     else:
                         raise Exception(e)
+                else:
+                    raise Exception(e)
 
+            except Exception as e:
+                raise Exception(e)
 
 class MeteorologicalMetric(models.Model):
     class MeasurementType(models.TextChoices):
