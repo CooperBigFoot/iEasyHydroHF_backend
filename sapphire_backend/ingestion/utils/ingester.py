@@ -8,12 +8,13 @@ from sapphire_backend.ingestion.utils.parser import BaseParser
 
 
 class BaseIngester(ABC):
-    def __init__(self, client: BaseFileManager, source_dir: str, parser: BaseParser):
+    def __init__(self, client: BaseFileManager, source_dir: str, parser: BaseParser, chunk_size=200):
         self.client = client
         self._source_dir = source_dir
         self._files_discovered = []
         self._files_downloaded = []
         self.parser = parser
+        self._ingestion_chunk_size = chunk_size
 
     @property
     def files_discovered(self):
@@ -77,9 +78,12 @@ class ImomoIngester(BaseIngester):
         try:
             logging.info(f"Ingestion started for folder {self._source_dir}")
             self._discover_files()
-            self.files_downloaded = self.client.get_files(self.files_discovered, self._temp_dir.name)
-            self._run_parser()
-            self._flag_processed_files()
+            for i in range(0, len(self.files_discovered), self._ingestion_chunk_size):
+                logging.info(f"Ingesting {i + 1}/{len(self.files_discovered)}")
+                files_chunk = self.files_discovered[i: i + self._ingestion_chunk_size]
+                self.files_downloaded = self.client.get_files(files_chunk, self._temp_dir.name)
+                self._run_parser()
+                self._flag_processed_files()
             logging.info("Ingestion finished")
         finally:
             self.client.close()

@@ -130,16 +130,19 @@ class HydrologicalMetric(models.Model):
                 invalid INSERT on the root table of hypertable "_hyper_1_104_chunk"
                 HINT:  Make sure the TimescaleDB extension has been preloaded.
                 """
-                if 'invalid INSERT on the root table of hypertable "' in str(e):
+                if 'invalid INSERT on the root table of hypertable "' in str(e): # TODO better bolje ovo napravi
                     hyper_chunk_name = (
                         str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
                     )
-                    sql_query_remove_trigger = (
-                        f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
-                    )
-                    logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
-                    cursor.execute(sql_query_remove_trigger)
-                    cursor.execute(sql_query_insert)
+                    if hyper_chunk_name.startwswith("_hyper") and hyper_chunk_name.endswith("_chunk"):
+                        sql_query_remove_trigger = (
+                            f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
+                        )
+                        cursor.execute(sql_query_remove_trigger)
+                        logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
+                        cursor.execute(sql_query_insert)
+                    else:
+                        raise Exception(e)
 
 
 class MeteorologicalMetric(models.Model):
