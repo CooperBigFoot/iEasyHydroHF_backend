@@ -151,6 +151,7 @@ class HydrologicalMetric(models.Model):
             except Exception as e:
                 raise Exception(e)
 
+
 class MeteorologicalMetric(models.Model):
     class MeasurementType(models.TextChoices):
         IMPORTED = "I", _("Imported")
