@@ -134,7 +134,7 @@ class HydrologicalMetric(models.Model):
                     hyper_chunk_name = (
                         str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
                     )
-                    if hyper_chunk_name.startwswith("_hyper") and hyper_chunk_name.endswith("_chunk"):
+                    if hyper_chunk_name.startswith("_hyper") and hyper_chunk_name.endswith("_chunk"):
                         sql_query_remove_trigger = (
                             f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
                         )
