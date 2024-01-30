@@ -127,10 +127,12 @@ class HydrologicalMetric(models.Model):
                 cursor.execute(sql_query_insert)
             except db.utils.NotSupportedError as e:
                 """
+                Handle specific error. Timescale has this bug, hyper chunks should not have insert blockers.
+                E.g.:
                 invalid INSERT on the root table of hypertable "_hyper_1_104_chunk"
                 HINT:  Make sure the TimescaleDB extension has been preloaded.
                 """
-                if 'invalid INSERT on the root table of hypertable "' in str(e):  # TODO better bolje ovo napravi
+                if 'invalid INSERT on the root table of hypertable "' in str(e):
                     hyper_chunk_name = (
                         str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
                     )
