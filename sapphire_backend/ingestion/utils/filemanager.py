@@ -104,25 +104,25 @@ class FTPClient(BaseFileManager):
         local_files = self._ftp_get_files(ftp_file_path)
         return local_files
 
-    def list_dir(self, path):
+    def list_dir(self, path, file_extension=".xml.part"):
         """
         List FTP directory
         """
         partial_commands = f"cd {path}\nls"
         ftp_commands = self.ftp_cmd_wrapper.format(partial_commands=partial_commands)
         response = self._exec_shell_command(ftp_commands)
-        list_files = self._parse_list_dir(path, response)
+        list_files = self._parse_list_dir(path, response, file_extension)
         return list_files
 
     @staticmethod
-    def _parse_list_dir(path: str, response: str):
+    def _parse_list_dir(path: str, response: str, file_extension: str):
         """
         Filter FTP ls response and only output .xml.part files
         """
         lines = response.split("\n")
         files = []
         for line in lines:
-            if line.endswith(".xml.part"):
+            if line.endswith(file_extension):
                 f = os.path.join(path, line.split()[8])
                 files.append(f)
         return files

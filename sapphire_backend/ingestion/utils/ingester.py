@@ -67,7 +67,7 @@ class ImomoIngester(BaseIngester):
         Rename processed files on the ftp server - add .processed suffix
         """
         old_new_pairs = []
-        for old_file in self.files_discovered:
+        for old_file in self.files_downloaded:
             dir, old_filename = os.path.split(old_file)
             new_filename = f"{old_filename}.processed"
             old_new_pairs.append((old_filename, new_filename))
