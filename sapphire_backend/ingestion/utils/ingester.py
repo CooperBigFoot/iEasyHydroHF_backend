@@ -80,7 +80,7 @@ class ImomoIngester(BaseIngester):
             self._discover_files()
             for i in range(0, len(self.files_discovered), self._ingestion_chunk_size):
                 logging.info(f"Ingesting {i + 1}/{len(self.files_discovered)}")
-                files_chunk = self.files_discovered[i: i + self._ingestion_chunk_size]
+                files_chunk = self.files_discovered[i : i + self._ingestion_chunk_size]
                 self.files_downloaded = self.client.get_files(files_chunk, self._temp_dir.name)
                 self._run_parser()
                 self._flag_processed_files()

@@ -130,7 +130,7 @@ class HydrologicalMetric(models.Model):
                 invalid INSERT on the root table of hypertable "_hyper_1_104_chunk"
                 HINT:  Make sure the TimescaleDB extension has been preloaded.
                 """
-                if 'invalid INSERT on the root table of hypertable "' in str(e): # TODO better bolje ovo napravi
+                if 'invalid INSERT on the root table of hypertable "' in str(e):  # TODO better bolje ovo napravi
                     hyper_chunk_name = (
                         str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
                     )
