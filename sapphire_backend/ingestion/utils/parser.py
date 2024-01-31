@@ -6,7 +6,8 @@ from abc import ABC, abstractmethod
 from types import NoneType
 from typing import TypedDict
 
-from dateutil.parser import parse
+import pytz
+from django.utils import timezone
 
 from sapphire_backend.metrics.models import HydrologicalMetric
 from sapphire_backend.stations.models import HydrologicalStation
@@ -110,8 +111,17 @@ class XMLParser(BaseParser):
     def is_var_name_supported(self, var_name: str) -> bool:
         return var_name in self.map_xml_var_to_model_var
 
+    @staticmethod
+    def convert_str_to_datetime(datetime_str: str) -> datetime.datetime:
+        """
+        Convert timestamp string to datetime UTC object
+        """
+        dt_object = timezone.datetime.strptime(datetime_str, "%d-%m-%YT%H:%M:%SZ")
+        dt_object_utc = timezone.make_aware(dt_object, pytz.utc)
+        return dt_object_utc
+
     def transform_record(self, record_raw: InputRecord) -> MetricRecord | NoneType:
-        datetime_object = parse(record_raw["timestamp"])
+        datetime_object = self.convert_str_to_datetime(record_raw["timestamp"])
         # in case of a 6-digit station id, take only the first five digits
         station_id_5digit = record_raw["station_id"][:5]
         try:

@@ -16,8 +16,8 @@ class BaseFileManager(ABC):
     def __init__(self):
         pass
 
-    def get_file(self, file_path):
-        self.get_files([file_path])
+    def get_file(self, file_path, destination_dir: str):
+        self.get_files([file_path], destination_dir)
 
     def move_file(self, file_path: str, destination_dir: str):
         self.move_files([file_path], destination_dir)
