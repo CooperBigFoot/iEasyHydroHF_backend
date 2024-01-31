@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from types import NoneType
 from typing import TypedDict
 
-import pytz
+import zoneinfo
 from django.utils import timezone
 
 from sapphire_backend.metrics.models import HydrologicalMetric
@@ -117,7 +117,7 @@ class XMLParser(BaseParser):
         Convert timestamp string to datetime UTC object
         """
         dt_object = timezone.datetime.strptime(datetime_str, "%d-%m-%YT%H:%M:%SZ")
-        dt_object_utc = timezone.make_aware(dt_object, pytz.utc)
+        dt_object_utc = timezone.make_aware(dt_object, zoneinfo.ZoneInfo("UTC"))
         return dt_object_utc
 
     def transform_record(self, record_raw: InputRecord) -> MetricRecord | NoneType:
