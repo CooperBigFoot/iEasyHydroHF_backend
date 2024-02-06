@@ -4,40 +4,17 @@ from django import db
 from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
 
+from .choices import (
+    HydrologicalMeasurementType,
+    HydrologicalMetricName,
+    MeteorologicalMeasurementType,
+    MeteorologicalMetricName,
+    MetricUnit,
+)
+from .managers import HydrologicalMetricQuerySet, MeteorologicalMetricQuerySet
+
 
 class HydrologicalMetric(models.Model):
-    class MeasurementType(models.TextChoices):
-        MANUAL = "M", _("Manual")
-        AUTOMATIC = "A", _("Automatic")
-        ESTIMATED = "E", _("Estimated")
-        IMPORTED = "I", _("Imported")
-        UNKNOWN = "U", _("Unknown")
-
-    class MetricName(models.TextChoices):
-        WATER_LEVEL_DAILY = "WLD", _("Water level daily")
-        WATER_LEVEL_DAILY_AVERAGE = "WLDA", _("Water level daily average")
-        WATER_LEVEL_DECADAL = "WLDC", _("Water level decadal")
-
-        WATER_DISCHARGE_DAILY = "WDD", _("Water discharge daily")
-        WATER_DISCHARGE_DAILY_AVERAGE = "WDDA", _("Water discharge daily average")
-        WATER_DISCHARGE_FIVEDAY_AVERAGE = "WDFA", _("Water discharge fiveday average")
-        WATER_DISCHARGE_DECADE_AVERAGE = "WDDCA", _("Water discharge decade average")
-        WATER_DISCHARGE_DECADE_AVERAGE_HISTORICAL = "WDDCAH", _("Water discharge decade average historical")
-
-        WATER_TEMPERATURE = "WTO", _("Water temperature observation")
-        AIR_TEMPERATURE = "ATO", _("Air temperature observation")
-        ICE_PHENOMENA_OBSERVATION = "IPO", _("Ice phenomena observation")
-
-        RIVER_CROSS_SECTION_AREA = "RCSA", _("River cross section area")
-        MAXIMUM_DEPTH = "MD", _("Maximum depth")
-
-    class MetricUnit(models.TextChoices):
-        WATER_LEVEL = "cm", _("centimeter")  # '0001'
-        WATER_DISCHARGE = "m^3/s", _("cubic meters per second")  # '0005'
-        TEMPERATURE = "degC", _("degree celsius")  # '0013'
-        ICE_PHENOMENA_OBSERVATION = "dimensionless", _("dimensionless")  # '0011'
-        AREA = "m^2", _("square meter")  # '0006'
-
     timestamp = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp"))
     min_value = models.DecimalField(
         verbose_name=_("Minimum value"), max_digits=15, decimal_places=5, null=True, blank=True
@@ -49,14 +26,14 @@ class HydrologicalMetric(models.Model):
     unit = models.CharField(verbose_name=_("Unit"), choices=MetricUnit, blank=True, max_length=20)
     value_type = models.CharField(
         verbose_name=_("Value type"),
-        choices=MeasurementType,
-        default=MeasurementType.UNKNOWN,
+        choices=HydrologicalMeasurementType,
+        default=HydrologicalMeasurementType.UNKNOWN,
         max_length=2,
         blank=False,
     )
     metric_name = models.CharField(
         verbose_name=_("Metric name"),
-        choices=MetricName,
+        choices=HydrologicalMetricName,
         max_length=20,
         blank=False,
     )
@@ -64,6 +41,8 @@ class HydrologicalMetric(models.Model):
 
     sensor_identifier = models.CharField(verbose_name=_("Sensor identifier"), blank=True, max_length=50)
     sensor_type = models.CharField(verbose_name=_("Sensor type"), blank=True, max_length=50)
+
+    objects = HydrologicalMetricQuerySet.as_manager()
 
     class Meta:
         verbose_name = _("Hydrological metric")
@@ -153,37 +132,25 @@ class HydrologicalMetric(models.Model):
 
 
 class MeteorologicalMetric(models.Model):
-    class MeasurementType(models.TextChoices):
-        IMPORTED = "I", _("Imported")
-        UNKNOWN = "U", _("Unknown")
-
-    class MetricName(models.TextChoices):
-        AIR_TEMPERATURE_DECADE_AVERAGE = "ATDCA", _("Air temperature decade average")  # 0016
-        AIR_TEMPERATURE_MONTH_AVERAGE = "ATMA", _("Air temperature month average")  # 0017
-        PRECIPITATION_DECADE_AVERAGE = "PDCA", _("Precipitation decade average")  # 0018
-        PRECIPITATION_MONTH_AVERAGE = "PMA", _("Precipitation month average")  # 0019
-
-    class MetricUnit(models.TextChoices):
-        TEMPERATURE = "degC", _("degree celsius")  # 0016
-        PRECIPITATION = "mm/day", _("millimeters per day")  # 0018
-
     timestamp = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp"))
     value = models.DecimalField(verbose_name=_("Value"), max_digits=10, decimal_places=5)
     value_type = models.CharField(
         verbose_name=_("Value type"),
-        choices=MeasurementType,
-        default=MeasurementType.UNKNOWN,
+        choices=MeteorologicalMeasurementType,
+        default=MeteorologicalMeasurementType.UNKNOWN,
         max_length=2,
         blank=False,
     )
     metric_name = models.CharField(
         verbose_name=_("Metric name"),
-        choices=MetricName,
+        choices=MeteorologicalMetricName,
         max_length=20,
         blank=False,
     )
     unit = models.CharField(verbose_name=_("Unit"), choices=MetricUnit, max_length=20, blank=True)
     station = models.ForeignKey("stations.MeteorologicalStation", verbose_name=_("Station"), on_delete=models.PROTECT)
+
+    objects = MeteorologicalMetricQuerySet.as_manager()
 
     class Meta:
         verbose_name = _("Meteorological metric")

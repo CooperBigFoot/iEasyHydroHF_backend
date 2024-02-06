@@ -15,6 +15,13 @@ from sapphire_backend.imomo.data_structs.standard_data import Variables
 from sapphire_backend.imomo.old_models import Variable
 from sapphire_backend.imomo.old_models.data_sources import Source as OldSource  # Import your old SQLAlchemy model
 from sapphire_backend.imomo.old_models.monitoring_site_locations import Site as OldSite
+from sapphire_backend.metrics.choices import (
+    HydrologicalMeasurementType,
+    HydrologicalMetricName,
+    MeteorologicalMeasurementType,
+    MeteorologicalMetricName,
+    MetricUnit,
+)
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
 from sapphire_backend.organizations.models import Basin, Organization, Region
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, Site
@@ -107,83 +114,83 @@ def get_or_create_site(
 def get_metric_name_unit_type(variable: Variable):
     var_code = variable.variable_code
     if var_code == Variables.gauge_height_daily_measurement.value:  # 0001
-        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY
-        metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
-        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+        metric_name = HydrologicalMetricName.WATER_LEVEL_DAILY
+        metric_unit = MetricUnit.WATER_LEVEL
+        measurement_type = HydrologicalMeasurementType.MANUAL
     elif var_code == Variables.gauge_height_average_daily_measurement.value:  # 0002
-        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY_AVERAGE
-        metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
-        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+        metric_name = HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE
+        metric_unit = MetricUnit.WATER_LEVEL
+        measurement_type = HydrologicalMeasurementType.MANUAL
     elif var_code == Variables.gauge_height_average_daily_estimation.value:  # 0003
-        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DAILY_AVERAGE
-        metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
-        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+        metric_name = HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE
+        metric_unit = MetricUnit.WATER_LEVEL
+        measurement_type = HydrologicalMeasurementType.ESTIMATED
     elif var_code == Variables.discharge_daily_measurement.value:  # 0004
-        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY
-        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+        metric_name = HydrologicalMetricName.WATER_DISCHARGE_DAILY
+        metric_unit = MetricUnit.WATER_DISCHARGE
+        measurement_type = HydrologicalMeasurementType.MANUAL
     elif var_code == Variables.discharge_daily_estimation.value:  # 0005
-        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY
-        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+        metric_name = HydrologicalMetricName.WATER_DISCHARGE_DAILY
+        metric_unit = MetricUnit.WATER_DISCHARGE
+        measurement_type = HydrologicalMeasurementType.ESTIMATED
     elif var_code == Variables.river_cross_section_area_measurement.value:  # 0006:
-        metric_name = HydrologicalMetric.MetricName.RIVER_CROSS_SECTION_AREA
-        metric_unit = HydrologicalMetric.MetricUnit.AREA
-        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+        metric_name = HydrologicalMetricName.RIVER_CROSS_SECTION_AREA
+        metric_unit = MetricUnit.AREA
+        measurement_type = HydrologicalMeasurementType.MANUAL
     elif var_code == Variables.maximum_depth_measurement.value:  # 0007:
-        metric_name = HydrologicalMetric.MetricName.MAXIMUM_DEPTH
-        metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
-        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+        metric_name = HydrologicalMetricName.MAXIMUM_DEPTH
+        metric_unit = MetricUnit.WATER_LEVEL
+        measurement_type = HydrologicalMeasurementType.MANUAL
     elif var_code == Variables.discharge_decade_average.value:  # 0008
-        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DECADE_AVERAGE
-        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+        metric_name = HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE
+        metric_unit = MetricUnit.WATER_DISCHARGE
+        measurement_type = HydrologicalMeasurementType.ESTIMATED
     elif var_code == Variables.discharge_maximum_recommendation.value:  # 0009:
         return "", "", ""  # this will be at HydroStation level WATER_DISCHARGE_MAXIMUM_RECOMMENDATION
     elif var_code == Variables.discharge_daily_average_estimation.value:  # 0010
-        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DAILY_AVERAGE
-        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+        metric_name = HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE
+        metric_unit = MetricUnit.WATER_DISCHARGE
+        measurement_type = HydrologicalMeasurementType.ESTIMATED
     elif var_code == Variables.ice_phenomena_observation.value:  # "0011":
-        metric_name = HydrologicalMetric.MetricName.ICE_PHENOMENA_OBSERVATION
-        metric_unit = HydrologicalMetric.MetricUnit.ICE_PHENOMENA_OBSERVATION
-        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+        metric_name = HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION
+        metric_unit = MetricUnit.ICE_PHENOMENA_OBSERVATION
+        measurement_type = HydrologicalMeasurementType.MANUAL
     elif var_code == Variables.gauge_height_decadal_measurement.value:  # 0012
-        metric_name = HydrologicalMetric.MetricName.WATER_LEVEL_DECADAL
-        metric_unit = HydrologicalMetric.MetricUnit.WATER_LEVEL
-        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+        metric_name = HydrologicalMetricName.WATER_LEVEL_DECADAL
+        metric_unit = MetricUnit.WATER_LEVEL
+        measurement_type = HydrologicalMeasurementType.MANUAL
     elif var_code == Variables.water_temperature_observation.value:  # 0013
-        metric_name = HydrologicalMetric.MetricName.WATER_TEMPERATURE
-        metric_unit = HydrologicalMetric.MetricUnit.TEMPERATURE
-        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+        metric_name = HydrologicalMetricName.WATER_TEMPERATURE
+        metric_unit = MetricUnit.TEMPERATURE
+        measurement_type = HydrologicalMeasurementType.MANUAL
     elif var_code == Variables.air_temperature_observation.value:  # 0014
-        metric_name = HydrologicalMetric.MetricName.AIR_TEMPERATURE
-        metric_unit = HydrologicalMetric.MetricUnit.TEMPERATURE
-        measurement_type = HydrologicalMetric.MeasurementType.MANUAL
+        metric_name = HydrologicalMetricName.AIR_TEMPERATURE
+        metric_unit = MetricUnit.TEMPERATURE
+        measurement_type = HydrologicalMeasurementType.MANUAL
     elif var_code == Variables.discharge_fiveday_average.value:  # 0015
-        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE
-        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+        metric_name = HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE
+        metric_unit = MetricUnit.WATER_DISCHARGE
+        measurement_type = HydrologicalMeasurementType.ESTIMATED
     elif var_code == Variables.temperature_decade_average.value:  # 0016
-        metric_name = MeteorologicalMetric.MetricName.AIR_TEMPERATURE_DECADE_AVERAGE
-        metric_unit = MeteorologicalMetric.MetricUnit.TEMPERATURE
-        measurement_type = MeteorologicalMetric.MeasurementType.IMPORTED
+        metric_name = MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE
+        metric_unit = MetricUnit.TEMPERATURE
+        measurement_type = MeteorologicalMeasurementType.IMPORTED
     elif var_code == Variables.temperature_month_average.value:  # 0017
-        metric_name = MeteorologicalMetric.MetricName.AIR_TEMPERATURE_MONTH_AVERAGE
-        metric_unit = MeteorologicalMetric.MetricUnit.TEMPERATURE
-        measurement_type = MeteorologicalMetric.MeasurementType.IMPORTED
+        metric_name = MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE
+        metric_unit = MetricUnit.TEMPERATURE
+        measurement_type = MeteorologicalMeasurementType.IMPORTED
     elif var_code == Variables.precipitation_decade_average.value:  # 0018
-        metric_name = MeteorologicalMetric.MetricName.PRECIPITATION_DECADE_AVERAGE
-        metric_unit = MeteorologicalMetric.MetricUnit.PRECIPITATION
-        measurement_type = MeteorologicalMetric.MeasurementType.IMPORTED
+        metric_name = MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE
+        metric_unit = MetricUnit.PRECIPITATION
+        measurement_type = MeteorologicalMeasurementType.IMPORTED
     elif var_code == Variables.precipitation_month_average.value:  # 0019
-        metric_name = MeteorologicalMetric.MetricName.PRECIPITATION_MONTH_AVERAGE
-        metric_unit = MeteorologicalMetric.MetricUnit.PRECIPITATION
-        measurement_type = MeteorologicalMetric.MeasurementType.IMPORTED
+        metric_name = MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE
+        metric_unit = MetricUnit.PRECIPITATION
+        measurement_type = MeteorologicalMeasurementType.IMPORTED
     elif var_code == Variables.discharge_decade_average_historical.value:  # 0020
-        metric_name = HydrologicalMetric.MetricName.WATER_DISCHARGE_DECADE_AVERAGE_HISTORICAL
-        metric_unit = HydrologicalMetric.MetricUnit.WATER_DISCHARGE
-        measurement_type = HydrologicalMetric.MeasurementType.ESTIMATED
+        metric_name = HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE_HISTORICAL
+        metric_unit = MetricUnit.WATER_DISCHARGE
+        measurement_type = HydrologicalMeasurementType.ESTIMATED
     return metric_name, metric_unit, measurement_type
 
 
