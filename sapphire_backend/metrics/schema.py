@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from typing import Literal
 
 from ninja import FilterSchema, Schema
 
@@ -11,38 +11,40 @@ from .choices import (
 )
 
 
-class TimeseriesGeneralFilterSchema(FilterSchema):
+class BaseTimeseriesFilterSchema(FilterSchema):
+    timestamp: datetime = None
+    timestamp__gt: datetime = None
+    timestamp__gte: datetime = None
+    timestamp__lt: datetime = None
+    timestamp__lte: datetime = None
     station_id: int = None
-    timestamp: datetime = None
-    timestamp: datetime = None
+    station_id__in: list[int] = None
+    station__station_code: str = None
+    station__station_code__in: list[str] = None
 
 
-class HydrologicalMetricFilterSchema(TimeseriesGeneralFilterSchema):
-    average_value: float = None
-    value_type: HydrologicalMeasurementType = None
+class HydroMetricFilterSchema(BaseTimeseriesFilterSchema):
+    avg_value__gt: float = None
+    avg_value__gte: float = None
+    avg_value__lt: float = None
+    avg_value__lte: float = None
     metric_name: HydrologicalMetricName = None
+    value_type: HydrologicalMeasurementType = None
     sensor_identifier: str = None
 
 
-class MeteorologicalMetricFilterSchema(TimeseriesGeneralFilterSchema):
-    value: float = None
-    value_type: MeteorologicalMeasurementType = None
+class MeteoMetricFilterSchema(BaseTimeseriesFilterSchema):
+    value__gt: float = None
+    value__gte: float = None
+    value__lt: float = None
+    value__lte: float = None
     metric_name: MeteorologicalMetricName = None
+    value_type: MeteorologicalMeasurementType = None
 
 
-class OrderParams(str, Enum):
-    timestamp = "timestamp"
-    average_value = "average_value"
-
-
-class OrderDirectionParams(str, Enum):
-    ascending = "ASC"
-    descending = "DESC"
-
-
-class OrderQueryParams(Schema):
-    order_param: OrderParams = OrderParams.timestamp
-    order_direction: OrderDirectionParams = OrderDirectionParams.descending
+class OrderQueryParamSchema(Schema):
+    order_direction: Literal["asc", "desc"] = "desc"
+    order_param: Literal["timestamp", "avg_value"] = "timestamp"
 
 
 class HydrologicalMetricOutputSchema(Schema):
@@ -51,3 +53,4 @@ class HydrologicalMetricOutputSchema(Schema):
     metric_name: str
     value_type: str
     sensor_identifier: str
+    station_id: int

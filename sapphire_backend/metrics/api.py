@@ -9,7 +9,11 @@ from sapphire_backend.utils.permissions import (
 )
 
 from .models import HydrologicalMetric
-from .schema import HydrologicalMetricFilterSchema, HydrologicalMetricOutputSchema, OrderQueryParams
+from .schema import (
+    HydrologicalMetricOutputSchema,
+    HydroMetricFilterSchema,
+    OrderQueryParamSchema,
+)
 from .timeseries.query import TimeseriesQueryManager
 
 
@@ -22,9 +26,20 @@ from .timeseries.query import TimeseriesQueryManager
 class HydroMetricsAPIController:
     @route.get("", response={200: list[HydrologicalMetricOutputSchema]})
     def get_hydro_metrics(
-        self, organization_uuid: str, order: Query[OrderQueryParams], filters: Query[HydrologicalMetricFilterSchema]
+        self,
+        organization_uuid: str,
+        order: Query[OrderQueryParamSchema],
+        filters: Query[HydroMetricFilterSchema] = None,
     ):
-        return TimeseriesQueryManager(HydrologicalMetric, organization_uuid).execute_query()
+        filter_dict = filters.dict(exclude_none=True)
+        order_param, order_direction = order.order_param, order.order_direction
+        return TimeseriesQueryManager(
+            model=HydrologicalMetric,
+            organization_uuid=organization_uuid,
+            order_param=order_param,
+            order_direction=order_direction,
+            filter_dict=filter_dict,
+        ).execute_query()
 
 
 @api_controller(
