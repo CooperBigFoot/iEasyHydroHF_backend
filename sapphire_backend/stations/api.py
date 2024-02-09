@@ -13,6 +13,7 @@ from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin
 from .models import HydrologicalStation, Remark, Site
 from .schema import (
     HydrologicalStationFilterSchema,
+    HydrologicalStationStatsSchema,
     HydroStationInputSchema,
     HydroStationOutputDetailSchema,
     HydroStationUpdateSchema,
@@ -27,7 +28,7 @@ from .schema import (
     auth=JWTAuth(),
     permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
 )
-class StationsAPIController:
+class HydroStationsAPIController:
     @route.post("", response={201: HydroStationOutputDetailSchema, 400: Message})
     def create_hydrological_station(
         self, request: HttpRequest, organization_uuid: str, station_data: HydroStationInputSchema
@@ -65,14 +66,14 @@ class StationsAPIController:
         )
         return stations.select_related("site", "site__organization", "site__region", "site__basin")
 
-    @route.get("stats")
+    @route.get("stats", response={200: HydrologicalStationStatsSchema})
     def get_hydrological_stations_stats(self, request: HttpRequest, organization_uuid: str):
         station_type = HydrologicalStation.StationType
-        stations = HydrologicalStation.objects.filter(site__organization__uuid=organization_uuid, is_deleted=False)
+        stations = HydrologicalStation.objects.for_organization(organization_uuid).active()
         stats_aggr = stations.aggregate(
-            cnt_total=Count("id"),
-            cnt_manual=Count("id", filter=Q(station_type=station_type.MANUAL)),
-            cnt_auto=Count("id", filter=Q(station_type=station_type.AUTOMATIC)),
+            total=Count("id"),
+            manual=Count("id", filter=Q(station_type=station_type.MANUAL)),
+            auto=Count("id", filter=Q(station_type=station_type.AUTOMATIC)),
         )
 
         return stats_aggr
@@ -137,3 +138,13 @@ class StationsAPIController:
             return 200, {"detail": _("Remark deleted successfully"), "code": "success"}
         except IntegrityError:
             return 400, {"detail": _("Remark could not be deleted"), "code": "error"}
+
+
+@api_controller(
+    "stations/{organization_uuid}/meteo",
+    tags=["Meteorological stations"],
+    auth=JWTAuth(),
+    permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
+)
+class MeteoStationsAPIController:
+    pass

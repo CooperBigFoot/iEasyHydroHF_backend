@@ -107,3 +107,9 @@ class HydroStationOutputDetailSchema(HydroStationBaseSchema):
 class HydrologicalStationFilterSchema(FilterSchema):
     site__uuid: str | None = None
     station_type: HydrologicalStation.StationType | None = None
+
+
+class HydrologicalStationStatsSchema(Schema):
+    total: int
+    manual: int
+    auto: int
