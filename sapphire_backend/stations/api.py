@@ -10,13 +10,15 @@ from ninja_jwt.authentication import JWTAuth
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OrganizationExists
 
-from .models import HydrologicalStation, Remark, Site
+from .models import HydrologicalStation, MeteorologicalStation, Remark, Site
 from .schema import (
     HydrologicalStationFilterSchema,
     HydrologicalStationStatsSchema,
     HydroStationInputSchema,
     HydroStationOutputDetailSchema,
     HydroStationUpdateSchema,
+    MeteoStationOutputDetailSchema,
+    MeteoStationStatsSchema,
     RemarkInputSchema,
     RemarkOutputSchema,
 )
@@ -61,8 +63,10 @@ class HydroStationsAPIController:
         organization_uuid: str,
         filters: Query[HydrologicalStationFilterSchema],
     ):
-        stations = HydrologicalStation.objects.filter(
-            site__organization__uuid=organization_uuid, is_deleted=False, **filters.dict(exclude_unset=True)
+        stations = (
+            HydrologicalStation.objects.for_organization(organization_uuid)
+            .active()
+            .filter(**filters.dict(exclude_unset=True))
         )
         return stations.select_related("site", "site__organization", "site__region", "site__basin")
 
@@ -147,4 +151,11 @@ class HydroStationsAPIController:
     permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
 )
 class MeteoStationsAPIController:
-    pass
+    @route.get("", response=list[MeteoStationOutputDetailSchema])
+    def get_meteorological_stations(self, request: HttpRequest, organization_uuid: str):
+        stations = MeteorologicalStation.objects.for_organization(organization_uuid).active()
+        return stations.select_related("site", "site__organization")
+
+    @route.get("stats", response=MeteoStationStatsSchema)
+    def get_meteorological_stations_stats(self, request: HttpRequest, organization_uuid: str):
+        return MeteorologicalStation.objects.for_organization(organization_uuid).active().aggregate(total=Count("id"))

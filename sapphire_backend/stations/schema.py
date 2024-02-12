@@ -113,3 +113,31 @@ class HydrologicalStationStatsSchema(Schema):
     total: int
     manual: int
     auto: int
+
+
+class MeteoStationBaseSchema(Schema):
+    name: str
+    description: str | None = None
+    station_code: str
+
+
+class MeteoStationInputSchema(SiteInputSchema, MeteoStationBaseSchema):
+    site_uuid: str | None = None
+    site_data: SiteInputSchema = None
+
+
+class MeteoStationUpdateSchema(MeteoStationBaseSchema):
+    name: str | None = None
+    station_code: str | None = None
+    site_data: SiteUpdateSchema | None = None
+
+
+class MeteoStationOutputDetailSchema(MeteoStationBaseSchema):
+    site: SiteOutputSchema
+    id: int
+    uuid: str
+    remarks: list[RemarkOutputSchema] = None
+
+
+class MeteoStationStatsSchema(Schema):
+    total: int

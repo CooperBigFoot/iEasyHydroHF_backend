@@ -50,7 +50,23 @@ class OrderQueryParamSchema(Schema):
 class HydrologicalMetricOutputSchema(Schema):
     avg_value: float
     timestamp: datetime
-    metric_name: str
+    metric_name: HydrologicalMetricName
     value_type: str
     sensor_identifier: str
     station_id: int
+
+
+class MeteorologicalMetricOutputSchema(Schema):
+    value: float
+    timestamp: datetime
+    metric_name: MeteorologicalMetricName
+    station_id: int
+
+
+class MetricCountSchema(Schema):
+    metric_name: HydrologicalMetricName | MeteorologicalMetricName | Literal["total"]
+    metric_count: int
+
+
+class MetricTotalCountSchema(Schema):
+    total: int

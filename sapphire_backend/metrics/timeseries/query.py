@@ -1,5 +1,7 @@
 from typing import Any
 
+from django.db.models import Count
+
 from ..models import HydrologicalMetric, MeteorologicalMetric
 
 
@@ -44,3 +46,18 @@ class TimeseriesQueryManager:
 
     def execute_query(self):
         return self.model.objects.filter(**self.filter).order_by(self.order)
+
+    def get_total(self):
+        return self.model.objects.filter(**self.filter).count()
+
+    def get_metric_distribution(self):
+        return (
+            self.model.objects.filter(**self.filter).values("metric_name").annotate(metric_count=Count("metric_name"))
+        )
+
+    def get_value_type_distribution(self):
+        return (
+            self.model.objects.filter(**self.filter)
+            .values("value_type")
+            .annotate(value_type_count=Count("value_type"))
+        )
