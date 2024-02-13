@@ -61,3 +61,17 @@ class TimeseriesQueryManager:
             .values("value_type")
             .annotate(value_type_count=Count("value_type"))
         )
+
+    def time_bucket(self, interval: str, agg_name: str, agg_func: str, field: str, limit: int = 100):
+        db_table = self.model._meta.db_table
+        return self.model.objects.filter(**self.filter).raw(
+            f"""
+            SELECT
+                time_bucket('{interval}', timestamp) AS {agg_name},
+                {agg_func}({field})
+            FROM {db_table}
+            GROUP BY {agg_name}
+            ORDER BY {agg_name} {self.order_direction}
+            LIMIT {limit}
+            """
+        )

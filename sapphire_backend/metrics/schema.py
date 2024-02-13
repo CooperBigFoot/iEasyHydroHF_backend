@@ -70,3 +70,11 @@ class MetricCountSchema(Schema):
 
 class MetricTotalCountSchema(Schema):
     total: int
+
+
+class TimeBucketQueryParams(Schema):
+    interval: str
+    agg_name: str
+    agg_func: str
+    field: str
+    limit: int = 100

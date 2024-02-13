@@ -18,6 +18,7 @@ from .schema import (
     MetricCountSchema,
     MetricTotalCountSchema,
     OrderQueryParamSchema,
+    TimeBucketQueryParams,
 )
 from .timeseries.query import TimeseriesQueryManager
 
@@ -61,6 +62,19 @@ class HydroMetricsAPIController:
             return {"total": manager.get_total()}
         else:
             return manager.get_metric_distribution()
+
+    @route.get("time-bucket", response=dict[str, int])
+    def time_bucket(
+        self,
+        organization_uuid: str,
+        time_bucket: Query[TimeBucketQueryParams],
+        filters: Query[HydroMetricFilterSchema],
+    ):
+        filter_dict = filters.dict(exclude_none=True)
+        query_manager = TimeseriesQueryManager(
+            model=HydrologicalMetric, organization_uuid=organization_uuid, filter_dict=filter_dict
+        )
+        return query_manager.time_bucket(**time_bucket.dict())
 
 
 @api_controller(
