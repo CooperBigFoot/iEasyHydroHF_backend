@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import Literal
 
 from ninja import FilterSchema, Schema
@@ -43,7 +44,7 @@ class MeteoMetricFilterSchema(BaseTimeseriesFilterSchema):
 
 
 class OrderQueryParamSchema(Schema):
-    order_direction: Literal["asc", "desc"] = "desc"
+    order_direction: Literal["ASC", "DESC"] = "DESC"
     order_param: Literal["timestamp", "avg_value"] = "timestamp"
 
 
@@ -72,9 +73,16 @@ class MetricTotalCountSchema(Schema):
     total: int
 
 
+class TimeBucketAggregationFunctions(str, Enum):
+    count: str = "COUNT"
+    min: str = "MIN"
+    max: str = "MAX"
+    avg: str = "AVG"
+    sum: str = "SUM"
+
+
 class TimeBucketQueryParams(Schema):
     interval: str
-    agg_name: str
-    agg_func: str
+    agg_func: TimeBucketAggregationFunctions
     field: str
     limit: int = 100

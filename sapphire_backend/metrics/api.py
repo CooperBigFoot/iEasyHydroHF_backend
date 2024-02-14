@@ -63,18 +63,28 @@ class HydroMetricsAPIController:
         else:
             return manager.get_metric_distribution()
 
-    @route.get("time-bucket", response=dict[str, int])
+    @route.get("time-bucket")
     def time_bucket(
         self,
         organization_uuid: str,
         time_bucket: Query[TimeBucketQueryParams],
+        order: Query[OrderQueryParamSchema],
         filters: Query[HydroMetricFilterSchema],
     ):
         filter_dict = filters.dict(exclude_none=True)
+        time_bucket_dict = time_bucket.dict()
+        time_bucket_dict["agg_func"] = time_bucket_dict["agg_func"].value
+        order_param, order_direction = order.order_param, order.order_direction
         query_manager = TimeseriesQueryManager(
-            model=HydrologicalMetric, organization_uuid=organization_uuid, filter_dict=filter_dict
+            model=HydrologicalMetric,
+            organization_uuid=organization_uuid,
+            filter_dict=filter_dict,
+            order_param=order_param,
+            order_direction=order_direction,
         )
-        return query_manager.time_bucket(**time_bucket.dict())
+        for row in query_manager.time_bucket(**time_bucket_dict):
+            print(row)
+        return query_manager.time_bucket(**time_bucket_dict)
 
 
 @api_controller(

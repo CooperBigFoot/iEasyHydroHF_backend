@@ -1,5 +1,6 @@
 from typing import Any
 
+from django.db import connection
 from django.db.models import Count
 
 from ..models import HydrologicalMetric, MeteorologicalMetric
@@ -23,7 +24,7 @@ class TimeseriesQueryManager:
         self.filter_value = filter_value
         self.filter_dict = filter_dict
         self.order_param = order_param
-        self.order_direction = self._resolve_order_direction(order_direction)
+        self.order_direction = order_direction
         self.order = self._construct_order()
         self.filter = self._construct_filter(organization_uuid)
 
@@ -32,7 +33,7 @@ class TimeseriesQueryManager:
         return "-" if order_direction == "DESC" else ""
 
     def _construct_order(self) -> str:
-        return f"{self.order_direction}{self.order_param}"
+        return f"{self._resolve_order_direction(self.order_direction)}{self.order_param}"
 
     def _construct_filter(self, organization_uuid: str) -> dict[str, Any]:
         filter_dict = {"station__site__organization": organization_uuid}
@@ -62,16 +63,22 @@ class TimeseriesQueryManager:
             .annotate(value_type_count=Count("value_type"))
         )
 
-    def time_bucket(self, interval: str, agg_name: str, agg_func: str, field: str, limit: int = 100):
+    def time_bucket(self, interval: str, agg_func: str, field: str, limit: int = 100):
         db_table = self.model._meta.db_table
-        return self.model.objects.filter(**self.filter).raw(
-            f"""
+
+        query = f"""
             SELECT
-                time_bucket('{interval}', timestamp) AS {agg_name},
-                {agg_func}({field})
+            time_bucket(%s, timestamp) AS bucket,
+            {agg_func}(%s)
             FROM {db_table}
-            GROUP BY {agg_name}
-            ORDER BY {agg_name} {self.order_direction}
-            LIMIT {limit}
-            """
-        )
+            GROUP BY bucket
+            ORDER BY bucket {self.order_direction}
+            LIMIT %s
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(query, [interval, field, limit])
+            rows = cursor.fetchall()
+
+        results = [{"bucket": row[0], "timestamp": row[1]} for row in rows]
+        return results
