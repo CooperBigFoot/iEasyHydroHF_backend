@@ -8,7 +8,10 @@ from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
 from sapphire_backend.utils.mixins.schemas import Message
-from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OrganizationExists
+from sapphire_backend.utils.permissions import (
+    admin_permissions,
+    regular_permissions,
+)
 
 from .models import HydrologicalStation, MeteorologicalStation, Remark, Site
 from .schema import (
@@ -28,7 +31,7 @@ from .schema import (
     "stations/{organization_uuid}/hydrological",
     tags=["Hydrological stations"],
     auth=JWTAuth(),
-    permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
+    permissions=regular_permissions,
 )
 class HydroStationsAPIController:
     @route.post("", response={201: HydroStationOutputDetailSchema, 400: Message})
@@ -89,7 +92,7 @@ class HydroStationsAPIController:
         except HydrologicalStation.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
 
-    @route.delete("{station_uuid}", response={200: Message, 400: Message, 404: Message})
+    @route.delete("{station_uuid}", response={200: Message, 400: Message, 404: Message}, permissions=admin_permissions)
     def delete_hydrological_station(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
         try:
             station = HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
@@ -148,7 +151,7 @@ class HydroStationsAPIController:
     "stations/{organization_uuid}/meteo",
     tags=["Meteorological stations"],
     auth=JWTAuth(),
-    permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
+    permissions=regular_permissions,
 )
 class MeteoStationsAPIController:
     @route.get("", response=list[MeteoStationOutputDetailSchema])

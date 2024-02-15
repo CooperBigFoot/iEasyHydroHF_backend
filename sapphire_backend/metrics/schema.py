@@ -84,5 +84,4 @@ class TimeBucketAggregationFunctions(str, Enum):
 class TimeBucketQueryParams(Schema):
     interval: str
     agg_func: TimeBucketAggregationFunctions
-    field: str
     limit: int = 100

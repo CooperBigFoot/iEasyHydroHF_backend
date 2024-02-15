@@ -4,9 +4,7 @@ from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
 from sapphire_backend.utils.permissions import (
-    IsOrganizationMember,
-    IsSuperAdmin,
-    OrganizationExists,
+    regular_permissions,
 )
 
 from .models import HydrologicalMetric, MeteorologicalMetric
@@ -26,10 +24,7 @@ agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": S
 
 
 @api_controller(
-    "metrics/{organization_uuid}/hydro",
-    tags=["Hydro Metrics"],
-    auth=JWTAuth(),
-    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)],
+    "metrics/{organization_uuid}/hydro", tags=["Hydro Metrics"], auth=JWTAuth(), permissions=regular_permissions
 )
 class HydroMetricsAPIController:
     @route.get("", response={200: list[HydrologicalMetricOutputSchema]})
@@ -91,7 +86,7 @@ class HydroMetricsAPIController:
     "metrics/{organization_uuid}/meteo",
     tags=["Meteo Metrics"],
     auth=JWTAuth(),
-    permissions=[OrganizationExists & (IsOrganizationMember | IsSuperAdmin)],
+    permissions=regular_permissions,
 )
 class MeteoMetricsAPIController:
     @route.get("", response={200: list[MeteorologicalMetricOutputSchema]})
