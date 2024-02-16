@@ -166,5 +166,5 @@ class TimeseriesQueryManager:
             cursor.execute(query, [interval, *params, limit])
             rows = cursor.fetchall()
 
-        results = [{"bucket": row[0], "timestamp": row[1]} for row in rows]
+        results = [{"bucket": row[0], "value": row[1]} for row in rows]
         return results
