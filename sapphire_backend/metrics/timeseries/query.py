@@ -66,7 +66,7 @@ class TimeseriesQueryManager:
         """
 
     def _construct_sql_filter_string(self):
-        where_clauses = []
+        where_clauses = [f"o.uuid='{self.organization_uuid}'"]
         params = []
         for field, value in self.filter_dict.items():
             match field:
@@ -84,9 +84,6 @@ class TimeseriesQueryManager:
                     params.append(value)
                 case "timestamp__lte":
                     where_clauses.append("timestamp <= %s")
-                    params.append(value)
-                case "avg_value":
-                    where_clauses.append("avg_value = %s")
                     params.append(value)
                 case "avg_value__gt":
                     where_clauses.append("avg_value > %s")
@@ -106,6 +103,29 @@ class TimeseriesQueryManager:
                 case "station__station_code":
                     where_clauses.append("st.station_code = %s")
                     params.append(value)
+                case "station_id__in":
+                    print(field)
+                    print(value)
+                    placeholders = ", ".join(["%s"] * len(value))
+                    print(placeholders)
+                    where_clauses.append(f"st.id IN ({placeholders})")
+                    params.extend(value)
+                case "station__station_code__in":
+                    placeholders = ", ".join(["%s"] * len(value))
+                    where_clauses.append(f"st.station_code IN ({placeholders})")
+                    params.extend(value)
+                case "metric_name":
+                    where_clauses.append("metric_name = %s")
+                    params.append(value)
+                case "value_type":
+                    where_clauses.append("value_type = %s")
+                    params.append(value)
+                case "sensor_identifier":
+                    where_clauses.append("sensor_identifier = %s")
+                    params.append(value)
+
+        where_clause = " AND ".join(where_clauses)
+        return where_clause, params
 
     def execute_query(self):
         return self.model.objects.filter(**self.filter).order_by(self.order)
@@ -128,7 +148,7 @@ class TimeseriesQueryManager:
     def time_bucket(self, interval: str, agg_func: str, limit: int = 100):
         db_table = self.model._meta.db_table
         join_string = self._construct_organization_sql_join_string()
-        where_string = self._construct_sql_filter_string()
+        where_string, params = self._construct_sql_filter_string()
 
         query = f"""
             SELECT
@@ -141,10 +161,9 @@ class TimeseriesQueryManager:
             ORDER BY bucket {self.order_direction}
             LIMIT %s
         """
-        print(query)
 
         with connection.cursor() as cursor:
-            cursor.execute(query, [interval, limit])
+            cursor.execute(query, [interval, *params, limit])
             rows = cursor.fetchall()
 
         results = [{"bucket": row[0], "timestamp": row[1]} for row in rows]
