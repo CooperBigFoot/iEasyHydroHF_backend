@@ -14,23 +14,39 @@ class TimeseriesQueryManager:
         self,
         model: HydrologicalMetric | MeteorologicalMetric,
         organization_uuid: str,
-        filter_param: str = None,
-        filter_operator: str = None,
-        filter_value: Any = None,
         filter_dict: dict[str, str] = None,
         order_param: str = "timestamp",
         order_direction: str = "DESC",
     ):
-        self.model = model
-        self.filter_param = filter_param
-        self.filter_operator = filter_operator
-        self.organization_uuid = organization_uuid
-        self.filter_value = filter_value
+        self.model = self._set_model(model)
+        print(f"model: {self.model}")
+        self.organization = self._set_organization(organization_uuid)
         self.filter_dict = filter_dict
         self.order_param = order_param
         self.order_direction = order_direction
         self.order = self._construct_order()
         self.filter = self._construct_filter(organization_uuid)
+
+    def _set_model(self, model: HydrologicalMetric | MeteorologicalMetric):
+        if model not in [HydrologicalMetric, MeteorologicalMetric]:
+            raise ValueError(
+                "TimeseriesQueryManager can only be instantiated with HydrologicalMetric or MeteorologicalMetric."
+            )
+
+        return model
+
+    def _set_organization(self, organization_uuid: str):
+        try:
+            self.organization = Organization.objects.get(uuid=organization_uuid)
+        except Organization.DoesNotExist:
+            raise ValueError("Organization with the given UUID does not exist.")
+
+    def _validate_filter_dict(self):
+        field_names = [field.name for field in self.model._meta.get_fields()]
+        for key in self.filter_dict.keys():
+            cleaned_key = key.split("__")[0]
+            if cleaned_key not in field_names:
+                raise ValueError(f"{cleaned_key} field does not exist on the {self.model._meta.object_name}.")
 
     @staticmethod
     def _resolve_order_direction(order_direction: str) -> str:
@@ -40,12 +56,12 @@ class TimeseriesQueryManager:
         return f"{self._resolve_order_direction(self.order_direction)}{self.order_param}"
 
     def _construct_filter(self, organization_uuid: str) -> dict[str, Any]:
+        if self.filter_dict:
+            self._validate_filter_dict()
         filter_dict = {"station__site__organization": organization_uuid}
+
         if self.filter_dict:
             filter_dict.update(self.filter_dict)
-
-        elif self.filter_param:
-            filter_dict.update({f"{self.filter_param}__{self.filter_operator}": {self.filter_value}})
 
         return filter_dict
 
@@ -66,7 +82,7 @@ class TimeseriesQueryManager:
         """
 
     def _construct_sql_filter_string(self):
-        where_clauses = [f"o.uuid='{self.organization_uuid}'"]
+        where_clauses = [f"o.uuid='{self.organization.uuid}'"]
         params = []
         for field, value in self.filter_dict.items():
             match field:

@@ -7,8 +7,11 @@ from zoneinfo import ZoneInfo
 
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.organizations.tests.factories import OrganizationFactory
+from sapphire_backend.stations.tests.factories import HydrologicalStationFactory, SiteFactory
 from sapphire_backend.users.tests.factories import UserFactory
 
+register(SiteFactory)
+register(HydrologicalStationFactory)
 register(UserFactory)
 register(OrganizationFactory)
 
@@ -45,6 +48,16 @@ def organization_admin(db, user_factory, organization):
     return user_factory.create(
         username="organization_admin", user_role=User.UserRoles.ORGANIZATION_ADMIN, organization=organization
     )
+
+
+@pytest.fixture
+def site_one(db, site_factory):
+    return site_factory.create("Site one", organization=organization)
+
+
+@pytest.fixture
+def manual_hydro_station(db):
+    return HydrologicalStationFactory.create()
 
 
 @pytest.fixture
