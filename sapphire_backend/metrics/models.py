@@ -52,7 +52,7 @@ class HydrologicalMetric(models.Model):
     def __str__(self):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
 
-    def delete(self):
+    def delete(self, **kwargs):
         sql_query_delete = f"""
         DELETE FROM metrics_hydrologicalmetric WHERE
         timestamp = '{self.timestamp}' AND
@@ -69,7 +69,7 @@ class HydrologicalMetric(models.Model):
                 # functionality
                 logging.warning(f"Delete statement {sql_query_delete} failed. {e}")
 
-    def save(self, upsert=True) -> None:
+    def save(self, upsert=True, **kwargs) -> None:
         min_value = self.min_value
         max_value = self.max_value
         avg_value = self.avg_value
@@ -160,7 +160,7 @@ class MeteorologicalMetric(models.Model):
     def __str__(self):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
 
-    def delete(self) -> None:
+    def delete(self, **kwargs) -> None:
         sql_query_delete = f"""
         DELETE FROM metrics_meteorologicalmetric WHERE
         timestamp = '{self.timestamp}' AND
@@ -169,7 +169,7 @@ class MeteorologicalMetric(models.Model):
         with connection.cursor() as cursor:
             cursor.execute(sql_query_delete)
 
-    def save(self, upsert=True) -> None:
+    def save(self, upsert=True, **kwargs) -> None:
         sql_query_insert = """
         INSERT INTO metrics_meteorologicalmetric (timestamp, station_id, metric_name, value, value_type, unit )
         VALUES ('{timestamp}'::timestamp, {station_id}, '{metric_name}', {value}, '{value_type}', '{unit}');

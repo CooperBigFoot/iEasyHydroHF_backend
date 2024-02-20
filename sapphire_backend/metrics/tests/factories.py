@@ -29,7 +29,7 @@ class HydrologicalMetricFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = HydrologicalMetric
-        django_get_or_create = ("timestamp", "station_id", "sensor_identifier", "metric_name")
+        django_get_or_create = ("timestamp", "station", "sensor_identifier", "metric_name")
 
 
 class MeteorologicalMetricFactory(factory.django.DjangoModelFactory):
@@ -42,4 +42,4 @@ class MeteorologicalMetricFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = MeteorologicalMetric
-        django_get_or_create = ("timestamp", "station_id", "metric_name")
+        django_get_or_create = ("timestamp", "station", "metric_name")

@@ -12,14 +12,13 @@ from ..models import HydrologicalMetric, MeteorologicalMetric
 class TimeseriesQueryManager:
     def __init__(
         self,
-        model: HydrologicalMetric | MeteorologicalMetric,
+        model: type[HydrologicalMetric] | type[MeteorologicalMetric],
         organization_uuid: str,
-        filter_dict: dict[str, str] = None,
+        filter_dict: dict[str, str | list[str]] = None,
         order_param: str = "timestamp",
         order_direction: str = "DESC",
     ):
         self.model = self._set_model(model)
-        print(f"model: {self.model}")
         self.organization = self._set_organization(organization_uuid)
         self.filter_dict = filter_dict
         self.order_param = order_param
@@ -27,7 +26,8 @@ class TimeseriesQueryManager:
         self.order = self._construct_order()
         self.filter = self._construct_filter(organization_uuid)
 
-    def _set_model(self, model: HydrologicalMetric | MeteorologicalMetric):
+    @staticmethod
+    def _set_model(model: HydrologicalMetric | MeteorologicalMetric):
         if model not in [HydrologicalMetric, MeteorologicalMetric]:
             raise ValueError(
                 "TimeseriesQueryManager can only be instantiated with HydrologicalMetric or MeteorologicalMetric."
@@ -35,9 +35,10 @@ class TimeseriesQueryManager:
 
         return model
 
-    def _set_organization(self, organization_uuid: str):
+    @staticmethod
+    def _set_organization(organization_uuid: str):
         try:
-            self.organization = Organization.objects.get(uuid=organization_uuid)
+            return Organization.objects.get(uuid=organization_uuid)
         except Organization.DoesNotExist:
             raise ValueError("Organization with the given UUID does not exist.")
 
@@ -46,7 +47,7 @@ class TimeseriesQueryManager:
         for key in self.filter_dict.keys():
             cleaned_key = key.split("__")[0]
             if cleaned_key not in field_names:
-                raise ValueError(f"{cleaned_key} field does not exist on the {self.model._meta.object_name}.")
+                raise ValueError(f"{cleaned_key} field does not exist on the {self.model._meta.object_name} model.")
 
     @staticmethod
     def _resolve_order_direction(order_direction: str) -> str:
@@ -77,68 +78,69 @@ class TimeseriesQueryManager:
 
         return f"""
             JOIN {station_table} st ON st.id = {db_table}.station_id
-            JOIN {site_table} s  ON s.uuid = st.site_id
+            JOIN {site_table} s ON s.uuid = st.site_id
             JOIN {organization_table} o ON o.uuid = s.organization_id
         """
 
     def _construct_sql_filter_string(self):
         where_clauses = [f"o.uuid='{self.organization.uuid}'"]
         params = []
-        for field, value in self.filter_dict.items():
-            match field:
-                case "timestamp":
-                    where_clauses.append("timestamp = %s")
-                    params.append(value)
-                case "timestamp__gt":
-                    where_clauses.append("timestamp > %s")
-                    params.append(value)
-                case "timestamp__gte":
-                    where_clauses.append("timestamp >= %s")
-                    params.append(value)
-                case "timestamp__lt":
-                    where_clauses.append("timestamp < %s")
-                    params.append(value)
-                case "timestamp__lte":
-                    where_clauses.append("timestamp <= %s")
-                    params.append(value)
-                case "avg_value__gt":
-                    where_clauses.append("avg_value > %s")
-                    params.append(value)
-                case "avg_value__gte":
-                    where_clauses.append("avg_value >= %s")
-                    params.append(value)
-                case "avg_value__lt":
-                    where_clauses.append("avg_value < %s")
-                    params.append(value)
-                case "avg_value__lte":
-                    where_clauses.append("avg_value <= %s")
-                    params.append(value)
-                case "station_id":
-                    where_clauses.append("st.id = %s")
-                    params.append(value)
-                case "station__station_code":
-                    where_clauses.append("st.station_code = %s")
-                    params.append(value)
-                case "station_id__in":
-                    print(field)
-                    print(value)
-                    placeholders = ", ".join(["%s"] * len(value))
-                    print(placeholders)
-                    where_clauses.append(f"st.id IN ({placeholders})")
-                    params.extend(value)
-                case "station__station_code__in":
-                    placeholders = ", ".join(["%s"] * len(value))
-                    where_clauses.append(f"st.station_code IN ({placeholders})")
-                    params.extend(value)
-                case "metric_name":
-                    where_clauses.append("metric_name = %s")
-                    params.append(value)
-                case "value_type":
-                    where_clauses.append("value_type = %s")
-                    params.append(value)
-                case "sensor_identifier":
-                    where_clauses.append("sensor_identifier = %s")
-                    params.append(value)
+
+        if self.filter_dict is not None:
+            for field, value in self.filter_dict.items():
+                match field:
+                    case "timestamp":
+                        where_clauses.append("timestamp = %s")
+                        params.append(value)
+                    case "timestamp__gt":
+                        where_clauses.append("timestamp > %s")
+                        params.append(value)
+                    case "timestamp__gte":
+                        where_clauses.append("timestamp >= %s")
+                        params.append(value)
+                    case "timestamp__lt":
+                        where_clauses.append("timestamp < %s")
+                        params.append(value)
+                    case "timestamp__lte":
+                        where_clauses.append("timestamp <= %s")
+                        params.append(value)
+                    case "avg_value__gt":
+                        where_clauses.append("avg_value > %s")
+                        params.append(value)
+                    case "avg_value__gte":
+                        where_clauses.append("avg_value >= %s")
+                        params.append(value)
+                    case "avg_value__lt":
+                        where_clauses.append("avg_value < %s")
+                        params.append(value)
+                    case "avg_value__lte":
+                        where_clauses.append("avg_value <= %s")
+                        params.append(value)
+                    case "station_id":
+                        where_clauses.append("st.id = %s")
+                        params.append(value)
+                    case "station__station_code":
+                        where_clauses.append("st.station_code = %s")
+                        params.append(value)
+                    case "station_id__in":
+                        placeholders = ", ".join(["%s"] * len(value))
+                        where_clauses.append(f"st.id IN ({placeholders})")
+                        params.extend(value)
+                    case "station__station_code__in":
+                        placeholders = ", ".join(["%s"] * len(value))
+                        where_clauses.append(f"st.station_code IN ({placeholders})")
+                        params.extend(value)
+                    case "metric_name":
+                        where_clauses.append("metric_name = %s")
+                        params.append(value)
+                    case "value_type":
+                        where_clauses.append("value_type = %s")
+                        params.append(value)
+                    case "sensor_identifier":
+                        where_clauses.append("sensor_identifier = %s")
+                        params.append(value)
+                    case _:
+                        raise ValueError(f"{field} field does not exist on the {self.model._meta.object_name} model.")
 
         where_clause = " AND ".join(where_clauses)
         return where_clause, params
