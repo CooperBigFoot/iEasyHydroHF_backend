@@ -1,6 +1,7 @@
 import datetime as dt
 
 import pytest
+from django.db.utils import DataError, ProgrammingError
 
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
@@ -142,7 +143,7 @@ class TestTimeseriesQueryManager:
         water_level_manual_other_organization,
         water_discharge,
     ):
-        query_dt = dt.datetime.now(tz=dt.timezone.utc) + dt.timedelta(minutes=12)
+        query_dt = dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=36)
 
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
@@ -252,3 +253,126 @@ class TestTimeseriesQueryManager:
 
         for output in EXPECTED_OUTPUTS:
             assert output in list(results)
+
+    def test_query_manager_time_bucket_for_invalid_interval(
+        self, organization, water_level_manual, water_level_manual_other, water_level_automatic, water_discharge
+    ):
+        query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
+
+        with pytest.raises(DataError):
+            _ = query_manager.time_bucket("error", "avg")
+
+    def test_query_manager_time_bucket_for_invalid_function(
+        self, organization, water_level_manual, water_level_manual_other, water_level_automatic, water_discharge
+    ):
+        query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
+
+        with pytest.raises(ProgrammingError):
+            _ = query_manager.time_bucket("1 day", "error")
+
+    def test_query_manager_time_bucket_for_daily_count_interval(
+        self, organization, water_level_manual, water_level_manual_other, water_level_automatic, water_discharge
+    ):
+        query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
+
+        results = query_manager.time_bucket("1 day", "count")
+
+        assert results == [
+            {
+                "bucket": dt.datetime(
+                    water_discharge.timestamp.year,
+                    water_discharge.timestamp.month,
+                    water_discharge.timestamp.day,
+                    tzinfo=dt.timezone.utc,
+                ),
+                "value": 1,
+            },
+            {
+                "bucket": dt.datetime(
+                    water_level_manual_other.timestamp.year,
+                    water_level_manual_other.timestamp.month,
+                    water_level_manual_other.timestamp.day,
+                    tzinfo=dt.timezone.utc,
+                ),
+                "value": 1,
+            },
+            {
+                "bucket": dt.datetime(
+                    water_level_automatic.timestamp.year,
+                    water_level_automatic.timestamp.month,
+                    water_level_automatic.timestamp.day,
+                    tzinfo=dt.timezone.utc,
+                ),
+                "value": 1,
+            },
+            {
+                "bucket": dt.datetime(
+                    water_level_manual.timestamp.year,
+                    water_level_manual.timestamp.month,
+                    water_level_manual.timestamp.day,
+                    tzinfo=dt.timezone.utc,
+                ),
+                "value": 1,
+            },
+        ]
+
+    def test_query_manager_time_bucket_for_daily_average_interval_with_timestamp_filter(
+        self, organization, water_level_manual, water_level_manual_other, water_level_automatic, water_discharge
+    ):
+        query_manager = TimeseriesQueryManager(
+            HydrologicalMetric,
+            organization_uuid=organization.uuid,
+            filter_dict={"timestamp__gte": (dt.datetime.utcnow() - dt.timedelta(hours=36)).isoformat()},
+        )
+
+        results = query_manager.time_bucket("1 day", "avg")
+
+        assert results == [
+            {
+                "bucket": dt.datetime(
+                    water_discharge.timestamp.year,
+                    water_discharge.timestamp.month,
+                    water_discharge.timestamp.day,
+                    tzinfo=dt.timezone.utc,
+                ),
+                "value": 2.0,
+            },
+            {
+                "bucket": dt.datetime(
+                    water_level_manual_other.timestamp.year,
+                    water_level_manual_other.timestamp.month,
+                    water_level_manual_other.timestamp.day,
+                    tzinfo=dt.timezone.utc,
+                ),
+                "value": 10.0,
+            },
+        ]
+
+    def test_query_manager_time_bucket_for_daily_average_interval_with_station_filter(
+        self,
+        organization,
+        water_level_manual,
+        water_level_manual_other,
+        water_level_automatic,
+        water_discharge,
+        automatic_hydro_station,
+    ):
+        query_manager = TimeseriesQueryManager(
+            HydrologicalMetric,
+            organization_uuid=organization.uuid,
+            filter_dict={"station__station_code__in": [automatic_hydro_station.station_code]},
+        )
+
+        results = query_manager.time_bucket("1 day", "count")
+
+        assert results == [
+            {
+                "bucket": dt.datetime(
+                    water_level_automatic.timestamp.year,
+                    water_level_automatic.timestamp.month,
+                    water_level_automatic.timestamp.day,
+                    tzinfo=dt.timezone.utc,
+                ),
+                "value": 1,
+            }
+        ]

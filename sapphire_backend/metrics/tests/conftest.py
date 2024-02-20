@@ -18,7 +18,7 @@ register(MeteorologicalMetricFactory)
 def water_level_manual(db, manual_hydro_station):
     # oldest
     return HydrologicalMetricFactory(
-        timestamp=dt.datetime.now(tz=dt.timezone.utc),
+        timestamp=dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(days=3),
         station=manual_hydro_station,
         avg_value=10.0,
         value_type=HydrologicalMeasurementType.MANUAL,
@@ -31,7 +31,7 @@ def water_level_manual(db, manual_hydro_station):
 def water_discharge(db, manual_hydro_station):
     # latest
     return HydrologicalMetricFactory(
-        timestamp=dt.datetime.now(tz=dt.timezone.utc) + dt.timedelta(minutes=20),
+        timestamp=dt.datetime.now(tz=dt.timezone.utc),
         station=manual_hydro_station,
         avg_value=2.0,
         value_type=HydrologicalMeasurementType.ESTIMATED,
@@ -44,7 +44,7 @@ def water_discharge(db, manual_hydro_station):
 def water_level_manual_other(db, manual_hydro_station):
     return HydrologicalMetricFactory(
         station=manual_hydro_station,
-        timestamp=dt.datetime.now(tz=dt.timezone.utc) + dt.timedelta(minutes=15),
+        timestamp=dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(days=1),
         avg_value=10.0,
         value_type=HydrologicalMeasurementType.MANUAL,
         metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
@@ -56,7 +56,7 @@ def water_level_manual_other(db, manual_hydro_station):
 def water_level_automatic(db, automatic_hydro_station):
     return HydrologicalMetricFactory(
         station=automatic_hydro_station,
-        timestamp=dt.datetime.now(tz=dt.timezone.utc) + dt.timedelta(minutes=10),
+        timestamp=dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(days=2),
         avg_value=9.8,
         value_type=HydrologicalMeasurementType.AUTOMATIC,
         metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
