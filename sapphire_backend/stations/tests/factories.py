@@ -12,9 +12,8 @@ fake = Faker()
 class SiteFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Site
-        django_get_or_create = ("name",)
+        django_get_or_create = ()
 
-    name = fake.company()
     country = fake.country()
     organization = factory.SubFactory(OrganizationFactory)
     basin = factory.SubFactory(BasinFactory)
@@ -30,10 +29,9 @@ class SiteFactory(factory.django.DjangoModelFactory):
 class HydrologicalStationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = HydrologicalStation
-        django_get_or_create = ("site", "name")
+        django_get_or_create = ("site", "station_type")
 
     site = factory.SubFactory(SiteFactory)
-    name = fake.company()
     description = fake.catch_phrase()
     station_type = HydrologicalStation.StationType.MANUAL
     station_code = fake.ean(length=8)
@@ -42,9 +40,8 @@ class HydrologicalStationFactory(factory.django.DjangoModelFactory):
 class MeteorologicalStationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MeteorologicalStation
-        django_get_or_create = ("site", "name")
+        django_get_or_create = "site"
 
     site = factory.SubFactory(SiteFactory)
-    name = fake.company()
     description = fake.catch_phrase()
     station_code = fake.ean(length=8)

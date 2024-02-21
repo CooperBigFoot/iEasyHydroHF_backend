@@ -21,7 +21,12 @@ class IsSuperAdmin(permissions.BasePermission):
 
 class IsOrganizationAdmin(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
-        return request.user.is_authenticated and (request.user.user_role == User.UserRoles.ORGANIZATION_ADMIN)
+        user = request.user
+        organization = Organization.objects.get(uuid=controller.context.kwargs.get("organization_uuid"))
+        if user.is_authenticated:
+            return user.organization.id == organization.id and user.user_role == User.UserRoles.ORGANIZATION_ADMIN
+
+        return False
 
 
 class IsOrganizationMember(permissions.BasePermission):
@@ -44,3 +49,7 @@ class HydroStationBelongsToOrganization(permissions.BasePermission):
             site__organization=controller.context.kwargs.get("organization_uuid"),
             uuid=controller.context.kwargs.get("station_uuid"),
         ).exists()
+
+
+regular_permissions = [OrganizationExists & (IsOrganizationMember | IsSuperAdmin)]
+admin_permissions = [OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)]

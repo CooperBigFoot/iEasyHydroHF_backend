@@ -7,6 +7,8 @@ from timezone_field import TimeZoneField
 
 from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, ForecastToggleMixin, UUIDMixin
 
+from .managers import HydroStationQuerySet, MeteoStationQuerySet
+
 User = get_user_model()
 
 
@@ -93,6 +95,8 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
     is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
     bulletin_order = models.PositiveIntegerField(verbose_name=_("Bulletin order"), default=0)
 
+    objects = HydroStationQuerySet.as_manager()
+
     class Meta:
         verbose_name = _("Hydrological station")
         verbose_name_plural = _("Hydrological stations")
@@ -119,6 +123,8 @@ class MeteorologicalStation(UUIDMixin, models.Model):
     )
     description = models.TextField(verbose_name=_("Description"), blank=True)
     is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
+
+    objects = MeteoStationQuerySet.as_manager()
 
     class Meta:
         verbose_name = _("Meteorological station")

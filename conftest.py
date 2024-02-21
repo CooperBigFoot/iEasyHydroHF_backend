@@ -7,17 +7,16 @@ from zoneinfo import ZoneInfo
 
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.organizations.tests.factories import OrganizationFactory
+from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.stations.tests.factories import HydrologicalStationFactory, SiteFactory
 from sapphire_backend.users.tests.factories import UserFactory
 
+register(SiteFactory)
+register(HydrologicalStationFactory)
 register(UserFactory)
 register(OrganizationFactory)
 
 User = get_user_model()
-
-
-@pytest.fixture
-def regular_user(db, user_factory=UserFactory):
-    return user_factory.create(username="regular_user")
 
 
 @pytest.fixture
@@ -31,6 +30,11 @@ def organization(db, organization_factory=OrganizationFactory):
 
 
 @pytest.fixture
+def regular_user(db, organization):
+    return UserFactory(username="regular_user", organization=organization)
+
+
+@pytest.fixture
 def backup_organization(db, organization_factory=OrganizationFactory):
     return organization_factory.create(
         name="Kazakh Hydromet",
@@ -41,20 +45,49 @@ def backup_organization(db, organization_factory=OrganizationFactory):
 
 
 @pytest.fixture
-def organization_admin(db, user_factory, organization):
-    return user_factory.create(
+def organization_admin(db, organization):
+    return UserFactory(
         username="organization_admin", user_role=User.UserRoles.ORGANIZATION_ADMIN, organization=organization
     )
 
 
 @pytest.fixture
-def superadmin(db, user_factory):
-    return user_factory.create(username="superadmin", user_role=User.UserRoles.SUPER_ADMIN)
+def site_one(db, organization):
+    return SiteFactory(country="Kyrgyzstan", organization=organization)
 
 
 @pytest.fixture
-def other_organization_user(db, user_factory, backup_organization):
-    return user_factory.create(
+def site_two(db, backup_organization):
+    return SiteFactory(country="Kazakhstan", organization=backup_organization)
+
+
+@pytest.fixture
+def manual_hydro_station(db, site_one):
+    return HydrologicalStationFactory(
+        site=site_one, station_type=HydrologicalStation.StationType.MANUAL, station_code="12345"
+    )
+
+
+@pytest.fixture
+def manual_hydro_station_other_organization(db, site_two):
+    return HydrologicalStationFactory(
+        site=site_two, station_type=HydrologicalStation.StationType.MANUAL, station_code="56789"
+    )
+
+
+@pytest.fixture
+def automatic_hydro_station(db, site_one):
+    return HydrologicalStationFactory(site=site_one, station_type=HydrologicalStation.StationType.AUTOMATIC)
+
+
+@pytest.fixture
+def superadmin(db, organization):
+    return UserFactory(username="superadmin", user_role=User.UserRoles.SUPER_ADMIN, organization=organization)
+
+
+@pytest.fixture
+def other_organization_user(db, backup_organization):
+    return UserFactory(
         username="other_organization_user", user_role=User.UserRoles.REGULAR_USER, organization=backup_organization
     )
 
