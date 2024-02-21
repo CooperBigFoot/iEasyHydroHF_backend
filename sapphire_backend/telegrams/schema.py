@@ -1,3 +1,5 @@
+from typing import Optional
+
 from ninja import Schema
 
 
@@ -7,6 +9,13 @@ class TelegramInputSchema(Schema):
 
 class TelegramBulkInputSchema(Schema):
     telegrams: list[str]
+
+class TelegramWithDateInputSchema(Schema):
+    raw: str
+    override_date: Optional[str] = None
+
+class TelegramBulkWithDatesInputSchema(Schema):
+    telegrams: list[TelegramWithDateInputSchema]
 
 
 class TelegramSectionZeroSchema(Schema):
@@ -19,8 +28,8 @@ class TelegramSectionOneSchema(Schema):
     morning_water_level: int
     water_level_trend: int
     water_level_20h_period: int
-    water_temperature: int = None
-    air_temperature: int = None
+    water_temperature: Optional[int] = None
+    air_temperature: Optional[int] = None
     ice_phenomena: list[dict[str, int]]
 
 
@@ -58,3 +67,31 @@ class BulkParseErrorTelegramSchema(Schema):
 class BulkParseOutputSchema(Schema):
     parsed: list[BulkParseSuccessTelegramSchema]
     errors: list[BulkParseErrorTelegramSchema]
+
+
+class ReportedDischargeSchema(Schema):
+    water_level: float
+    discharge: float
+    cross_section_area: float
+    maximum_depth: float
+    date: str
+
+
+class DischargeOverviewSchema(Schema):
+    index: int
+    station_code: str
+    station_name: str
+    telegram_day_date: str
+    telegram_day_morning_water_level: float
+    telegram_day_water_level_trend: float
+    trend_ok: bool
+    previous_day_date: str
+    previous_day_morning_water_level: float
+    previous_day_evening_water_level: float
+    previous_day_water_level_average: float
+    reported_discharge: list
+
+
+class DailyOverviewOutputSchema(Schema):
+    discharge: list[DischargeOverviewSchema]
+    meteo: list[dict]  # list[MeteoTelegramOverviewSchema]

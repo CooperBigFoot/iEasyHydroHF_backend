@@ -151,6 +151,25 @@ class HydrologicalMetric(models.Model):
             except Exception as e:
                 raise Exception(e)
 
+    def select_first(self): # TODO JUST TEMPORARY USAGE, NOT SERIOUS
+
+        sql_query_select = """
+            SELECT min_value, avg_value, max_value, unit, sensor_type FROM metrics_hydrologicalmetric WHERE
+            timestamp='{timestamp}' AND station_id={station_id} AND metric_name='{metric_name}'
+            AND value_type='{value_type}' AND sensor_identifier='{sensor_identifier}';
+            """.format(
+            timestamp=self.timestamp,
+            station_id=self.station_id,
+            metric_name=self.metric_name,
+            value_type=self.value_type,
+            sensor_identifier=self.sensor_identifier,
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(sql_query_select)
+            row = cursor.fetchone()
+            if row is not None:
+                self.min_value, self.avg_value, self.max_value, self.unit, self.sensor_type = row
+                return self
 
 class MeteorologicalMetric(models.Model):
     class MeasurementType(models.TextChoices):
