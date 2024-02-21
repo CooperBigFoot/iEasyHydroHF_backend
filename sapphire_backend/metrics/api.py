@@ -1,8 +1,11 @@
+from typing import Any
+
 from django.db.models import Avg, Count, Max, Min, Sum
 from ninja import Query
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
+from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
@@ -58,7 +61,7 @@ class HydroMetricsAPIController:
         else:
             return manager.get_metric_distribution()
 
-    @route.get("time-bucket")
+    @route.get("time-bucket", response={200: list[dict[str, Any]], 400: Message})
     def time_bucket(
         self,
         organization_uuid: str,
@@ -77,9 +80,11 @@ class HydroMetricsAPIController:
             order_param=order_param,
             order_direction=order_direction,
         )
-        for row in query_manager.time_bucket(**time_bucket_dict):
-            print(row)
-        return query_manager.time_bucket(**time_bucket_dict)
+
+        try:
+            return query_manager.time_bucket(**time_bucket_dict)
+        except ValueError as e:
+            return 400, {"detail": str(e), "code": "time_bucket_error"}
 
 
 @api_controller(

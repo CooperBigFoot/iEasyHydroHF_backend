@@ -1,7 +1,6 @@
 import datetime as dt
 
 import pytest
-from django.db.utils import DataError, ProgrammingError
 
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
@@ -259,7 +258,7 @@ class TestTimeseriesQueryManager:
     ):
         query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
 
-        with pytest.raises(DataError):
+        with pytest.raises(ValueError, match="Invalid time bucket interval"):
             _ = query_manager.time_bucket("error", "avg")
 
     def test_query_manager_time_bucket_for_invalid_function(
@@ -267,7 +266,7 @@ class TestTimeseriesQueryManager:
     ):
         query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
 
-        with pytest.raises(ProgrammingError):
+        with pytest.raises(ValueError, match="Invalid aggregation function"):
             _ = query_manager.time_bucket("1 day", "error")
 
     def test_query_manager_time_bucket_for_daily_count_interval(

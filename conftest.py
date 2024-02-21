@@ -20,11 +20,6 @@ User = get_user_model()
 
 
 @pytest.fixture
-def regular_user(db, user_factory=UserFactory):
-    return user_factory.create(username="regular_user")
-
-
-@pytest.fixture
 def organization(db, organization_factory=OrganizationFactory):
     return organization_factory.create(
         name="Kyrgyz Hydromet",
@@ -32,6 +27,11 @@ def organization(db, organization_factory=OrganizationFactory):
         year_type=Organization.YearType.HYDROLOGICAL,
         timezone=ZoneInfo("Asia/Bishkek"),
     )
+
+
+@pytest.fixture
+def regular_user(db, organization):
+    return UserFactory(username="regular_user", organization=organization)
 
 
 @pytest.fixture
@@ -45,8 +45,8 @@ def backup_organization(db, organization_factory=OrganizationFactory):
 
 
 @pytest.fixture
-def organization_admin(db, user_factory, organization):
-    return user_factory.create(
+def organization_admin(db, organization):
+    return UserFactory(
         username="organization_admin", user_role=User.UserRoles.ORGANIZATION_ADMIN, organization=organization
     )
 
@@ -81,13 +81,13 @@ def automatic_hydro_station(db, site_one):
 
 
 @pytest.fixture
-def superadmin(db, user_factory):
-    return user_factory.create(username="superadmin", user_role=User.UserRoles.SUPER_ADMIN)
+def superadmin(db, organization):
+    return UserFactory(username="superadmin", user_role=User.UserRoles.SUPER_ADMIN, organization=organization)
 
 
 @pytest.fixture
-def other_organization_user(db, user_factory, backup_organization):
-    return user_factory.create(
+def other_organization_user(db, backup_organization):
+    return UserFactory(
         username="other_organization_user", user_role=User.UserRoles.REGULAR_USER, organization=backup_organization
     )
 

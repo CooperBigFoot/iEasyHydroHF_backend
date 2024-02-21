@@ -2,6 +2,7 @@ from typing import Any
 
 from django.db import connection
 from django.db.models import Count
+from django.db.utils import DataError, ProgrammingError
 
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, Site
@@ -180,9 +181,16 @@ class TimeseriesQueryManager:
             LIMIT %s
         """
 
-        with connection.cursor() as cursor:
-            cursor.execute(query, [interval, *params, limit])
-            rows = cursor.fetchall()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, [interval, *params, limit])
+                rows = cursor.fetchall()
+        except DataError:
+            raise ValueError("Invalid time bucket interval")
+        except ProgrammingError:
+            raise ValueError("Invalid aggregation function")
+        finally:
+            connection.close()
 
         results = [{"bucket": row[0], "value": row[1]} for row in rows]
         return results
