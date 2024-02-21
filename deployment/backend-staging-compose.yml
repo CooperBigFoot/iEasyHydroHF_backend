@@ -30,6 +30,7 @@ services:
 
   timescale:
     image: timescale/timescaledb:latest-pg16
+    command: -c "max_locks_per_transaction=256"
     env_file:
       - .backend.env
     volumes:
