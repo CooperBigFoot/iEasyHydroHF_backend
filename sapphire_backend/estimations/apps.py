@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class EstimationsConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'sapphire_backend.estimations'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "sapphire_backend.estimations"
