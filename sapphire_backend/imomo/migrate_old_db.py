@@ -1,19 +1,20 @@
 import logging
-
 # Configure SQLAlchemy connection to the old database
 import math
-
 import zoneinfo
-from django.utils import timezone
 
+from django.db import connection
+from django.utils import timezone
 # Import necessary libraries
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from tqdm import tqdm
 
+from sapphire_backend.estimations.models import DischargeModel
 from sapphire_backend.imomo.data_structs.standard_data import Variables
 from sapphire_backend.imomo.old_models import Variable
 from sapphire_backend.imomo.old_models.data_sources import Source as OldSource  # Import your old SQLAlchemy model
+from sapphire_backend.imomo.old_models.discharge_models import DischargeModel as OldDischargeModel
 from sapphire_backend.imomo.old_models.monitoring_site_locations import Site as OldSite
 from sapphire_backend.metrics.choices import (
     HydrologicalMeasurementType,
@@ -25,12 +26,13 @@ from sapphire_backend.metrics.choices import (
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
 from sapphire_backend.organizations.models import Basin, Organization, Region
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, Site
+from sapphire_backend.telegrams.models import Telegram
 
 nan_count = 0
 
 MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ = {}
 MAP_OLD_SITE_CODE_TO_NEW_SITE_OBJ = {}
-LIMITER = -100  # FOR DEBUGGING PURPOSES, FOR PRODUCTION NEEDS TO BE 0
+LIMITER = -0  # FOR DEBUGGING PURPOSES, FOR PRODUCTION NEEDS TO BE 0
 
 
 def migrate_organizations(old_session):
@@ -341,11 +343,34 @@ def migrate_virtual_metrics(old_session):
     pass
 
 
+def migrate_discharge_models(old_session):
+    old_discharge_models = old_session.query(OldDischargeModel).all()
+    for old in tqdm(old_discharge_models, desc="Discharge models", position=0):
+        hydro_station = HydrologicalStation.objects.get(station_code=old.site.site_code_repr)
+        new_discharge_model = DischargeModel(
+            name=old.model_name,
+            param_a=old.param_a,
+            param_b=old.param_b,
+            param_c=old.param_c,
+            valid_from=old.valid_from,
+            station=hydro_station
+        )
+        new_discharge_model.save()
+
+
 def cleanup_all():
+    logging.info("Cleaning up discharge models")
+    DischargeModel.objects.all().delete()
+    logging.info("Cleaning up telegrams")
+    Telegram.objects.all().delete()
     logging.info("Cleaning up meteo metrics")
-    MeteorologicalMetric.objects.all().delete()
+    sql_query_drop = f"""truncate table metrics_meteorologicalmetric CASCADE ;"""
+    with connection.cursor() as cursor:
+        cursor.execute(sql_query_drop)
     logging.info("Cleaning up hydro metrics")
-    HydrologicalMetric.objects.all().delete()
+    sql_query_drop = f"""truncate table metrics_hydrologicalmetric CASCADE;"""
+    with connection.cursor() as cursor:
+        cursor.execute(sql_query_drop)
     logging.info("Cleaning up hydro stations")
     HydrologicalStation.objects.all().delete()
     logging.info("Cleaning up meteo stations")
@@ -380,9 +405,9 @@ def migrate():
         logging.info(f"Starting migrations in debugging mode (LIMITER = {LIMITER})")
     migrate_organizations(old_session)
     migrate_sites_and_stations(old_session)
+    migrate_discharge_models(old_session)
     migrate_meteo_metrics(old_session)
     migrate_hydro_metrics(old_session)
-    #
-    migrate_virtual_metrics(old_session)  # TODO
+    # migrate_virtual_metrics(old_session)  # TODO
     old_session.close()
     print("Data migration completed successfully.")
