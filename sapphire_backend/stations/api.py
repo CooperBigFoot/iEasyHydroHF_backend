@@ -13,7 +13,7 @@ from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from .models import HydrologicalStation, MeteorologicalStation, Remark, Site
+from .models import HydrologicalStation, MeteorologicalStation, Remark, Site, VirtualStation
 from .schema import (
     HydrologicalStationFilterSchema,
     HydrologicalStationStatsSchema,
@@ -24,6 +24,8 @@ from .schema import (
     MeteoStationStatsSchema,
     RemarkInputSchema,
     RemarkOutputSchema,
+    VirtualStationDetailOutputSchema,
+    VirtualStationListOutputSchema,
 )
 
 
@@ -162,3 +164,19 @@ class MeteoStationsAPIController:
     @route.get("stats", response=MeteoStationStatsSchema)
     def get_meteorological_stations_stats(self, request: HttpRequest, organization_uuid: str):
         return MeteorologicalStation.objects.for_organization(organization_uuid).active().aggregate(total=Count("id"))
+
+
+@api_controller(
+    "stations/{organization_uuid}/virtual", tags=["Virtual stations"], auth=JWTAuth(), permissions=regular_permissions
+)
+class VirtualStationsAPIController:
+    @route.get("", response=list[VirtualStationListOutputSchema])
+    def get_virtual_stations(self, request: HttpRequest, organization_uuid: str):
+        return VirtualStation.objects.for_organization(organization_uuid).active()
+
+    @route.get("{virtual_station_uuid}", response={200: VirtualStationDetailOutputSchema, 404: Message})
+    def get_virtual_station(self, request: HttpRequest, organization_uuid: str, virtual_station_uuid: str):
+        try:
+            return VirtualStation.objects.get(organization=organization_uuid, uuid=virtual_station_uuid)
+        except VirtualStation.DoesNotExist:
+            return {"detail": "Station does not exist", "code": "not_found"}

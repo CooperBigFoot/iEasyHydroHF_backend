@@ -22,3 +22,11 @@ class HydroStationQuerySet(StationQuerySet):
 
 class MeteoStationQuerySet(StationQuerySet):
     pass
+
+
+class VirtualStationQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(is_deleted=False)
+
+    def for_organization(self, organization_uuid: str):
+        return self.filter(organization__uuid=organization_uuid)

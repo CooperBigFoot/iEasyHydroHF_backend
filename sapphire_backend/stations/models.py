@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, ForecastToggleMixin, UUIDMixin
 
-from .managers import HydroStationQuerySet, MeteoStationQuerySet
+from .managers import HydroStationQuerySet, MeteoStationQuerySet, VirtualStationQuerySet
 from .mixins import LocationMixin
 
 User = get_user_model()
@@ -152,6 +152,9 @@ class VirtualStation(UUIDMixin, LocationMixin, models.Model):
     hydro_stations = models.ManyToManyField(
         "stations.HydrologicalStation", through="stations.VirtualStationAssociation", related_name="virtual_stations"
     )
+    is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
+
+    objects = VirtualStationQuerySet.as_manager()
 
     class Meta:
         verbose_name = _("Virtual station")

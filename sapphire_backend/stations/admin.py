@@ -52,7 +52,7 @@ class RemarkAdmin(admin.ModelAdmin):
 
 @admin.register(VirtualStation)
 class VirtualStationAdmin(admin.ModelAdmin):
-    list_display = ["name", "country"]
+    list_display = ["name", "country", "uuid"]
     list_filter = ["country", "basin", "organization", "region"]
     readonly_fields = ["uuid"]
     exclude = ["hydro_stations"]

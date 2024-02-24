@@ -4,7 +4,11 @@ from ninja_extra import NinjaExtraAPI
 
 from sapphire_backend.metrics.api import HydroMetricsAPIController, MeteoMetricsAPIController
 from sapphire_backend.organizations.api import BasinsAPIController, OrganizationsAPIController, RegionsAPIController
-from sapphire_backend.stations.api import HydroStationsAPIController, MeteoStationsAPIController
+from sapphire_backend.stations.api import (
+    HydroStationsAPIController,
+    MeteoStationsAPIController,
+    VirtualStationsAPIController,
+)
 from sapphire_backend.telegrams.api import TelegramsAPIController
 from sapphire_backend.users.api import UsersAPIController
 from sapphire_backend.users.auth.api import AuthController
@@ -26,3 +30,4 @@ api.register_controllers(MeteoStationsAPIController)
 api.register_controllers(HydroStationsAPIController)
 api.register_controllers(TelegramsAPIController)
 api.register_controllers(UsersAPIController)
+api.register_controllers(VirtualStationsAPIController)
