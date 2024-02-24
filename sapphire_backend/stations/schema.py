@@ -156,6 +156,18 @@ class VirtualStationListOutputSchema(UUIDSchemaMixin, SiteBasinRegionOutputSchem
     station_code: str
 
 
+class VirtualStationAssociationSchema(Schema):
+    name: str = Field(None, alias="hydro_station.name")
+    weight: float
+    id: int = Field(None, alias="hydro_station.id")
+    uuid: str
+
+    @staticmethod
+    def resolve_uuid(obj):
+        return str(obj.hydro_station.uuid)
+
+
 class VirtualStationDetailOutputSchema(VirtualStationBaseSchema, SiteBasinRegionOutputSchema, UUIDSchemaMixin):
     id: int
     timezone: str | None = Field(None, alias="get_timezone_display")
+    associations: list[VirtualStationAssociationSchema] = Field(None, alias="virtualstationassociation_set")
