@@ -32,7 +32,7 @@ nan_count = 0
 
 MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ = {}
 MAP_OLD_SITE_CODE_TO_NEW_SITE_OBJ = {}
-LIMITER = -0  # FOR DEBUGGING PURPOSES, FOR PRODUCTION NEEDS TO BE 0
+LIMITER = -1000  # FOR DEBUGGING PURPOSES, FOR PRODUCTION NEEDS TO BE 0
 
 
 def migrate_organizations(old_session):
@@ -122,8 +122,9 @@ def get_metric_name_unit_type(variable: Variable):
     elif var_code == Variables.gauge_height_average_daily_measurement.value:  # 0002
         metric_name = HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE
         metric_unit = MetricUnit.WATER_LEVEL
-        measurement_type = HydrologicalMeasurementType.MANUAL
-    elif var_code == Variables.gauge_height_average_daily_estimation.value:  # 0003
+        measurement_type = HydrologicalMeasurementType.ESTIMATED
+    elif var_code == Variables.gauge_height_average_daily_estimation.value:  # 0003 #
+        # TODO this one is not used anywhere (2016. last time) so it could be ignored
         metric_name = HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE
         metric_unit = MetricUnit.WATER_LEVEL
         measurement_type = HydrologicalMeasurementType.ESTIMATED
@@ -315,6 +316,10 @@ def migrate_hydro_metrics(old_session):
                 # TODO handle ice phenomena, currently skip
                 continue
 
+            if data_row.variable.variable_code == Variables.gauge_height_average_daily_estimation:
+                # this one is not used so it can be skipped
+                continue
+
             if math.isnan(data_value):
                 nan_count = nan_count + 1
                 continue  # TODO skip NaN data value rows
@@ -355,7 +360,7 @@ def migrate_discharge_models(old_session):
             valid_from=old.valid_from,
             station=hydro_station
         )
-        new_discharge_model.save()
+        # new_discharge_model.save()
 
 
 def cleanup_all():
@@ -364,14 +369,18 @@ def cleanup_all():
     logging.info("Cleaning up telegrams")
     Telegram.objects.all().delete()
     logging.info("Cleaning up meteo metrics")
-    sql_query_drop = f"""truncate table metrics_meteorologicalmetric CASCADE ;"""
-    with connection.cursor() as cursor:
-        cursor.execute(sql_query_drop)
+    MeteorologicalMetric.objects.all().delete()
+    # sql_query_drop = f"""truncate table metrics_meteorologicalmetric CASCADE ;"""
+    # with connection.cursor() as cursor:
+    #     cursor.execute(sql_query_drop)
     logging.info("Cleaning up hydro metrics")
-    sql_query_drop = f"""truncate table metrics_hydrologicalmetric CASCADE;"""
-    with connection.cursor() as cursor:
-        cursor.execute(sql_query_drop)
+    HydrologicalMetric.objects.all().delete()
+
+    # sql_query_drop = f"""truncate table metrics_hydrologicalmetric CASCADE;"""
+    # with connection.cursor() as cursor:
+    #     cursor.execute(sql_query_drop)
     logging.info("Cleaning up hydro stations")
+
     HydrologicalStation.objects.all().delete()
     logging.info("Cleaning up meteo stations")
     MeteorologicalStation.objects.all().delete()
@@ -400,14 +409,14 @@ def migrate():
     # Update with your old database connection string
     Session = sessionmaker(bind=old_db_engine)
     old_session = Session()
-    cleanup_all()
+    # cleanup_all()
     if LIMITER != 0:
         logging.info(f"Starting migrations in debugging mode (LIMITER = {LIMITER})")
-    migrate_organizations(old_session)
-    migrate_sites_and_stations(old_session)
+    # migrate_organizations(old_session)
+    # migrate_sites_and_stations(old_session)
     migrate_discharge_models(old_session)
-    migrate_meteo_metrics(old_session)
-    migrate_hydro_metrics(old_session)
+    # migrate_hydro_metrics(old_session)
+    # migrate_meteo_metrics(old_session)
     # migrate_virtual_metrics(old_session)  # TODO
     old_session.close()
     print("Data migration completed successfully.")
