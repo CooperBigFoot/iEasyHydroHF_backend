@@ -9,7 +9,7 @@ class DischargeModel(UUIDMixin, models.Model):
     param_a = models.DecimalField(verbose_name=_("Parameter a"), max_digits=50, decimal_places=30)
     param_b = models.DecimalField(verbose_name=_("Parameter b"), max_digits=50, decimal_places=30)
     param_c = models.DecimalField(verbose_name=_("Parameter c"), max_digits=50, decimal_places=30)
-    valid_from = models.DateTimeField(null=True)  # in original null=True but that may not be the best idea
+    valid_from = models.DateTimeField()
     station = models.ForeignKey("stations.HydrologicalStation", verbose_name=_("Station"), on_delete=models.PROTECT)
 
     class Meta:
