@@ -134,7 +134,7 @@ class MeteoStationStatsSchema(Schema):
 
 class VirtualStationBaseSchema(SiteBaseSchema, Schema):
     name: str
-    description: str | None = None
+    description: str = ""
     station_code: str
 
 
@@ -154,6 +154,11 @@ class VirtualStationListOutputSchema(UUIDSchemaMixin, SiteBasinRegionOutputSchem
     id: int
     name: str
     station_code: str
+
+
+class VirtualStationAssociationInputSchema(Schema):
+    uuid: str
+    weight: float
 
 
 class VirtualStationAssociationSchema(Schema):

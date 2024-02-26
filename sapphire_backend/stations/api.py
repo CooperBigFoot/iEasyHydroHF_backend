@@ -1,3 +1,6 @@
+import logging
+
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import Q
 from django.db.models.aggregates import Count
@@ -13,7 +16,7 @@ from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from .models import HydrologicalStation, MeteorologicalStation, Remark, Site, VirtualStation
+from .models import HydrologicalStation, MeteorologicalStation, Remark, Site, VirtualStation, VirtualStationAssociation
 from .schema import (
     HydrologicalStationFilterSchema,
     HydrologicalStationStatsSchema,
@@ -24,9 +27,13 @@ from .schema import (
     MeteoStationStatsSchema,
     RemarkInputSchema,
     RemarkOutputSchema,
+    VirtualStationAssociationInputSchema,
     VirtualStationDetailOutputSchema,
+    VirtualStationInputSchema,
     VirtualStationListOutputSchema,
 )
+
+logger = logging.getLogger("api_logger")
 
 
 @api_controller(
@@ -179,4 +186,53 @@ class VirtualStationsAPIController:
         try:
             return VirtualStation.objects.get(organization=organization_uuid, uuid=virtual_station_uuid)
         except VirtualStation.DoesNotExist:
-            return {"detail": "Station does not exist", "code": "not_found"}
+            return 404, {"detail": "Station does not exist", "code": "not_found"}
+
+    @route.post("", response={200: VirtualStationDetailOutputSchema, 400: Message})
+    def create_virtual_station(
+        self, request: HttpRequest, organization_uuid: str, virtual_station_data: VirtualStationInputSchema
+    ):
+        payload = virtual_station_data.dict()
+        payload["organization_id"] = organization_uuid
+        try:
+            station = VirtualStation.objects.create(**payload)
+            return station
+        except ValidationError as e:
+            logger.error(e)
+            return 400, {"detail": "Something went wrong", "code": "server_error"}
+
+    @route.post(
+        "{virtual_station_uuid}/associations",
+        response={200: VirtualStationDetailOutputSchema, 400: Message, 404: Message},
+    )
+    def create_virtual_station_associations(
+        self,
+        request: HttpRequest,
+        organization_uuid: str,
+        virtual_station_uuid: str,
+        association_data: list[VirtualStationAssociationInputSchema],
+    ):
+        associations = []
+        try:
+            virtual_station = VirtualStation.objects.get(organization=organization_uuid, uuid=virtual_station_uuid)
+            for association in association_data:
+                try:
+                    hydro_station = HydrologicalStation.objects.get(
+                        site__organization=organization_uuid, uuid=association.uuid
+                    )
+                    association_obj = VirtualStationAssociation(
+                        virtual_station=virtual_station, hydro_station=hydro_station, weight=association.weight
+                    )
+                    associations.append(association_obj)
+                except HydrologicalStation.DoesNotExist:
+                    return 400, {"detail": "Specified hydrological station does not exist", "code": "invalid_data"}
+
+            # delete all existing associations to set them from scratch
+            virtual_station.virtualstationassociation_set.all().delete()
+            for obj in associations:
+                obj.save()
+
+            return virtual_station
+
+        except VirtualStation.DoesNotExist:
+            return 404, {"detail": "Station does not exist", "code": "not_found"}
