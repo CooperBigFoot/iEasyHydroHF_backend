@@ -56,7 +56,7 @@ class Migration(migrations.Migration):
                     hm.station_id
                 FROM
                     public.metrics_hydrologicalmetric hm
-                LEFT JOIN public.metrics_hydrologicalmetric hm2 ON DATE_TRUNC('day', hm.timestamp) = DATE_TRUNC('day', hm2.timestamp) AND hm2.metric_name = 'WLDA' and hm2.value_type = 'E' and hm2.sensor_identifier=hm.sensor_identifier and hm2.sensor_type=hm.sensor_type AND hm2.station_id = hm.station_id
+                LEFT JOIN public.metrics_hydrologicalmetric hm2 ON DATE_TRUNC('day', hm.timestamp) = DATE_TRUNC('day', hm2.timestamp) AND hm2.metric_name = 'WLDA' and hm2.value_type = 'I' and hm2.sensor_identifier=hm.sensor_identifier and hm2.sensor_type=hm.sensor_type AND hm2.station_id = hm.station_id
                 WHERE
                      hm.metric_name = 'WLD'
                 GROUP BY
@@ -98,7 +98,7 @@ class Migration(migrations.Migration):
                     FROM
                         estimations_dischargemodel dm
                 ) dm ON wlda.timestamp >= dm.valid_from AND (wlda.timestamp < dm.next_valid_from OR dm.next_valid_from IS NULL) AND wlda.station_id = dm.station_id
-                LEFT JOIN metrics_hydrologicalmetric hm ON hm.metric_name = 'WDDA' and hm.value_type = 'E' and DATE_TRUNC('day',wlda.timestamp) = DATE_TRUNC('day',hm.timestamp) and hm.sensor_identifier=wlda.sensor_identifier and hm.sensor_type=wlda.sensor_type AND hm.station_id = wlda.station_id
+                LEFT JOIN metrics_hydrologicalmetric hm ON hm.metric_name = 'WDDA' and hm.value_type = 'I' and DATE_TRUNC('day',wlda.timestamp) = DATE_TRUNC('day',hm.timestamp) and hm.sensor_identifier=wlda.sensor_identifier and hm.sensor_type=wlda.sensor_type AND hm.station_id = wlda.station_id
                 WHERE
                     wlda.metric_name = 'WLDA';
               """
@@ -130,7 +130,7 @@ class Migration(migrations.Migration):
                         ARRAY_TO_STRING(ARRAY_AGG(ROW(wdda.timestamp, wdda.avg_value)) OVER (PARTITION BY wdda.station_id, EXTRACT(YEAR FROM wdda.timestamp), EXTRACT(MONTH FROM wdda.timestamp) ORDER BY wdda.timestamp ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING),  ',')  AS used_values
                     FROM
                         public.estimations_water_discharge_daily_average wdda
-                    LEFT JOIN public.metrics_hydrologicalmetric hm ON hm.metric_name = 'WDFA' and hm.value_type = 'E' and DATE_TRUNC('day',wdda.timestamp) = DATE_TRUNC('day',hm.timestamp) and hm.sensor_identifier=wdda.sensor_identifier and hm.sensor_type=wdda.sensor_type AND hm.station_id = wdda.station_id
+                    LEFT JOIN public.metrics_hydrologicalmetric hm ON hm.metric_name = 'WDFA' and hm.value_type = 'I' and DATE_TRUNC('day',wdda.timestamp) = DATE_TRUNC('day',hm.timestamp) and hm.sensor_identifier=wdda.sensor_identifier and hm.sensor_type=wdda.sensor_type AND hm.station_id = wdda.station_id
                 )
                 SELECT *
                 FROM five_day_averages
@@ -164,7 +164,7 @@ class Migration(migrations.Migration):
                         ARRAY_TO_STRING(ARRAY_AGG(ROW(wdda.timestamp, wdda.avg_value)) OVER (PARTITION BY wdda.station_id, EXTRACT(YEAR FROM wdda.timestamp), EXTRACT(MONTH FROM wdda.timestamp) ORDER BY wdda.timestamp ROWS BETWEEN 4 PRECEDING AND 5 FOLLOWING),  ',')  AS used_values
                     FROM
                         public.estimations_water_discharge_daily_average wdda
-                    LEFT JOIN public.metrics_hydrologicalmetric hm ON hm.metric_name = 'WDDCA' and hm.value_type = 'E' and DATE_TRUNC('day',wdda.timestamp) = DATE_TRUNC('day',hm.timestamp) and hm.sensor_identifier=wdda.sensor_identifier and hm.sensor_type=wdda.sensor_type AND hm.station_id = wdda.station_id
+                    LEFT JOIN public.metrics_hydrologicalmetric hm ON hm.metric_name = 'WDDCA' and hm.value_type = 'I' and DATE_TRUNC('day',wdda.timestamp) = DATE_TRUNC('day',hm.timestamp) and hm.sensor_identifier=wdda.sensor_identifier and hm.sensor_type=wdda.sensor_type AND hm.station_id = wdda.station_id
                 )
                 SELECT *
                 FROM decade_averages
