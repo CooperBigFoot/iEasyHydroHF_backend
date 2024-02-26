@@ -1,60 +1,87 @@
 from datetime import datetime
 from enum import Enum
-from uuid import UUID
+from typing import Literal
 
-from django.db.models.expressions import Q
 from ninja import FilterSchema, Schema
 
-
-class TimeseriesFiltersSchema(FilterSchema):
-    sensor_uuid: UUID | None
-    timestamp__lte: datetime | None
-    timestamp__gte: datetime | None
-    average_value__lte: float | None
-    average_value__gte: float | None
-
-    def filter_sensor_uuid(self, value: bool) -> Q:
-        return Q(sensor=value) if value else Q(sensor__is_default=True)
+from .choices import (
+    HydrologicalMeasurementType,
+    HydrologicalMetricName,
+    MeteorologicalMeasurementType,
+    MeteorologicalMetricName,
+)
 
 
-class OrderParams(str, Enum):
-    timestamp = "timestamp"
-    average_value = "average_value"
+class BaseTimeseriesFilterSchema(FilterSchema):
+    timestamp: datetime = None
+    timestamp__gt: datetime = None
+    timestamp__gte: datetime = None
+    timestamp__lt: datetime = None
+    timestamp__lte: datetime = None
+    station_id: int = None
+    station_id__in: list[int] = None
+    station__station_code: str = None
+    station__station_code__in: list[str] = None
 
 
-class OrderQueryParams(Schema):
-    param: OrderParams = OrderParams.timestamp
-    descending: bool = False
+class HydroMetricFilterSchema(BaseTimeseriesFilterSchema):
+    avg_value__gt: float = None
+    avg_value__gte: float = None
+    avg_value__lt: float = None
+    avg_value__lte: float = None
+    metric_name: HydrologicalMetricName = None
+    value_type: HydrologicalMeasurementType = None
+    sensor_identifier: str = None
 
 
-class MetricParams(str, Enum):
-    water_discharge = "water_discharge"
-    water_level = "water_level"
-    water_velocity = "water_velocity"
-    water_temperature = "water_temp"
-    air_temperature = "air_temp"
-    precipitation = "precipitation"
+class MeteoMetricFilterSchema(BaseTimeseriesFilterSchema):
+    value__gt: float = None
+    value__gte: float = None
+    value__lt: float = None
+    value__lte: float = None
+    metric_name: MeteorologicalMetricName = None
+    value_type: MeteorologicalMeasurementType = None
 
 
-class AggregationFunctionParams(str, Enum):
-    average = "avg"
-    minimum = "min"
-    maximum = "max"
+class OrderQueryParamSchema(Schema):
+    order_direction: Literal["ASC", "DESC"] = "DESC"
+    order_param: Literal["timestamp", "avg_value"] = "timestamp"
 
 
-class LatestMetricOutputSchema(Schema):
+class HydrologicalMetricOutputSchema(Schema):
+    avg_value: float
     timestamp: datetime
+    metric_name: HydrologicalMetricName
+    value_type: str
+    sensor_identifier: str
+    station_id: int
 
 
-class TimeseriesOutputSchema(Schema):
-    timestamp: datetime
-    minimum_value: float | None
-    average_value: float
-    maximum_value: float | None
-    unit: str
-
-
-class TimeseriesGroupingOutputSchema(Schema):
-    bucket: datetime
+class MeteorologicalMetricOutputSchema(Schema):
     value: float
-    unit: str
+    timestamp: datetime
+    metric_name: MeteorologicalMetricName
+    station_id: int
+
+
+class MetricCountSchema(Schema):
+    metric_name: HydrologicalMetricName | MeteorologicalMetricName | Literal["total"]
+    metric_count: int
+
+
+class MetricTotalCountSchema(Schema):
+    total: int
+
+
+class TimeBucketAggregationFunctions(str, Enum):
+    count: str = "COUNT"
+    min: str = "MIN"
+    max: str = "MAX"
+    avg: str = "AVG"
+    sum: str = "SUM"
+
+
+class TimeBucketQueryParams(Schema):
+    interval: str
+    agg_func: TimeBucketAggregationFunctions
+    limit: int = 100

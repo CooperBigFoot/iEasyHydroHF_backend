@@ -8,14 +8,20 @@ from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
 from sapphire_backend.utils.mixins.schemas import Message
-from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsSuperAdmin, OrganizationExists
+from sapphire_backend.utils.permissions import (
+    admin_permissions,
+    regular_permissions,
+)
 
-from .models import HydrologicalStation, Remark, Site
+from .models import HydrologicalStation, MeteorologicalStation, Remark, Site
 from .schema import (
     HydrologicalStationFilterSchema,
+    HydrologicalStationStatsSchema,
     HydroStationInputSchema,
     HydroStationOutputDetailSchema,
     HydroStationUpdateSchema,
+    MeteoStationOutputDetailSchema,
+    MeteoStationStatsSchema,
     RemarkInputSchema,
     RemarkOutputSchema,
 )
@@ -25,9 +31,9 @@ from .schema import (
     "stations/{organization_uuid}/hydrological",
     tags=["Hydrological stations"],
     auth=JWTAuth(),
-    permissions=[OrganizationExists & (IsOrganizationAdmin | IsSuperAdmin)],
+    permissions=regular_permissions,
 )
-class StationsAPIController:
+class HydroStationsAPIController:
     @route.post("", response={201: HydroStationOutputDetailSchema, 400: Message})
     def create_hydrological_station(
         self, request: HttpRequest, organization_uuid: str, station_data: HydroStationInputSchema
@@ -60,19 +66,21 @@ class StationsAPIController:
         organization_uuid: str,
         filters: Query[HydrologicalStationFilterSchema],
     ):
-        stations = HydrologicalStation.objects.filter(
-            site__organization__uuid=organization_uuid, is_deleted=False, **filters.dict(exclude_unset=True)
+        stations = (
+            HydrologicalStation.objects.for_organization(organization_uuid)
+            .active()
+            .filter(**filters.dict(exclude_unset=True))
         )
         return stations.select_related("site", "site__organization", "site__region", "site__basin")
 
-    @route.get("stats")
+    @route.get("stats", response={200: HydrologicalStationStatsSchema})
     def get_hydrological_stations_stats(self, request: HttpRequest, organization_uuid: str):
         station_type = HydrologicalStation.StationType
-        stations = HydrologicalStation.objects.filter(site__organization__uuid=organization_uuid, is_deleted=False)
+        stations = HydrologicalStation.objects.for_organization(organization_uuid).active()
         stats_aggr = stations.aggregate(
-            cnt_total=Count("id"),
-            cnt_manual=Count("id", filter=Q(station_type=station_type.MANUAL)),
-            cnt_auto=Count("id", filter=Q(station_type=station_type.AUTOMATIC)),
+            total=Count("id"),
+            manual=Count("id", filter=Q(station_type=station_type.MANUAL)),
+            auto=Count("id", filter=Q(station_type=station_type.AUTOMATIC)),
         )
 
         return stats_aggr
@@ -84,7 +92,7 @@ class StationsAPIController:
         except HydrologicalStation.DoesNotExist:
             return 404, {"detail": _("Station not found."), "code": "not_found"}
 
-    @route.delete("{station_uuid}", response={200: Message, 400: Message, 404: Message})
+    @route.delete("{station_uuid}", response={200: Message, 400: Message, 404: Message}, permissions=admin_permissions)
     def delete_hydrological_station(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
         try:
             station = HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
@@ -137,3 +145,20 @@ class StationsAPIController:
             return 200, {"detail": _("Remark deleted successfully"), "code": "success"}
         except IntegrityError:
             return 400, {"detail": _("Remark could not be deleted"), "code": "error"}
+
+
+@api_controller(
+    "stations/{organization_uuid}/meteo",
+    tags=["Meteorological stations"],
+    auth=JWTAuth(),
+    permissions=regular_permissions,
+)
+class MeteoStationsAPIController:
+    @route.get("", response=list[MeteoStationOutputDetailSchema])
+    def get_meteorological_stations(self, request: HttpRequest, organization_uuid: str):
+        stations = MeteorologicalStation.objects.for_organization(organization_uuid).active()
+        return stations.select_related("site", "site__organization")
+
+    @route.get("stats", response=MeteoStationStatsSchema)
+    def get_meteorological_stations_stats(self, request: HttpRequest, organization_uuid: str):
+        return MeteorologicalStation.objects.for_organization(organization_uuid).active().aggregate(total=Count("id"))

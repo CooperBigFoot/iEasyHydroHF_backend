@@ -9,6 +9,7 @@ from typing import TypedDict
 import zoneinfo
 from django.utils import timezone
 
+from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, MetricUnit
 from sapphire_backend.metrics.models import HydrologicalMetric
 from sapphire_backend.stations.models import HydrologicalStation
 
@@ -22,7 +23,7 @@ class MetricRecord(TypedDict):
     min_value: float
     max_value: float
     metric_name: str
-    value_type: HydrologicalMetric.MeasurementType
+    value_type: HydrologicalMeasurementType
     unit: str
 
 
@@ -101,9 +102,9 @@ class XMLParser(BaseParser):
     def __init__(self, file_path: str):
         super().__init__(file_path)
         self.map_xml_var_to_model_var = {
-            "LW": (HydrologicalMetric.MetricName.WATER_LEVEL_DAILY, HydrologicalMetric.MetricUnit.WATER_LEVEL),
-            "TW": (HydrologicalMetric.MetricName.WATER_TEMPERATURE, HydrologicalMetric.MetricUnit.TEMPERATURE),
-            "TA": (HydrologicalMetric.MetricName.AIR_TEMPERATURE, HydrologicalMetric.MetricUnit.TEMPERATURE),
+            "LW": (HydrologicalMetricName.WATER_LEVEL_DAILY, MetricUnit.WATER_LEVEL),
+            "TW": (HydrologicalMetricName.WATER_TEMPERATURE, MetricUnit.TEMPERATURE),
+            "TA": (HydrologicalMetricName.AIR_TEMPERATURE, MetricUnit.TEMPERATURE),
         }
         self.log_unsupported_variables = set()
         self.log_unknown_stations = set()
@@ -139,6 +140,8 @@ class XMLParser(BaseParser):
             if min_value is not None:
                 min_value = float(min_value)
             max_value = record_raw.get("max_value", None)
+            if max_value is not None:
+                max_value = float(max_value)
         except ValueError:
             logging.error(
                 f"Value error for {record_raw['timestamp']} avg {record_raw['avg_value']} min {record_raw['min_value']} max {record_raw['max_value']}. Skipping..."
@@ -154,7 +157,7 @@ class XMLParser(BaseParser):
             min_value=min_value,
             max_value=max_value,
             metric_name=metric_name,
-            value_type=HydrologicalMetric.MeasurementType.AUTOMATIC,
+            value_type=HydrologicalMeasurementType.AUTOMATIC,
             unit=metric_unit,
         )
 

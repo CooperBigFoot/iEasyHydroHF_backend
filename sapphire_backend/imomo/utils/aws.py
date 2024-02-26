@@ -3,19 +3,16 @@ import datetime
 import hashlib
 import hmac
 
+# MONKEY PATCH
+# This is to make things work in Python >= 2.7.9,
+# See: https://github.com/boto/boto/issues/2836
+import ssl
+
 import pytz
 from boto.exception import *
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from imomo import config
-
-# MONKEY PATCH
-
-# This is to make things work in Python >= 2.7.9,
-
-# See: https://github.com/boto/boto/issues/2836
-
-import ssl
 
 if hasattr(ssl, "match_hostname"):
     _old_match_hostname = ssl.match_hostname

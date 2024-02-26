@@ -1,12 +1,29 @@
-from django.db.models import DateTimeField, F, Func, Manager, QuerySet, Value
+from django.db.models import QuerySet
+
+from .choices import HydrologicalMeasurementType
 
 
 class TimeSeriesQuerySet(QuerySet):
-    def time_bucket(self, interval: str, field_name: str = "timestamp"):
-        return self.annotate(
-            bucket=Func(Value(interval), F(field_name), function="time_bucket", output_field=DateTimeField())
-        )
+    def for_metric(self, metric_name: str):
+        return self.filter(metric_name=metric_name)
+
+    def for_station(self, station_id: int):
+        return self.filter(station_id=station_id)
+
+    def for_type(self, value_type: str):
+        return self.filter(value_type=value_type)
 
 
-class TimeSeriesManager(Manager.from_queryset(TimeSeriesQuerySet)):
+class HydrologicalMetricQuerySet(TimeSeriesQuerySet):
+    def automatic(self):
+        return self.filter(value_type=HydrologicalMeasurementType.AUTOMATIC)
+
+    def manual(self):
+        return self.filter(value_type=HydrologicalMeasurementType.MANUAL)
+
+    def for_sensor(self, sensor_identifier: str):
+        return self.filter(sensor_identifier=sensor_identifier)
+
+
+class MeteorologicalMetricQuerySet(TimeSeriesQuerySet):
     pass
