@@ -1,19 +1,21 @@
 import logging
-
 # Configure SQLAlchemy connection to the old database
 import math
-
+from datetime import datetime
 import zoneinfo
-from django.utils import timezone
 
+from django.db import connection
+from django.utils import timezone
 # Import necessary libraries
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from tqdm import tqdm
 
+from sapphire_backend.estimations.models import DischargeModel
 from sapphire_backend.imomo.data_structs.standard_data import Variables
 from sapphire_backend.imomo.old_models import Variable
 from sapphire_backend.imomo.old_models.data_sources import Source as OldSource  # Import your old SQLAlchemy model
+from sapphire_backend.imomo.old_models.discharge_models import DischargeModel as OldDischargeModel
 from sapphire_backend.imomo.old_models.monitoring_site_locations import Site as OldSite
 from sapphire_backend.metrics.choices import (
     HydrologicalMeasurementType,
@@ -25,12 +27,13 @@ from sapphire_backend.metrics.choices import (
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
 from sapphire_backend.organizations.models import Basin, Organization, Region
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, Site
+from sapphire_backend.telegrams.models import Telegram
 
 nan_count = 0
 
 MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ = {}
 MAP_OLD_SITE_CODE_TO_NEW_SITE_OBJ = {}
-LIMITER = -100  # FOR DEBUGGING PURPOSES, FOR PRODUCTION NEEDS TO BE 0
+LIMITER = 0  # FOR DEBUGGING PURPOSES, FOR PRODUCTION NEEDS TO BE 0
 
 
 def migrate_organizations(old_session):
@@ -120,11 +123,12 @@ def get_metric_name_unit_type(variable: Variable):
     elif var_code == Variables.gauge_height_average_daily_measurement.value:  # 0002
         metric_name = HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE
         metric_unit = MetricUnit.WATER_LEVEL
-        measurement_type = HydrologicalMeasurementType.MANUAL
-    elif var_code == Variables.gauge_height_average_daily_estimation.value:  # 0003
+        measurement_type = HydrologicalMeasurementType.IMPORTED
+    elif var_code == Variables.gauge_height_average_daily_estimation.value:  # 0003 #
+        # TODO this one is not used anywhere (2016. last time) so it could be ignored
         metric_name = HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE
         metric_unit = MetricUnit.WATER_LEVEL
-        measurement_type = HydrologicalMeasurementType.ESTIMATED
+        measurement_type = HydrologicalMeasurementType.IMPORTED
     elif var_code == Variables.discharge_daily_measurement.value:  # 0004
         metric_name = HydrologicalMetricName.WATER_DISCHARGE_DAILY
         metric_unit = MetricUnit.WATER_DISCHARGE
@@ -132,7 +136,7 @@ def get_metric_name_unit_type(variable: Variable):
     elif var_code == Variables.discharge_daily_estimation.value:  # 0005
         metric_name = HydrologicalMetricName.WATER_DISCHARGE_DAILY
         metric_unit = MetricUnit.WATER_DISCHARGE
-        measurement_type = HydrologicalMeasurementType.ESTIMATED
+        measurement_type = HydrologicalMeasurementType.IMPORTED
     elif var_code == Variables.river_cross_section_area_measurement.value:  # 0006:
         metric_name = HydrologicalMetricName.RIVER_CROSS_SECTION_AREA
         metric_unit = MetricUnit.AREA
@@ -144,13 +148,13 @@ def get_metric_name_unit_type(variable: Variable):
     elif var_code == Variables.discharge_decade_average.value:  # 0008
         metric_name = HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE
         metric_unit = MetricUnit.WATER_DISCHARGE
-        measurement_type = HydrologicalMeasurementType.ESTIMATED
+        measurement_type = HydrologicalMeasurementType.IMPORTED
     elif var_code == Variables.discharge_maximum_recommendation.value:  # 0009:
         return "", "", ""  # this will be at HydroStation level WATER_DISCHARGE_MAXIMUM_RECOMMENDATION
     elif var_code == Variables.discharge_daily_average_estimation.value:  # 0010
         metric_name = HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE
         metric_unit = MetricUnit.WATER_DISCHARGE
-        measurement_type = HydrologicalMeasurementType.ESTIMATED
+        measurement_type = HydrologicalMeasurementType.IMPORTED
     elif var_code == Variables.ice_phenomena_observation.value:  # "0011":
         metric_name = HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION
         metric_unit = MetricUnit.ICE_PHENOMENA_OBSERVATION
@@ -170,7 +174,7 @@ def get_metric_name_unit_type(variable: Variable):
     elif var_code == Variables.discharge_fiveday_average.value:  # 0015
         metric_name = HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE
         metric_unit = MetricUnit.WATER_DISCHARGE
-        measurement_type = HydrologicalMeasurementType.ESTIMATED
+        measurement_type = HydrologicalMeasurementType.IMPORTED
     elif var_code == Variables.temperature_decade_average.value:  # 0016
         metric_name = MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE
         metric_unit = MetricUnit.TEMPERATURE
@@ -190,7 +194,7 @@ def get_metric_name_unit_type(variable: Variable):
     elif var_code == Variables.discharge_decade_average_historical.value:  # 0020
         metric_name = HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE_HISTORICAL
         metric_unit = MetricUnit.WATER_DISCHARGE
-        measurement_type = HydrologicalMeasurementType.ESTIMATED
+        measurement_type = HydrologicalMeasurementType.IMPORTED
     return metric_name, metric_unit, measurement_type
 
 
@@ -313,6 +317,10 @@ def migrate_hydro_metrics(old_session):
                 # TODO handle ice phenomena, currently skip
                 continue
 
+            if data_row.variable.variable_code == Variables.gauge_height_average_daily_estimation:
+                # this one is not used so it can be skipped
+                continue
+
             if math.isnan(data_value):
                 nan_count = nan_count + 1
                 continue  # TODO skip NaN data value rows
@@ -341,7 +349,31 @@ def migrate_virtual_metrics(old_session):
     pass
 
 
+def migrate_discharge_models(old_session):
+    old_discharge_models = old_session.query(OldDischargeModel).all()
+    for old in tqdm(old_discharge_models, desc="Discharge models", position=0):
+        hydro_station = HydrologicalStation.objects.get(station_code=old.site.site_code_repr)
+        valid_from = old.valid_from
+        if valid_from is None:
+            # when valid_from is None then it is initial discharge model
+            # 2000-01-01 is sufficient as the beginning date of the initial model
+            valid_from = datetime(2000, 1, 1, 0, 0, 0, tzinfo=zoneinfo.ZoneInfo("UTC"))
+        new_discharge_model = DischargeModel(
+            name=old.model_name,
+            param_a=old.param_a,
+            param_b=old.param_b,
+            param_c=old.param_c,
+            valid_from=valid_from,
+            station=hydro_station
+        )
+        new_discharge_model.save()
+
+
 def cleanup_all():
+    logging.info("Cleaning up discharge models")
+    DischargeModel.objects.all().delete()
+    logging.info("Cleaning up telegrams")
+    Telegram.objects.all().delete()
     logging.info("Cleaning up meteo metrics")
     MeteorologicalMetric.objects.all().delete()
     logging.info("Cleaning up hydro metrics")
@@ -380,9 +412,9 @@ def migrate():
         logging.info(f"Starting migrations in debugging mode (LIMITER = {LIMITER})")
     migrate_organizations(old_session)
     migrate_sites_and_stations(old_session)
-    migrate_meteo_metrics(old_session)
+    migrate_discharge_models(old_session)
     migrate_hydro_metrics(old_session)
-    #
-    migrate_virtual_metrics(old_session)  # TODO
+    migrate_meteo_metrics(old_session)
+    # migrate_virtual_metrics(old_session)  # TODO
     old_session.close()
     print("Data migration completed successfully.")
