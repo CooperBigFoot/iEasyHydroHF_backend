@@ -35,6 +35,7 @@ EXECUTE FUNCTION refresh_discharge_estimation_views();
 class Migration(migrations.Migration):
     dependencies = [
         ('estimations', '0001_initial'),
+        ("metrics", "0003_create_hypertables"),
     ]
 
     operations = [
