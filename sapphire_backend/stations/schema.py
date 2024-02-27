@@ -145,6 +145,7 @@ class VirtualStationInputSchema(VirtualStationBaseSchema, SiteBasinRegionInputSc
 class VirtualStationUpdateSchema(VirtualStationInputSchema):
     name: str | None = None
     station_code: str | None = None
+    description: str | None = None
     region_id: str | None = None
     basin_id: str | None = None
     country: str | None = None

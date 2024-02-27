@@ -22,12 +22,9 @@ class UsersAPIController:
     def get_current_user(self, request):
         return request.user
 
-    @route.get("{user_uuid}", response={200: UserOutputDetailSchema, 404: Message}, url_name="user-by-uuid")
+    @route.get("{user_uuid}", response={200: UserOutputDetailSchema}, url_name="user-by-uuid")
     def get_user_by_id(self, request, user_uuid: str):
-        try:
-            return User.objects.get(uuid=user_uuid, is_deleted=False)
-        except User.DoesNotExist:
-            return 404, {"detail": _("User not found."), "code": "user_not_found"}
+        return User.objects.get(uuid=user_uuid, is_deleted=False)
 
     @route.post("me/avatar-upload", response={201: UserOutputDetailSchema}, url_name="users-me-avatar-upload")
     def upload_avatar(self, request, image: UploadedLimitedSizeFile = File(...)):
@@ -37,15 +34,13 @@ class UsersAPIController:
 
     @route.put(
         "{user_uuid}",
-        response={200: UserOutputDetailSchema, 403: Message, 404: Message},
+        response={200: UserOutputDetailSchema, 403: Message},
         url_name="user-update",
         permissions=[IsOwner | IsSuperAdmin],
     )
     def update_user(self, request, user_uuid: str, user_data: UserUpdateSchema):
-        try:
-            user = User.objects.get(uuid=user_uuid, is_deleted=False)
-        except User.DoesNotExist:
-            return 404, {"detail": "User not found", "code": "user_not_found"}
+        user = User.objects.get(uuid=user_uuid, is_deleted=False)
+
         print(user_data)
         for attr, value in user_data.dict(exclude_unset=True).items():
             if attr == "user_role" and not can_update_role(request.user, value):
@@ -64,10 +59,7 @@ class UsersAPIController:
         permissions=[IsSuperAdmin | IsOrganizationAdmin],
     )
     def delete_user(self, request, user_uuid: str):
-        try:
-            user = User.objects.get(uuid=user_uuid, is_deleted=False)
-        except User.DoesNotExist:
-            return 404, {"detail": _("User not found"), "code": "user_not_found"}
+        user = User.objects.get(uuid=user_uuid, is_deleted=False)
 
         if user == request.user:
             return 403, {

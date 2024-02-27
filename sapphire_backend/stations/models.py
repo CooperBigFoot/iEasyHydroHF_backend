@@ -148,7 +148,7 @@ class Remark(UUIDMixin, CreateLastModifiedDateMixin, models.Model):
 class VirtualStation(UUIDMixin, LocationMixin, models.Model):
     name = models.CharField(verbose_name=_("Virtual station name"), blank=False, max_length=150)
     description = models.TextField(verbose_name=_("Description"), blank=True)
-    station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=False)
+    station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=False, unique=True)
     hydro_stations = models.ManyToManyField(
         "stations.HydrologicalStation", through="stations.VirtualStationAssociation", related_name="virtual_stations"
     )
@@ -159,7 +159,10 @@ class VirtualStation(UUIDMixin, LocationMixin, models.Model):
     class Meta:
         verbose_name = _("Virtual station")
         verbose_name_plural = _("Virtual stations")
-        indexes = [models.Index("uuid", name="virtual_station_uuid_idx")]
+        indexes = [
+            models.Index("uuid", name="virtual_station_uuid_idx"),
+            models.Index("station_code", name="virtual_station_code_idx"),
+        ]
 
     def __str__(self):
         return self.name

@@ -6,7 +6,7 @@ from pytest_factoryboy import register
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.organizations.models import Organization
-from sapphire_backend.organizations.tests.factories import OrganizationFactory
+from sapphire_backend.organizations.tests.factories import BasinFactory, OrganizationFactory, RegionFactory
 from sapphire_backend.stations.models import HydrologicalStation
 from sapphire_backend.stations.tests.factories import HydrologicalStationFactory, SiteFactory
 from sapphire_backend.users.tests.factories import UserFactory
@@ -15,6 +15,8 @@ register(SiteFactory)
 register(HydrologicalStationFactory)
 register(UserFactory)
 register(OrganizationFactory)
+register(BasinFactory)
+register(RegionFactory)
 
 User = get_user_model()
 
@@ -90,6 +92,16 @@ def other_organization_user(db, backup_organization):
     return UserFactory(
         username="other_organization_user", user_role=User.UserRoles.REGULAR_USER, organization=backup_organization
     )
+
+
+@pytest.fixture
+def basin(db, organization):
+    return BasinFactory(name="Basin One", organization=organization)
+
+
+@pytest.fixture
+def region(db, organization):
+    return RegionFactory(name="Region One", organization=organization)
 
 
 @pytest.fixture

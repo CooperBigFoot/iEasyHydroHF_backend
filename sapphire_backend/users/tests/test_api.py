@@ -41,7 +41,7 @@ class TestUserAPIController:
         response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{uuid.uuid4()}")
 
         assert response.status_code == 404
-        assert response.json() == {"detail": "User not found.", "code": "user_not_found"}
+        assert response.json() == {"detail": "Object does not exist", "code": "not_found"}
 
     def test_get_inactive_user_by_uuid(self, authenticated_regular_user_api_client, inactive_user):
         response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{inactive_user.uuid}")
