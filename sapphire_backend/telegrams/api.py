@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from ninja_extra import api_controller, route
@@ -6,6 +7,14 @@ from ninja_jwt.authentication import JWTAuth
 from sapphire_backend.utils.datetime_helper import to_utc, yesterday_date, yesterday_morning
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import IsOrganizationMember, IsSuperAdmin, OrganizationExists
+from sapphire_backend.metrics.choices import (
+    HydrologicalMeasurementType,
+    HydrologicalMetricName,
+    MeteorologicalMeasurementType,
+    MeteorologicalMetricName,
+    MetricUnit,
+)
+
 from .exceptions import TelegramParserException
 from .parser import KN15TelegramParser
 from .schema import BulkParseOutputSchema, TelegramBulkInputSchema, TelegramInputSchema, TelegramOutputSchema, \
@@ -105,6 +114,7 @@ class TelegramsAPIController:
                 # data["parsed"].append({"index": idx, "telegram": telegram, "parsed_data": decoded})
             except TelegramParserException as e:
                 data["errors"].append({"index": idx, "telegram": telegram, "error": str(e)})
+                logging.exception(e)
 
             if decoded.get("section_one", False):
                 telegram_morning_dt_local = datetime.fromisoformat(decoded["section_zero"]["date"])
@@ -115,15 +125,18 @@ class TelegramsAPIController:
                 previous_day_dt_local = yesterday_date(telegram_morning_dt_local)
                 previous_day_morning_dt_local = yesterday_morning(telegram_morning_dt_local)
                 previous_day_evening_water_level = decoded["section_one"]["water_level_20h_period"]
-                HydrologicalMetric(timestamp=to_utc(previous_day_morning_dt_local),
-                                   station=parser.hydro_station,
-                                   metric_name=HydrologicalMetric.MetricName.WATER_LEVEL_DAILY,
-                                   value_type=HydrologicalMetric.MeasurementType.MANUAL,
-                                   avg_value=150.0).save()  # TODO REMOVE AND HANDLE WHEN EMPTY
+                try:
+                    HydrologicalMetric(timestamp=to_utc(previous_day_morning_dt_local),
+                                       station=parser.hydro_station,
+                                       metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+                                       value_type=HydrologicalMeasurementType.MANUAL,
+                                       avg_value=150.0).save()  # TODO REMOVE AND HANDLE WHEN EMPTY
+                except Exception as e:
+                    print(e)
                 previous_day_morning_water_level = HydrologicalMetric(timestamp=to_utc(previous_day_morning_dt_local),
                                                                       station=parser.hydro_station,
-                                                                      metric_name=HydrologicalMetric.MetricName.WATER_LEVEL_DAILY,
-                                                                      value_type=HydrologicalMetric.MeasurementType.MANUAL).select_first().avg_value
+                                                                      metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+                                                                      value_type=HydrologicalMeasurementType.MANUAL).select_first().avg_value
                 previous_day_water_level_average = (
                                                        previous_day_morning_water_level + previous_day_evening_water_level) / 2
                 trend_ok = (

@@ -85,15 +85,14 @@ class BaseTelegramParser(ABC):
     def validate_station(self, station_code: str) -> None:
         if not station_code.isdigit() or len(station_code) != 5:
             raise InvalidTokenException(f"Invalid station code: {station_code}")
-        try:
-            self.hydro_station = HydrologicalStation.objects.get(
-                station_code=station_code, station_type=HydrologicalStation.StationType.MANUAL
-            )
-            self.meteo_station = MeteorologicalStation.objects.get(
-                station_code=station_code
-            )
 
-        except HydrologicalStation.DoesNotExist:
+        self.hydro_station = HydrologicalStation.objects.filter(station_code=station_code,
+                                                             station_type=HydrologicalStation.StationType.MANUAL
+                                                             ).first()
+        self.meteo_station = MeteorologicalStation.objects.filter(station_code=station_code
+                                                               ).first()
+        if self.hydro_station is None and self.meteo_station is None:
+            # except HydrologicalStation.DoesNotExist:
             raise InvalidTokenException(f"Station with code {station_code} does not exist")
 
     @classmethod
