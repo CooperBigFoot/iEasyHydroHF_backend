@@ -1,10 +1,9 @@
 import logging
 # Configure SQLAlchemy connection to the old database
 import math
-from datetime import datetime
 import zoneinfo
+from datetime import datetime
 
-from django.db import connection
 from django.utils import timezone
 # Import necessary libraries
 from sqlalchemy import create_engine
@@ -286,7 +285,7 @@ def migrate_meteo_metrics(old_session):
                 unit=metric_unit,
                 station=meteo_station,
             )
-            new_meteo_metric.save()
+            new_meteo_metric.save(upsert=False)  # upsert slows down process significantly
 
 
 def migrate_hydro_metrics(old_session):
@@ -337,7 +336,7 @@ def migrate_hydro_metrics(old_session):
                 sensor_identifier="",
                 sensor_type="",
             )
-            new_hydro_metric.save()
+            new_hydro_metric.save(upsert=False)  # upsert slows down process significantly
 
     print(f"Nan count {nan_count}")
 
