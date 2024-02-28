@@ -22,7 +22,9 @@ def another_site_station(db, hydro_station_factory, site_two):
 
 @pytest.fixture
 def virtual_station(db, organization):
-    return VirtualStationFactory(name="Virtual Station Main", organization=organization, station_code="11111")
+    return VirtualStationFactory(
+        name="Virtual Station Main", organization=organization, station_code="11111", longitude=None
+    )
 
 
 @pytest.fixture

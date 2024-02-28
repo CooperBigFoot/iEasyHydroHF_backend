@@ -76,6 +76,12 @@ class TestVirtualStationsAPI:
                 "id": virtual_station.id,
                 "name": virtual_station.name,
                 "station_code": virtual_station.station_code,
+                "latitude": float(virtual_station.latitude) if virtual_station.latitude else None,
+                "longitude": float(virtual_station.longitude) if virtual_station.longitude else None,
+                "timezone": str(virtual_station.timezone),
+                "country": virtual_station.country,
+                "description": virtual_station.description,
+                "elevation": virtual_station.elevation,
             },
             {
                 "basin": {
@@ -92,6 +98,16 @@ class TestVirtualStationsAPI:
                 "id": virtual_station_no_associations.id,
                 "name": virtual_station_no_associations.name,
                 "station_code": virtual_station_no_associations.station_code,
+                "latitude": float(virtual_station_no_associations.latitude)
+                if virtual_station_no_associations.latitude
+                else None,
+                "longitude": float(virtual_station_no_associations.longitude)
+                if virtual_station_no_associations.latitude
+                else None,
+                "timezone": str(virtual_station_no_associations.timezone),
+                "country": virtual_station_no_associations.country,
+                "description": virtual_station_no_associations.description,
+                "elevation": virtual_station_no_associations.elevation,
             },
         ]
 

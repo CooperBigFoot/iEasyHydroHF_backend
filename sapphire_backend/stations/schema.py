@@ -151,10 +151,9 @@ class VirtualStationUpdateSchema(VirtualStationInputSchema):
     country: str | None = None
 
 
-class VirtualStationListOutputSchema(UUIDSchemaMixin, SiteBasinRegionOutputSchema):
+class VirtualStationListOutputSchema(VirtualStationBaseSchema, SiteBasinRegionOutputSchema, UUIDSchemaMixin):
     id: int
-    name: str
-    station_code: str
+    timezone: str | None = Field(None, alias="get_timezone_display")
 
 
 class VirtualStationAssociationInputSchema(Schema):
@@ -173,7 +172,5 @@ class VirtualStationAssociationSchema(Schema):
         return str(obj.hydro_station.uuid)
 
 
-class VirtualStationDetailOutputSchema(VirtualStationBaseSchema, SiteBasinRegionOutputSchema, UUIDSchemaMixin):
-    id: int
-    timezone: str | None = Field(None, alias="get_timezone_display")
+class VirtualStationDetailOutputSchema(VirtualStationListOutputSchema):
     associations: list[VirtualStationAssociationSchema] = Field(None, alias="virtualstationassociation_set")
