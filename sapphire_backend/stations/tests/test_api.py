@@ -1,4 +1,4 @@
-from ..models import VirtualStation
+from ..models import VirtualStation, VirtualStationAssociation
 
 
 class TestVirtualStationsAPI:
@@ -223,3 +223,165 @@ class TestVirtualStationsAPI:
 
         assert response.status_code == 422
         assert response.json() == {"detail": "Some data is invalid or missing", "code": "schema_error"}
+
+    def test_create_new_virtual_station_with_duplicate_station_code(
+        self, authenticated_regular_user_api_client, organization, basin, region, virtual_station
+    ):
+        payload = self.new_station_payload.copy()
+        payload["basin_id"] = str(basin.uuid)
+        payload["region_id"] = str(region.uuid)
+        payload["station_code"] = virtual_station.station_code
+
+        response = authenticated_regular_user_api_client.post(
+            self.endpoint.format(organization.uuid), data=payload, content_type="application/json"
+        )
+
+        assert response.status_code == 400
+        assert response.json() == {"detail": "Object could not be saved", "code": "integrity_error"}
+
+    def test_create_new_virtual_station_with_valid_payload_data(
+        self, authenticated_regular_user_api_client, organization, basin, region
+    ):
+        payload = self.new_station_payload.copy()
+        payload["basin_id"] = str(basin.uuid)
+        payload["region_id"] = str(region.uuid)
+
+        response = authenticated_regular_user_api_client.post(
+            self.endpoint.format(organization.uuid), data=payload, content_type="application/json"
+        )
+
+        assert response.status_code == 201
+        assert VirtualStation.objects.count() == 1
+
+        station = VirtualStation.objects.last()
+
+        EXPECTED_RESPONSE = {
+            "basin": {
+                "name": basin.name,
+                "id": basin.id,
+                "uuid": str(basin.uuid),
+            },
+            "region": {
+                "name": region.name,
+                "id": region.id,
+                "uuid": str(region.uuid),
+            },
+            "elevation": None,
+            "name": "New Virtual Station",
+            "description": "",
+            "station_code": "55555",
+            "latitude": 45.35227,
+            "longitude": 19.00459,
+            "timezone": "Europe/Zagreb",
+            "country": "Croatia",
+            "id": station.id,
+            "uuid": str(station.uuid),
+            "associations": [],
+        }
+
+        assert response.json() == EXPECTED_RESPONSE
+
+    def test_update_virtual_station_that_does_not_exist(self, authenticated_regular_user_api_client, organization):
+        payload = {"name": "New Name"}
+
+        response = authenticated_regular_user_api_client.put(
+            self.endpoint_detail.format(organization.uuid, "11111111-aaaa-bbbb-cccc-222222222222"),
+            data=payload,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 404
+
+    def test_update_virtual_station(self, authenticated_regular_user_api_client, organization, virtual_station):
+        payload = {"name": "New Name"}
+
+        response = authenticated_regular_user_api_client.put(
+            self.endpoint_detail.format(organization.uuid, virtual_station.uuid),
+            data=payload,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+
+        vs_from_db = VirtualStation.objects.get(id=virtual_station.id)
+
+        assert vs_from_db.name == "New Name"
+
+    def test_delete_virtual_station_that_does_not_exist(self, authenticated_regular_user_api_client, organization):
+        response = authenticated_regular_user_api_client.delete(
+            self.endpoint_detail.format(organization.uuid, "11111111-aaaa-bbbb-cccc-222222222222")
+        )
+
+        assert response.status_code == 404
+
+    def test_delete_virtual_station(self, authenticated_regular_user_api_client, organization, virtual_station):
+        _ = authenticated_regular_user_api_client.delete(
+            self.endpoint_detail.format(organization.uuid, virtual_station.uuid)
+        )
+
+        vs = VirtualStation.objects.get(id=virtual_station.id)
+
+        assert vs.is_deleted is True
+
+    def test_create_associations_with_empty_list_removes_existing_associations(
+        self,
+        authenticated_regular_user_api_client,
+        organization,
+        virtual_station,
+        virtual_station_association_one,
+        virtual_station_association_two,
+    ):
+        vs = VirtualStation.objects.get(id=virtual_station.id)
+        assert vs.virtualstationassociation_set.count() == 2
+
+        payload = []
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint_detail.format(organization.uuid, virtual_station.uuid)}/associations",
+            data=payload,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+
+        assert response.json()["associations"] == []
+
+        vs.refresh_from_db()
+
+        assert vs.virtualstationassociation_set.count() == 0
+
+    def test_create_associations_overwrites_existing_associations(
+        self,
+        authenticated_regular_user_api_client,
+        organization,
+        virtual_station,
+        virtual_station_association_one,
+        virtual_station_association_two,
+        automatic_hydro_station_backup,
+    ):
+        payload = [{"uuid": str(automatic_hydro_station_backup.uuid), "weight": 100}]
+
+        vs = VirtualStation.objects.get(id=virtual_station.id)
+        assert vs.virtualstationassociation_set.count() == 2
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint_detail.format(organization.uuid, virtual_station.uuid)}/associations",
+            data=payload,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+
+        assert response.json()["associations"] == [
+            {
+                "uuid": str(automatic_hydro_station_backup.uuid),
+                "id": automatic_hydro_station_backup.id,
+                "weight": 100,
+                "name": automatic_hydro_station_backup.name,
+            }
+        ]
+
+        vs.refresh_from_db()
+
+        assert vs.virtualstationassociation_set.count() == 1
+        assert VirtualStationAssociation.objects.count() == 1

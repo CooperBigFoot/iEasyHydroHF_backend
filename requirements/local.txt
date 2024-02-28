@@ -2,7 +2,7 @@
 
 Werkzeug[watchdog]==3.0.1 # https://github.com/pallets/werkzeug
 ipdb==0.13.13  # https://github.com/gotcha/ipdb
-psycopg==3.1.17 # https://github.com/psycopg/psycopg
+psycopg==3.1.18 # https://github.com/psycopg/psycopg
 watchfiles==0.21.0  # https://github.com/samuelcolvin/watchfiles
 
 # Testing
@@ -17,12 +17,12 @@ tqdm==4.66.2  # https://tqdm.github.io/
 # Documentation
 # ------------------------------------------------------------------------------
 sphinx==7.2.6  # https://github.com/sphinx-doc/sphinx
-sphinx-autobuild==2021.3.14 # https://github.com/GaretJax/sphinx-autobuild
+sphinx-autobuild==2024.2.4 # https://github.com/GaretJax/sphinx-autobuild
 
 # Code quality
 # ------------------------------------------------------------------------------
-ruff==0.2.1  # https://github.com/astral-sh/ruff
-coverage==7.4.1  # https://github.com/nedbat/coveragepy
+ruff==0.2.2  # https://github.com/astral-sh/ruff
+coverage==7.4.3  # https://github.com/nedbat/coveragepy
 black==24.2.0  # https://github.com/psf/black
 pylint-django==2.5.5  # https://github.com/PyCQA/pylint-django
 pre-commit==3.6.2  # https://github.com/pre-commit/pre-commit

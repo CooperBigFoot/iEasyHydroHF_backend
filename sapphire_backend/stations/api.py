@@ -164,14 +164,14 @@ class VirtualStationsAPIController:
     def get_virtual_station(self, request: HttpRequest, organization_uuid: str, virtual_station_uuid: str):
         return VirtualStation.objects.get(organization=organization_uuid, uuid=virtual_station_uuid, is_deleted=False)
 
-    @route.post("", response={200: VirtualStationDetailOutputSchema})
+    @route.post("", response={201: VirtualStationDetailOutputSchema})
     def create_virtual_station(
         self, request: HttpRequest, organization_uuid: str, virtual_station_data: VirtualStationInputSchema
     ):
         payload = virtual_station_data.dict()
         payload["organization_id"] = organization_uuid
         station = VirtualStation.objects.create(**payload)
-        return station
+        return 201, station
 
     @route.post(
         "{virtual_station_uuid}/associations",

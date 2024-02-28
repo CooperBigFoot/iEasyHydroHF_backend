@@ -79,7 +79,16 @@ def manual_hydro_station_other_organization(db, site_two):
 
 @pytest.fixture
 def automatic_hydro_station(db, site_one):
-    return HydrologicalStationFactory(site=site_one, station_type=HydrologicalStation.StationType.AUTOMATIC)
+    return HydrologicalStationFactory(
+        site=site_one, station_type=HydrologicalStation.StationType.AUTOMATIC, station_code="aaaaa"
+    )
+
+
+@pytest.fixture
+def automatic_hydro_station_backup(db, site_one):
+    return HydrologicalStationFactory(
+        site=site_one, station_type=HydrologicalStation.StationType.AUTOMATIC, station_code="bbbbb"
+    )
 
 
 @pytest.fixture
