@@ -176,10 +176,10 @@ class Migration(migrations.Migration):
         ),
         # build triggers
 
-        migrations.RunSQL(sql=FUNCTION_REFRESH_DISCHARGE_VIEWS_FUNCTION_SQL[0],
-                          reverse_sql=FUNCTION_REFRESH_DISCHARGE_VIEWS_FUNCTION_SQL[1]),
-        migrations.RunSQL(sql=TRIGGER_ON_METRICS_SQL[0], reverse_sql=TRIGGER_ON_METRICS_SQL[1]),
-        migrations.RunSQL(sql=TRIGGER_ON_DISCHARGE_MODEL_SQL[0], reverse_sql=TRIGGER_ON_DISCHARGE_MODEL_SQL[1]),
+        # migrations.RunSQL(sql=FUNCTION_REFRESH_DISCHARGE_VIEWS_FUNCTION_SQL[0],
+        #                   reverse_sql=FUNCTION_REFRESH_DISCHARGE_VIEWS_FUNCTION_SQL[1]),
+        # migrations.RunSQL(sql=TRIGGER_ON_METRICS_SQL[0], reverse_sql=TRIGGER_ON_METRICS_SQL[1]),
+        # migrations.RunSQL(sql=TRIGGER_ON_DISCHARGE_MODEL_SQL[0], reverse_sql=TRIGGER_ON_DISCHARGE_MODEL_SQL[1]),
         migrations.RunSQL(sql=
                           """
                           create or replace view metrics_hydrologicalmetric_all as
