@@ -1,7 +1,7 @@
 import logging
 
 from django import db
-from django.db import connection, models
+from django.db import IntegrityError, connection, models
 from django.utils.translation import gettext_lazy as _
 
 from .choices import (
@@ -99,10 +99,12 @@ class HydrologicalMetric(models.Model):
             unit=self.unit,
             sensor_type=self.sensor_type,
         )
-        if upsert:
-            self.delete()
         with connection.cursor() as cursor:
             try:
+                cursor.execute(sql_query_insert)
+            except IntegrityError:
+                if upsert:
+                    self.delete()
                 cursor.execute(sql_query_insert)
             except db.utils.NotSupportedError as e:
                 """
@@ -182,7 +184,10 @@ class MeteorologicalMetric(models.Model):
             unit=self.unit,
         )
 
-        if upsert:
-            self.delete()
         with connection.cursor() as cursor:
-            cursor.execute(sql_query_insert)
+            try:
+                cursor.execute(sql_query_insert)
+            except IntegrityError:
+                if upsert:
+                    self.delete()
+                cursor.execute(sql_query_insert)

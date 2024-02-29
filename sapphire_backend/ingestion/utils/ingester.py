@@ -43,10 +43,19 @@ class BaseIngester(ABC):
 
 
 class ImomoIngester(BaseIngester):
-    def __init__(self, client: BaseFileManager, source_dir: str, parser: BaseParser, include_processed):
-        super().__init__(client, source_dir, parser)
+    def __init__(
+        self,
+        client: BaseFileManager,
+        source_dir: str,
+        parser: BaseParser,
+        include_processed=False,
+        no_renaming=False,
+        chunk_size=200,
+    ):
+        super().__init__(client, source_dir, parser, chunk_size)
         self._temp_dir = tempfile.TemporaryDirectory()
         self._include_processed = include_processed
+        self._no_renaming = no_renaming
 
     def _post_cleanup(self):
         self._temp_dir.cleanup()
@@ -84,7 +93,7 @@ class ImomoIngester(BaseIngester):
     def run(self):
         try:
             logging.info(
-                f"Ingestion started for folder {self._source_dir}, (include_processed = {self._include_processed})"
+                f"Ingestion started for folder {self._source_dir}, (include_processed = {self._include_processed}, no_renaming = {self._no_renaming})"
             )
             self._discover_files()
             for i in range(0, len(self.files_discovered), self._ingestion_chunk_size):
@@ -92,7 +101,8 @@ class ImomoIngester(BaseIngester):
                 files_chunk = self.files_discovered[i : i + self._ingestion_chunk_size]
                 self.files_downloaded = self.client.get_files(files_chunk, self._temp_dir.name)
                 self._run_parser()
-                self._flag_processed_files()
+                if not self._no_renaming:
+                    self._flag_processed_files()
             logging.info("Ingestion finished")
         finally:
             self.client.close()
