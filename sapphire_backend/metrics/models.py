@@ -1,7 +1,7 @@
 import logging
 
 from django import db
-from django.db import IntegrityError, connection, models, InternalError
+from django.db import IntegrityError, connection, models
 from django.utils.translation import gettext_lazy as _
 
 from .choices import (
@@ -100,10 +100,10 @@ class HydrologicalMetric(models.Model):
             sensor_type=self.sensor_type,
         )
 
-        sql_query_upsert = """
+        sql_query_upsert = f"""
             INSERT INTO metrics_hydrologicalmetric (timestamp, station_id, metric_name, value_type, sensor_identifier, min_value, avg_value, max_value, unit, sensor_type)
-            VALUES ('{timestamp}', {station_id}, '{metric_name}', '{value_type}', '{sensor_identifier}', {min_value},
-            {avg_value}, {max_value}, '{unit}', '{sensor_type}')
+            VALUES ('{self.timestamp}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}', {min_value},
+            {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}')
             ON CONFLICT (timestamp, station_id, metric_name, value_type, sensor_identifier)
             DO UPDATE
             SET min_value = EXCLUDED.min_value,
@@ -111,18 +111,7 @@ class HydrologicalMetric(models.Model):
                 max_value = EXCLUDED.max_value,
                 unit = EXCLUDED.unit,
                 sensor_type = EXCLUDED.sensor_type;
-        """.format(
-            timestamp=self.timestamp,
-            station_id=self.station_id,
-            metric_name=self.metric_name,
-            value_type=self.value_type,
-            sensor_identifier=self.sensor_identifier,
-            min_value=min_value,
-            avg_value=avg_value,
-            max_value=max_value,
-            unit=self.unit,
-            sensor_type=self.sensor_type,
-        )
+        """
         try:
             with connection.cursor() as cursor:
                 if upsert:
@@ -137,9 +126,7 @@ class HydrologicalMetric(models.Model):
             HINT:  Make sure the TimescaleDB extension has been preloaded.
             """
             if 'invalid INSERT on the root table of hypertable "' in str(e):
-                hyper_chunk_name = (
-                    str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
-                )
+                hyper_chunk_name = str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
                 if hyper_chunk_name.startswith("_hyper") and hyper_chunk_name.endswith("_chunk"):
                     sql_query_remove_trigger = (
                         f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
