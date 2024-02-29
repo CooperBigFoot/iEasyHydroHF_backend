@@ -82,6 +82,7 @@ class TestVirtualStationsAPI:
                 "country": virtual_station.country,
                 "description": virtual_station.description,
                 "elevation": virtual_station.elevation,
+                "station_type": "V",
             },
             {
                 "basin": {
@@ -108,6 +109,7 @@ class TestVirtualStationsAPI:
                 "country": virtual_station_no_associations.country,
                 "description": virtual_station_no_associations.description,
                 "elevation": virtual_station_no_associations.elevation,
+                "station_type": "V",
             },
         ]
 
@@ -175,6 +177,7 @@ class TestVirtualStationsAPI:
             "description": virtual_station_no_associations.description,
             "station_code": virtual_station_no_associations.station_code,
             "id": virtual_station_no_associations.id,
+            "station_type": "V",
             "associations": [],
         }
 
@@ -292,6 +295,7 @@ class TestVirtualStationsAPI:
             "country": "Croatia",
             "id": station.id,
             "uuid": str(station.uuid),
+            "station_type": "V",
             "associations": [],
         }
 

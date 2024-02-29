@@ -154,6 +154,7 @@ class VirtualStationUpdateSchema(VirtualStationInputSchema):
 class VirtualStationListOutputSchema(VirtualStationBaseSchema, SiteBasinRegionOutputSchema, UUIDSchemaMixin):
     id: int
     timezone: str | None = Field(None, alias="get_timezone_display")
+    station_type: str = "V"
 
 
 class VirtualStationAssociationInputSchema(Schema):
