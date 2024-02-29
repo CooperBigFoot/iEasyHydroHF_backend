@@ -1,7 +1,7 @@
 import logging
 
 from django import db
-from django.db import IntegrityError, connection, models
+from django.db import IntegrityError, connection, models, InternalError
 from django.utils.translation import gettext_lazy as _
 
 from .choices import (
@@ -67,7 +67,7 @@ class HydrologicalMetric(models.Model):
             except db.utils.InternalError as e:
                 # If btree exception occurs, the record was probably already deleted so it doesn't affect
                 # functionality
-                logging.warning(f"Delete statement {sql_query_delete} failed. {e}")
+                raise Exception(f"Delete statement {sql_query_delete} failed. {e}")
 
     def save(self, upsert=True, **kwargs) -> None:
         min_value = self.min_value
@@ -99,38 +99,60 @@ class HydrologicalMetric(models.Model):
             unit=self.unit,
             sensor_type=self.sensor_type,
         )
-        with connection.cursor() as cursor:
-            try:
-                cursor.execute(sql_query_insert)
-            except IntegrityError:
+
+        sql_query_upsert = """
+            INSERT INTO metrics_hydrologicalmetric (timestamp, station_id, metric_name, value_type, sensor_identifier, min_value, avg_value, max_value, unit, sensor_type)
+            VALUES ('{timestamp}', {station_id}, '{metric_name}', '{value_type}', '{sensor_identifier}', {min_value},
+            {avg_value}, {max_value}, '{unit}', '{sensor_type}')
+            ON CONFLICT (timestamp, station_id, metric_name, value_type, sensor_identifier)
+            DO UPDATE
+            SET min_value = EXCLUDED.min_value,
+                avg_value = EXCLUDED.avg_value,
+                max_value = EXCLUDED.max_value,
+                unit = EXCLUDED.unit,
+                sensor_type = EXCLUDED.sensor_type;
+        """.format(
+            timestamp=self.timestamp,
+            station_id=self.station_id,
+            metric_name=self.metric_name,
+            value_type=self.value_type,
+            sensor_identifier=self.sensor_identifier,
+            min_value=min_value,
+            avg_value=avg_value,
+            max_value=max_value,
+            unit=self.unit,
+            sensor_type=self.sensor_type,
+        )
+        try:
+            with connection.cursor() as cursor:
                 if upsert:
-                    self.delete()
-                cursor.execute(sql_query_insert)
-            except db.utils.NotSupportedError as e:
-                """
-                Handle specific error. Timescale has this bug, hyper chunks should not have insert blockers.
-                E.g.:
-                invalid INSERT on the root table of hypertable "_hyper_1_104_chunk"
-                HINT:  Make sure the TimescaleDB extension has been preloaded.
-                """
-                if 'invalid INSERT on the root table of hypertable "' in str(e):
-                    hyper_chunk_name = (
-                        str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
+                    cursor.execute(sql_query_upsert)
+                else:
+                    cursor.execute(sql_query_insert)
+        except db.utils.NotSupportedError as e:
+            """
+            Handle specific error. Timescale has this bug, hyper chunks should not have insert blockers.
+            E.g.:
+            invalid INSERT on the root table of hypertable "_hyper_1_104_chunk"
+            HINT:  Make sure the TimescaleDB extension has been preloaded.
+            """
+            if 'invalid INSERT on the root table of hypertable "' in str(e):
+                hyper_chunk_name = (
+                    str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
+                )
+                if hyper_chunk_name.startswith("_hyper") and hyper_chunk_name.endswith("_chunk"):
+                    sql_query_remove_trigger = (
+                        f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
                     )
-                    if hyper_chunk_name.startswith("_hyper") and hyper_chunk_name.endswith("_chunk"):
-                        sql_query_remove_trigger = (
-                            f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
-                        )
-                        cursor.execute(sql_query_remove_trigger)
-                        logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
-                        cursor.execute(sql_query_insert)
-                    else:
-                        raise Exception(e)
+                    cursor.execute(sql_query_remove_trigger)
+                    logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
+                    cursor.execute(sql_query_insert)
                 else:
                     raise Exception(e)
-
-            except Exception as e:
+            else:
                 raise Exception(e)
+        except Exception as e:
+            raise Exception(e)
 
 
 class MeteorologicalMetric(models.Model):
