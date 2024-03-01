@@ -8,7 +8,11 @@ from zoneinfo import ZoneInfo
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.organizations.tests.factories import OrganizationFactory
 from sapphire_backend.stations.models import HydrologicalStation
-from sapphire_backend.stations.tests.factories import HydrologicalStationFactory, SiteFactory
+from sapphire_backend.stations.tests.factories import (
+    HydrologicalStationFactory,
+    MeteorologicalStationFactory,
+    SiteFactory,
+)
 from sapphire_backend.users.tests.factories import UserFactory
 
 register(SiteFactory)
@@ -66,6 +70,11 @@ def manual_hydro_station(db, site_one):
     return HydrologicalStationFactory(
         site=site_one, station_type=HydrologicalStation.StationType.MANUAL, station_code="12345"
     )
+
+
+@pytest.fixture
+def manual_meteo_station(db, site_one):
+    return MeteorologicalStationFactory(site=site_one, station_code="12345")
 
 
 @pytest.fixture
