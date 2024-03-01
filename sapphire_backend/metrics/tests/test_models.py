@@ -6,7 +6,8 @@ from django.db import connection
 from sapphire_backend.metrics.choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
-    MetricUnit, MeteorologicalMetricName,
+    MeteorologicalMetricName,
+    MetricUnit,
 )
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
 

@@ -1,7 +1,7 @@
 import logging
 
 from django import db
-from django.db import IntegrityError, connection, models
+from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
 
 from .choices import (
@@ -207,7 +207,7 @@ class MeteorologicalMetric(models.Model):
             metric_name=self.metric_name,
             value=self.value,
             value_type=self.value_type,
-            unit=self.unit
+            unit=self.unit,
         )
 
         with connection.cursor() as cursor:
