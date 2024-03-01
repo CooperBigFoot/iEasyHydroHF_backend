@@ -193,10 +193,25 @@ class MeteorologicalMetric(models.Model):
             unit=self.unit,
         )
 
+        sql_query_upsert = """
+    INSERT INTO metrics_meteorologicalmetric (timestamp, station_id, metric_name, value, value_type, unit)
+    VALUES ('{timestamp}'::timestamp, {station_id}, '{metric_name}', {value}, '{value_type}', '{unit}')
+    ON CONFLICT (timestamp, station_id, metric_name)
+    DO UPDATE
+    SET value = EXCLUDED.value,
+        value_type = EXCLUDED.value_type,
+        unit = EXCLUDED.unit;
+        """.format(
+            timestamp=self.timestamp,
+            station_id=self.station_id,
+            metric_name=self.metric_name,
+            value=self.value,
+            value_type=self.value_type,
+            unit=self.unit
+        )
+
         with connection.cursor() as cursor:
-            try:
-                cursor.execute(sql_query_insert)
-            except IntegrityError:
-                if upsert:
-                    self.delete()
+            if upsert:
+                cursor.execute(sql_query_upsert)
+            else:
                 cursor.execute(sql_query_insert)

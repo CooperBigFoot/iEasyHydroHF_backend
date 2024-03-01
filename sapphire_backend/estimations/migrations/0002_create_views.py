@@ -180,23 +180,23 @@ class Migration(migrations.Migration):
         #                   reverse_sql=FUNCTION_REFRESH_DISCHARGE_VIEWS_FUNCTION_SQL[1]),
         # migrations.RunSQL(sql=TRIGGER_ON_METRICS_SQL[0], reverse_sql=TRIGGER_ON_METRICS_SQL[1]),
         # migrations.RunSQL(sql=TRIGGER_ON_DISCHARGE_MODEL_SQL[0], reverse_sql=TRIGGER_ON_DISCHARGE_MODEL_SQL[1]),
-        migrations.RunSQL(sql=
-                          """
-                          create or replace view metrics_hydrologicalmetric_all as
-                            select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
-                            from public.estimations_water_level_daily_average
-                            union
-                            select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
-                            from public.estimations_water_discharge_daily_average
-                            union
-                            select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
-                            from public.estimations_water_discharge_fiveday_average
-                            union
-                            select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
-                            from public.estimations_water_discharge_decade_average
-                            union
-                            select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
-                            from public.metrics_hydrologicalmetric;
-                            """, reverse_sql="DROP VIEW IF EXISTS metrics_hydrologicalmetric_all;")
+        # migrations.RunSQL(sql=
+        #                   """
+        #                   create or replace view metrics_hydrologicalmetric_all as
+        #                     select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
+        #                     from public.estimations_water_level_daily_average
+        #                     union
+        #                     select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
+        #                     from public.estimations_water_discharge_daily_average
+        #                     union
+        #                     select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
+        #                     from public.estimations_water_discharge_fiveday_average
+        #                     union
+        #                     select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
+        #                     from public.estimations_water_discharge_decade_average
+        #                     union
+        #                     select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
+        #                     from public.metrics_hydrologicalmetric;
+        #                     """, reverse_sql="DROP VIEW IF EXISTS metrics_hydrologicalmetric_all;")
 
     ]
