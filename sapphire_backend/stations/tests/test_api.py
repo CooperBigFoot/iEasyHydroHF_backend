@@ -203,12 +203,14 @@ class TestVirtualStationsAPI:
                 "id": automatic_hydro_station.id,
                 "uuid": str(automatic_hydro_station.uuid),
                 "weight": virtual_station_association_one.weight,
+                "station_code": automatic_hydro_station.station_code,
             },
             {
                 "name": manual_hydro_station.name,
                 "id": manual_hydro_station.id,
                 "uuid": str(manual_hydro_station.uuid),
                 "weight": virtual_station_association_two.weight,
+                "station_code": manual_hydro_station.station_code,
             },
         ]
 
@@ -398,6 +400,7 @@ class TestVirtualStationsAPI:
                 "id": automatic_hydro_station_backup.id,
                 "weight": 100,
                 "name": automatic_hydro_station_backup.name,
+                "station_code": automatic_hydro_station_backup.station_code,
             }
         ]
 

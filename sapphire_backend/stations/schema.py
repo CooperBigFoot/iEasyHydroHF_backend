@@ -167,6 +167,7 @@ class VirtualStationAssociationSchema(Schema):
     weight: float
     id: int = Field(None, alias="hydro_station.id")
     uuid: str
+    station_code: str = Field(None, alias="hydro_station.station_code")
 
     @staticmethod
     def resolve_uuid(obj):
