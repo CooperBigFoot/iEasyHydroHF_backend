@@ -30,7 +30,7 @@ class RemarkInline(admin.TabularInline):
 @admin.register(HydrologicalStation)
 class HydrologicalStationAdmin(admin.ModelAdmin):
     list_display = ["name", "station_code", "station_type", "site", "uuid"]
-    list_filter = ["site__basin", "site__region", "site__organization", "station_type"]
+    list_filter = ["site__basin", "site__region", "site__organization", "station_type", "is_deleted"]
     readonly_fields = ["uuid"]
     inlines = [RemarkInline, VirtualStationAssociationInline]
 
@@ -38,7 +38,7 @@ class HydrologicalStationAdmin(admin.ModelAdmin):
 @admin.register(MeteorologicalStation)
 class MeteorologicalStationAdmin(admin.ModelAdmin):
     list_display = ["name", "station_code", "site", "uuid"]
-    list_filter = ["site__basin", "site__region", "site__organization"]
+    list_filter = ["site__basin", "site__region", "site__organization", "is_deleted"]
     readonly_fields = ["uuid"]
     inlines = [RemarkInline]
 
@@ -53,7 +53,7 @@ class RemarkAdmin(admin.ModelAdmin):
 @admin.register(VirtualStation)
 class VirtualStationAdmin(admin.ModelAdmin):
     list_display = ["name", "country", "uuid"]
-    list_filter = ["country", "basin", "organization", "region"]
+    list_filter = ["country", "basin", "organization", "region", "is_deleted"]
     readonly_fields = ["uuid"]
     exclude = ["hydro_stations"]
     inlines = [VirtualStationAssociationInline]
