@@ -147,6 +147,10 @@ class MeteoStationsAPIController:
         stations = MeteorologicalStation.objects.for_organization(organization_uuid).active()
         return stations.select_related("site", "site__organization")
 
+    @route.get("{station_uuid}", response={200: HydroStationOutputDetailSchema})
+    def get_meteorological_station(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
+        return MeteorologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
+
     @route.get("stats", response=MeteoStationStatsSchema)
     def get_meteorological_stations_stats(self, request: HttpRequest, organization_uuid: str):
         return MeteorologicalStation.objects.for_organization(organization_uuid).active().aggregate(total=Count("id"))
