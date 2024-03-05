@@ -18,13 +18,3 @@ def other_organization(db, organization_factory):
         year_type=Organization.YearType.HYDROLOGICAL,
         timezone=ZoneInfo("Asia/Almaty"),
     )
-
-
-@pytest.fixture
-def basin(db, basin_factory, organization):
-    return basin_factory.create(name="Basin One", organization=organization)
-
-
-@pytest.fixture
-def region(db, region_factory, organization):
-    return region_factory.create(name="Region One", organization=organization)

@@ -3,6 +3,7 @@ from datetime import datetime
 from ninja import Field, FilterSchema, ModelSchema, Schema
 
 from sapphire_backend.organizations.schema import BasinOutputSchema, RegionOutputSchema
+from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
 
 from .models import HydrologicalStation, Remark
 
@@ -48,25 +49,18 @@ class SiteInputSchema(SiteBaseSchema, SiteBasinRegionInputSchema):
 
 class SiteUpdateSchema(SiteInputSchema):
     country: str | None = None
-    latitude: float | None = None
-    longitude: float | None = None
     region_id: str | None = None
     basin_id: str | None = None
 
 
-class SiteOutputSchema(SiteBaseSchema, SiteBasinRegionOutputSchema):
+class SiteOutputSchema(SiteBaseSchema, SiteBasinRegionOutputSchema, UUIDSchemaMixin):
     id: int
-    uuid: str
     organization_uuid: str
     timezone: str | None = Field(None, alias="get_timezone_display")
 
     @staticmethod
     def resolve_organization_uuid(obj):
         return str(obj.organization.uuid)
-
-    @staticmethod
-    def resolve_uuid(obj):
-        return str(obj.uuid)
 
 
 class HydroStationBaseSchema(Schema):
@@ -93,15 +87,10 @@ class HydroStationUpdateSchema(HydroStationBaseSchema):
     site_data: SiteUpdateSchema | None = None
 
 
-class HydroStationOutputDetailSchema(HydroStationBaseSchema):
+class HydroStationOutputDetailSchema(HydroStationBaseSchema, UUIDSchemaMixin):
     site: SiteOutputSchema
     id: int
-    uuid: str
     remarks: list[RemarkOutputSchema] = None
-
-    @staticmethod
-    def resolve_uuid(obj):
-        return str(obj.uuid)
 
 
 class HydrologicalStationFilterSchema(FilterSchema):
@@ -141,3 +130,49 @@ class MeteoStationOutputDetailSchema(MeteoStationBaseSchema):
 
 class MeteoStationStatsSchema(Schema):
     total: int
+
+
+class VirtualStationBaseSchema(SiteBaseSchema, Schema):
+    name: str
+    description: str = ""
+    station_code: str
+
+
+class VirtualStationInputSchema(VirtualStationBaseSchema, SiteBasinRegionInputSchema):
+    pass
+
+
+class VirtualStationUpdateSchema(VirtualStationInputSchema):
+    name: str | None = None
+    station_code: str | None = None
+    description: str | None = None
+    region_id: str | None = None
+    basin_id: str | None = None
+    country: str | None = None
+
+
+class VirtualStationListOutputSchema(VirtualStationBaseSchema, SiteBasinRegionOutputSchema, UUIDSchemaMixin):
+    id: int
+    timezone: str | None = Field(None, alias="get_timezone_display")
+    station_type: str = "V"
+
+
+class VirtualStationAssociationInputSchema(Schema):
+    uuid: str
+    weight: float
+
+
+class VirtualStationAssociationSchema(Schema):
+    name: str = Field(None, alias="hydro_station.name")
+    weight: float
+    id: int = Field(None, alias="hydro_station.id")
+    uuid: str
+    station_code: str = Field(None, alias="hydro_station.station_code")
+
+    @staticmethod
+    def resolve_uuid(obj):
+        return str(obj.hydro_station.uuid)
+
+
+class VirtualStationDetailOutputSchema(VirtualStationListOutputSchema):
+    associations: list[VirtualStationAssociationSchema] = Field(None, alias="virtualstationassociation_set")

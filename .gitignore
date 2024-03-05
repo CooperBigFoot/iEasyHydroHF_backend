@@ -175,6 +175,8 @@ typings/
 .idea/**/tasks.xml
 .idea/dictionaries
 .idea/watcherTasks.xml
+.idea/misc.xml
+.idea/sapphire_backend.iml
 
 # Sensitive or high-churn files:
 .idea/**/dataSources/

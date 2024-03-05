@@ -1,55 +1,18 @@
 from django.contrib.auth import get_user_model
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
-from timezone_field import TimeZoneField
 
 from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, ForecastToggleMixin, UUIDMixin
 
-from .managers import HydroStationQuerySet, MeteoStationQuerySet
+from .managers import HydroStationQuerySet, MeteoStationQuerySet, VirtualStationQuerySet
+from .mixins import LocationMixin
 
 User = get_user_model()
 
 
-class Site(UUIDMixin, models.Model):
-    organization = models.ForeignKey(
-        "organizations.Organization",
-        to_field="uuid",
-        verbose_name=_("Organization"),
-        on_delete=models.PROTECT,
-        related_name="stations",
-    )
-    country = models.CharField(verbose_name=_("Country"), max_length=100)
-    basin = models.ForeignKey(
-        "organizations.Basin",
-        to_field="uuid",
-        verbose_name=_("Basin"),
-        on_delete=models.PROTECT,
-        related_name="stations",
-        null=True,
-        blank=False,
-    )
-    region = models.ForeignKey(
-        "organizations.Region",
-        to_field="uuid",
-        verbose_name=_("Region"),
-        on_delete=models.PROTECT,
-        related_name="regions",
-        null=True,
-        blank=False,
-    )
-    latitude = models.FloatField(
-        verbose_name=_("Latitude"), validators=[MinValueValidator(-90), MaxValueValidator(90)], null=True, blank=True
-    )
-    longitude = models.FloatField(
-        verbose_name=_("Longitude"),
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
-        null=True,
-        blank=True,
-    )
-    timezone = TimeZoneField(verbose_name=_("Station timezone"), null=True, blank=True)
-    elevation = models.FloatField(verbose_name=_("Elevation in meters"), blank=True, null=True)
+class Site(UUIDMixin, LocationMixin, models.Model):
+    pass
 
     class Meta:
         verbose_name = _("Site")
@@ -110,7 +73,7 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
 
 
 class MeteorologicalStation(UUIDMixin, models.Model):
-    name = models.CharField(verbose_name=_("Station name"), blank=True, max_length=150)
+    name = models.CharField(verbose_name=_("Station name"), blank=False, max_length=150)
     station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=False)
     site = models.ForeignKey(
         "stations.Site",
@@ -180,3 +143,43 @@ class Remark(UUIDMixin, CreateLastModifiedDateMixin, models.Model):
     @property
     def station(self):
         return self.hydro_station or self.meteo_station
+
+
+class VirtualStation(UUIDMixin, LocationMixin, models.Model):
+    name = models.CharField(verbose_name=_("Virtual station name"), blank=False, max_length=150)
+    description = models.TextField(verbose_name=_("Description"), blank=True)
+    station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=False, unique=True)
+    hydro_stations = models.ManyToManyField(
+        "stations.HydrologicalStation", through="stations.VirtualStationAssociation", related_name="virtual_stations"
+    )
+    is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
+
+    objects = VirtualStationQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = _("Virtual station")
+        verbose_name_plural = _("Virtual stations")
+        indexes = [
+            models.Index("uuid", name="virtual_station_uuid_idx"),
+            models.Index("station_code", name="virtual_station_code_idx"),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class VirtualStationAssociation(CreateLastModifiedDateMixin, models.Model):
+    virtual_station = models.ForeignKey(
+        "stations.VirtualStation", verbose_name=_("Virtual station"), on_delete=models.CASCADE
+    )
+    hydro_station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.CASCADE
+    )
+    weight = models.DecimalField(verbose_name=_("Weight"), max_digits=5, decimal_places=2)
+
+    class Meta:
+        verbose_name = _("Virtual station association")
+        verbose_name_plural = _("Virtual station associations")
+
+    def __str__(self):
+        return f"{self.virtual_station.name} - {self.hydro_station.name}"
