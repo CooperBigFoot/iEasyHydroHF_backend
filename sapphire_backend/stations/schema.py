@@ -121,10 +121,9 @@ class MeteoStationUpdateSchema(MeteoStationBaseSchema):
     site_data: SiteUpdateSchema | None = None
 
 
-class MeteoStationOutputDetailSchema(MeteoStationBaseSchema):
+class MeteoStationOutputDetailSchema(MeteoStationBaseSchema, UUIDSchemaMixin):
     site: SiteOutputSchema
     id: int
-    uuid: str
     remarks: list[RemarkOutputSchema] = None
 
 
