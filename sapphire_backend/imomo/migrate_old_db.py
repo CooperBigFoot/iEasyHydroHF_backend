@@ -407,12 +407,12 @@ def migrate():
     # Update with your old database connection string
     Session = sessionmaker(bind=old_db_engine)
     old_session = Session()
-    cleanup_all()
+    # cleanup_all()
     if LIMITER != 0:
         logging.info(f"Starting migrations in debugging mode (LIMITER = {LIMITER})")
-    migrate_organizations(old_session)
-    migrate_sites_and_stations(old_session)
-    migrate_discharge_models(old_session)
+    # migrate_organizations(old_session)
+    # migrate_sites_and_stations(old_session)
+    # migrate_discharge_models(old_session)
     migrate_hydro_metrics(old_session)
     migrate_meteo_metrics(old_session)
     # migrate_virtual_metrics(old_session)  # TODO

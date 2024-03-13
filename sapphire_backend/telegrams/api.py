@@ -89,6 +89,8 @@ class TelegramsAPIController:
         data = {"parsed": [], "errors": []}
         discharge_overview = []
         meteo_overview = []
+        hydro_station_codes = set()
+        meteo_station_codes = set()
 
         for idx, telegram_date in enumerate(encoded_telegrams_dates.telegrams):
             telegram = telegram_date.raw
@@ -103,6 +105,7 @@ class TelegramsAPIController:
                 if parser.exists_hydro_station:
                     hydro_station_org_uuid = str(getattr(parser.hydro_station.site.organization, 'uuid'))
                     hydro_station_code = parser.hydro_station.station_code
+                    hydro_station_codes.add((hydro_station_code,  parser.hydro_station.id))
                 if parser.exists_meteo_station:
                     meteo_station_org_uuid = str(getattr(parser.meteo_station.site.organization, 'uuid'))
                     meteo_station_code = parser.meteo_station.station_code
@@ -130,7 +133,7 @@ class TelegramsAPIController:
                                        station=parser.hydro_station,
                                        metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
                                        value_type=HydrologicalMeasurementType.MANUAL,
-                                       avg_value=150.0).save()  # TODO REMOVE AND HANDLE WHEN EMPTY
+                                       avg_value=150.0).save(refresh_view=False)  # TODO REMOVE AND HANDLE WHEN EMPTY
                 except Exception as e:
                     print(e)
                 previous_day_morning_water_level = HydrologicalMetric(timestamp=to_utc(previous_day_morning_dt_local),
@@ -172,5 +175,8 @@ class TelegramsAPIController:
             discharge_overview.append(entry)
             if decoded.get("section_eight", False):
                 meteo_overview.append({})
-        data = {'discharge': discharge_overview, 'meteo': meteo_overview}
+                meteo_station_codes.add({'station_code': meteo_station_code, 'station_id': parser.meteo_station.id})  #include only codes which have section 988
+
+        data = {'discharge': discharge_overview, 'discharge_codes': list(hydro_station_codes),
+                'meteo': meteo_overview, 'meteo_codes': list(meteo_station_codes) }
         return 201, data

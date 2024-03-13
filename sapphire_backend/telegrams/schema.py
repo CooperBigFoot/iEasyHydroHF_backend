@@ -95,3 +95,5 @@ class DischargeOverviewSchema(Schema):
 class DailyOverviewOutputSchema(Schema):
     discharge: list[DischargeOverviewSchema]
     meteo: list[dict]  # list[MeteoTelegramOverviewSchema]
+    discharge_codes: list[tuple]
+    meteo_codes: list[tuple]

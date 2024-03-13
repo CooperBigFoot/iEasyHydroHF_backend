@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from django import db
 from django.db import connection, models
@@ -67,9 +68,9 @@ class HydrologicalMetric(models.Model):
             except db.utils.InternalError as e:
                 # If btree exception occurs, the record was probably already deleted so it doesn't affect
                 # functionality
-                logging.warning(f"Delete statement {sql_query_delete} failed. {e}")
+                raise Exception(f"Delete statement {sql_query_delete} failed. {e}")
 
-    def save(self, upsert=True, **kwargs) -> None:
+    def save(self, upsert=True, refresh_view=True, **kwargs) -> None:
         min_value = self.min_value
         max_value = self.max_value
         avg_value = self.avg_value
@@ -99,36 +100,60 @@ class HydrologicalMetric(models.Model):
             unit=self.unit,
             sensor_type=self.sensor_type,
         )
-        if upsert:
-            self.delete()
-        with connection.cursor() as cursor:
-            try:
-                cursor.execute(sql_query_insert)
-            except db.utils.NotSupportedError as e:
-                """
-                Handle specific error. Timescale has this bug, hyper chunks should not have insert blockers.
-                E.g.:
-                invalid INSERT on the root table of hypertable "_hyper_1_104_chunk"
-                HINT:  Make sure the TimescaleDB extension has been preloaded.
-                """
-                if 'invalid INSERT on the root table of hypertable "' in str(e):
-                    hyper_chunk_name = (
-                        str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
+
+        sql_query_upsert = f"""
+            INSERT INTO metrics_hydrologicalmetric (timestamp, station_id, metric_name, value_type, sensor_identifier, min_value, avg_value, max_value, unit, sensor_type)
+            VALUES ('{self.timestamp}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}', {min_value},
+            {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}')
+            ON CONFLICT (timestamp, station_id, metric_name, value_type, sensor_identifier)
+            DO UPDATE
+            SET min_value = EXCLUDED.min_value,
+                avg_value = EXCLUDED.avg_value,
+                max_value = EXCLUDED.max_value,
+                unit = EXCLUDED.unit,
+                sensor_type = EXCLUDED.sensor_type;
+        """
+
+        try:
+            with connection.cursor() as cursor:
+                if upsert:
+                    cursor.execute(sql_query_upsert)
+                else:
+                    cursor.execute(sql_query_insert)
+        except db.utils.NotSupportedError as e:
+            """
+            Handle specific error. Timescale has this bug, hyper chunks should not have insert blockers.
+            E.g.:
+            invalid INSERT on the root table of hypertable "_hyper_1_104_chunk"
+            HINT:  Make sure the TimescaleDB extension has been preloaded.
+            """
+            if 'invalid INSERT on the root table of hypertable "' in str(e):
+                hyper_chunk_name = str(e).split('invalid INSERT on the root table of hypertable "')[1].split('"')[0]
+                if hyper_chunk_name.startswith("_hyper") and hyper_chunk_name.endswith("_chunk"):
+                    sql_query_remove_trigger = (
+                        f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
                     )
-                    if hyper_chunk_name.startswith("_hyper") and hyper_chunk_name.endswith("_chunk"):
-                        sql_query_remove_trigger = (
-                            f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
-                        )
-                        cursor.execute(sql_query_remove_trigger)
-                        logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
-                        cursor.execute(sql_query_insert)
-                    else:
-                        raise Exception(e)
+                    cursor.execute(sql_query_remove_trigger)
+                    logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
+                    cursor.execute(sql_query_insert)
                 else:
                     raise Exception(e)
-
-            except Exception as e:
+            else:
                 raise Exception(e)
+        except Exception as e:
+            raise Exception(e)
+        finally:
+            if refresh_view and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY and self.value_type == HydrologicalMeasurementType.MANUAL:
+                self._refresh_view()
+
+
+    def _refresh_view(self):
+        # Extract the ISO date as a string
+        start_date_str = self.timestamp.strftime('%Y-%m-%d')
+        end_date_str = (self.timestamp + timedelta(days=1)).strftime('%Y-%m-%d')
+        sql_refresh_view = f"CALL refresh_continuous_aggregate('estimations_water_level_daily_average', '{start_date_str}', '{end_date_str}');"
+        with connection.cursor() as cursor:
+            cursor.execute(sql_refresh_view)
 
     def select_first(self): # TODO JUST TEMPORARY USAGE, NOT SERIOUS
 
@@ -149,6 +174,7 @@ class HydrologicalMetric(models.Model):
             if row is not None:
                 self.min_value, self.avg_value, self.max_value, self.unit, self.sensor_type = row
                 return self
+
 
 class MeteorologicalMetric(models.Model):
     timestamp = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp"))
@@ -201,7 +227,25 @@ class MeteorologicalMetric(models.Model):
             unit=self.unit,
         )
 
-        if upsert:
-            self.delete()
+        sql_query_upsert = """
+    INSERT INTO metrics_meteorologicalmetric (timestamp, station_id, metric_name, value, value_type, unit)
+    VALUES ('{timestamp}'::timestamp, {station_id}, '{metric_name}', {value}, '{value_type}', '{unit}')
+    ON CONFLICT (timestamp, station_id, metric_name)
+    DO UPDATE
+    SET value = EXCLUDED.value,
+        value_type = EXCLUDED.value_type,
+        unit = EXCLUDED.unit;
+        """.format(
+            timestamp=self.timestamp,
+            station_id=self.station_id,
+            metric_name=self.metric_name,
+            value=self.value,
+            value_type=self.value_type,
+            unit=self.unit,
+        )
+
         with connection.cursor() as cursor:
-            cursor.execute(sql_query_insert)
+            if upsert:
+                cursor.execute(sql_query_upsert)
+            else:
+                cursor.execute(sql_query_insert)
