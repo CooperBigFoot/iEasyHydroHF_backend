@@ -1,5 +1,4 @@
 import logging
-from datetime import timedelta
 
 from django import db
 from django.db import connection, models

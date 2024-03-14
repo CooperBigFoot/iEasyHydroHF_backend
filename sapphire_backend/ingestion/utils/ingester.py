@@ -43,9 +43,19 @@ class BaseIngester(ABC):
 
 
 class ImomoIngester(BaseIngester):
-    def __init__(self, client: BaseFileManager, source_dir: str, parser: BaseParser):
-        super().__init__(client, source_dir, parser)
+    def __init__(
+        self,
+        client: BaseFileManager,
+        source_dir: str,
+        parser: BaseParser,
+        include_processed=False,
+        no_renaming=False,
+        chunk_size=200,
+    ):
+        super().__init__(client, source_dir, parser, chunk_size)
         self._temp_dir = tempfile.TemporaryDirectory()
+        self._include_processed = include_processed
+        self._no_renaming = no_renaming
 
     def _post_cleanup(self):
         self._temp_dir.cleanup()
@@ -56,6 +66,10 @@ class ImomoIngester(BaseIngester):
         Filter files which are eliglible for ingestion from the _source_dir
         """
         files = self.client.list_dir(self._source_dir)
+        if self._include_processed:
+            files_processed = self.client.list_dir(self._source_dir, file_extension=".xml.part.processed")
+            files = files + files_processed
+
         for fullpath in files:
             dir, filename = os.path.split(fullpath)
             if filename.startswith("DATA"):
@@ -69,6 +83,8 @@ class ImomoIngester(BaseIngester):
         old_new_pairs = []
         for old_file in self.files_downloaded:
             dir, old_filename = os.path.split(old_file)
+            if old_filename.endswith(".processed"):  # this could be true in case --include-processed is set
+                continue
             new_filename = f"{old_filename}.processed"
             old_new_pairs.append((old_filename, new_filename))
         self.client.rename_files(self._source_dir, old_new_pairs)
@@ -76,14 +92,17 @@ class ImomoIngester(BaseIngester):
 
     def run(self):
         try:
-            logging.info(f"Ingestion started for folder {self._source_dir}")
+            logging.info(
+                f"Ingestion started for folder {self._source_dir}, (include_processed = {self._include_processed}, no_renaming = {self._no_renaming})"
+            )
             self._discover_files()
             for i in range(0, len(self.files_discovered), self._ingestion_chunk_size):
                 logging.info(f"Ingesting {i + 1}/{len(self.files_discovered)}")
                 files_chunk = self.files_discovered[i : i + self._ingestion_chunk_size]
                 self.files_downloaded = self.client.get_files(files_chunk, self._temp_dir.name)
                 self._run_parser()
-                self._flag_processed_files()
+                if not self._no_renaming:
+                    self._flag_processed_files()
             logging.info("Ingestion finished")
         finally:
             self.client.close()

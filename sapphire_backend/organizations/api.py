@@ -44,12 +44,9 @@ class BasinsAPIController:
 
         return 201, basin
 
-    @route.get("{basin_uuid}", response={200: BasinOutputSchema, 404: Message})
+    @route.get("{basin_uuid}", response={200: BasinOutputSchema})
     def get_basin(self, request, organization_uuid: str, basin_uuid: str):
-        try:
-            return 200, Basin.objects.get(uuid=basin_uuid)
-        except Basin.DoesNotExist:
-            return 404, {"detail": _("Basin not found."), "code": "not_found"}
+        return Basin.objects.get(uuid=basin_uuid)
 
     @route.get("", response={200: list[BasinOutputSchema]})
     def get_organization_basins(self, request, organization_uuid: str):
@@ -66,13 +63,10 @@ class BasinsAPIController:
         except IntegrityError:
             return 404, {"detail": _("Basin not found."), "code": "not_found"}
 
-    @route.delete("{basin_uuid}", response={200: Message, 400: Message})
+    @route.delete("{basin_uuid}", response={200: Message})
     def delete_basin(self, request, organization_uuid: str, basin_uuid: str):
-        try:
-            Basin.objects.filter(uuid=basin_uuid).delete()
-            return 200, {"detail": _("Basin deleted successfully"), "code": "success"}
-        except IntegrityError:
-            return 400, {"detail": _("Basin could not be deleted"), "code": "error"}
+        Basin.objects.filter(uuid=basin_uuid).delete()
+        return 200, {"detail": _("Basin deleted successfully"), "code": "success"}
 
 
 @api_controller(
@@ -91,12 +85,9 @@ class RegionsAPIController:
 
         return 201, region
 
-    @route.get("{region_uuid}", response={200: RegionOutputSchema, 404: Message})
+    @route.get("{region_uuid}", response={200: RegionOutputSchema})
     def get_basin(self, request, organization_uuid: str, region_uuid: str):
-        try:
-            return 200, Region.objects.get(uuid=region_uuid)
-        except Region.DoesNotExist:
-            return 404, {"detail": _("Region not found."), "code": "not_found"}
+        return Region.objects.get(uuid=region_uuid)
 
     @route.get("", response={200: list[RegionOutputSchema]})
     def get_organization_regions(self, request, organization_uuid: str):
@@ -104,22 +95,16 @@ class RegionsAPIController:
 
     @route.put("{region_uuid}", response={200: RegionOutputSchema, 404: Message})
     def update_region(self, request, organization_uuid: str, region_uuid: str, region_data: RegionInputSchema):
-        try:
-            region = Region.objects.get(uuid=region_uuid)
-            for attr, value in region_data.dict(exclude_unset=True).items():
-                setattr(region, attr, value)
-            region.save()
-            return 200, region
-        except IntegrityError:
-            return 404, {"detail": _("Region not found."), "code": "not_found"}
+        region = Region.objects.get(uuid=region_uuid)
+        for attr, value in region_data.dict(exclude_unset=True).items():
+            setattr(region, attr, value)
+        region.save()
+        return 200, region
 
-    @route.delete("{region_uuid}", response={200: Message, 400: Message})
+    @route.delete("{region_uuid}", response={200: Message})
     def delete_region(self, request, organization_uuid: str, region_uuid: str):
-        try:
-            Region.objects.filter(uuid=region_uuid).delete()
-            return 200, {"detail": _("Region deleted successfully"), "code": "success"}
-        except IntegrityError:
-            return 400, {"detail": _("Region could not be deleted"), "code": "error"}
+        Region.objects.filter(uuid=region_uuid).delete()
+        return 200, {"detail": _("Region deleted successfully"), "code": "success"}
 
 
 @api_controller("organizations", tags=["Organizations"], auth=JWTAuth())
@@ -148,12 +133,10 @@ class OrganizationsAPIController:
         permissions=[OrganizationExists & (IsSuperAdmin | IsOrganizationAdmin)],
     )
     def delete_organization(self, request, organization_uuid: str):
-        try:
-            organization = Organization.objects.get(uuid=organization_uuid)
-            organization.delete()
-            return 200, {"detail": "Organization successfully deleted", "code": "success"}
-        except IntegrityError:
-            return 400, {"detail": _("Organization could not be deleted."), "code": "error"}
+        organization = Organization.objects.get(uuid=organization_uuid)
+        organization.is_active = False
+        organization.save()
+        return 200, {"detail": "Organization successfully deleted", "code": "success"}
 
     @route.put(
         "{organization_uuid}",
@@ -165,7 +148,7 @@ class OrganizationsAPIController:
         for attr, value in organization_data.dict(exclude_unset=True).items():
             setattr(organization, attr, value)
         organization.save()
-        return 200, organization
+        return organization
 
     @route.get(
         "{organization_uuid}/members",
@@ -187,10 +170,7 @@ class OrganizationsAPIController:
         organization = Organization.objects.get(uuid=organization_uuid)
         user_dict = user_payload.dict()
         user_dict["organization"] = organization
-        try:
-            user = User.objects.create(**user_dict)
-        except IntegrityError as e:
-            print(e)
-            return 400, {"message": _("Username already taken"), "field": "username"}
+
+        user = User.objects.create(**user_dict)
 
         return 201, user

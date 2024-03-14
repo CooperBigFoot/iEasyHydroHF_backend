@@ -9,7 +9,14 @@ from sapphire_backend.ingestion.utils.parser import XMLParser
 
 
 class Command(BaseCommand):
+    def add_arguments(self, parser):
+        # Add argument to include processed items
+        parser.add_argument("--include-processed", action="store_true", help="Include processed items")
+        parser.add_argument("--no-renaming", action="store_true", help="Don't flag items as processed")
+
     def handle(self, *args, **options):
+        include_processed = options["include_processed"]
+        no_renaming = options["no_renaming"]
         ingestion_ftp_client_class = os.environ.get("INGESTION_FTP_CLIENT_CLASS", "")
         ingester_class = os.environ.get("INGESTION_CLASS", "")
 
@@ -40,7 +47,14 @@ class Command(BaseCommand):
             )
             return
         if ingester_class == "ingester.ImomoIngester":
-            ingester = ImomoIngester(client=ftp_client, source_dir="/stream1", parser=XMLParser)
+            ingester = ImomoIngester(
+                client=ftp_client,
+                source_dir="/stream1",
+                parser=XMLParser,
+                include_processed=include_processed,
+                no_renaming=no_renaming,
+                # chunk_size=10
+            )
         else:
             logging.error("env INGESTION_CLASS not set or not supported. Supported values: ingester.ImomoIngester")
             return

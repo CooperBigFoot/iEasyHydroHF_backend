@@ -32,6 +32,7 @@ class HydrologicalMetricName(models.TextChoices):
 class MeteorologicalMeasurementType(models.TextChoices):
     IMPORTED = "I", _("Imported")
     UNKNOWN = "U", _("Unknown")
+    MANUAL = "M", _("Manual")
 
 
 class MeteorologicalMetricName(models.TextChoices):

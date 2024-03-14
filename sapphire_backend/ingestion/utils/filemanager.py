@@ -85,7 +85,7 @@ class FTPClient(BaseFileManager):
         """
         downloaded_files_path = []
         for i in range(0, len(files_path), self.ftp_chunk_size):
-            logging.info(f"FTP downloading {i+1}/{len(files_path)}")
+            logging.info(f"FTP downloading {i + 1}/{len(files_path)}")
             files_chunk = files_path[i : i + self.ftp_chunk_size]
             partial_commands = f"lcd {dest_folder_local}"
             for file in files_chunk:
@@ -177,7 +177,14 @@ class ImomoStagingFTPClient(FTPClient):
         """
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh_client.connect(self.ssh_host, username=self.ssh_user, password=self.ssh_password, port=self.ssh_port)
+        ssh_client.connect(
+            self.ssh_host,
+            username=self.ssh_user,
+            password=self.ssh_password,
+            port=self.ssh_port,
+            allow_agent=False,
+            look_for_keys=False,
+        )
         self.ssh_client = ssh_client
 
     def close(self):

@@ -125,6 +125,7 @@ class Migration(migrations.Migration):
                     FROM
                         estimations_dischargemodel dm
                 ) dm ON wlda.timestamp >= dm.valid_from AND (wlda.timestamp < dm.next_valid_from OR dm.next_valid_from IS NULL) AND wlda.station_id = dm.station_id
+                LEFT JOIN metrics_hydrologicalmetric hm ON hm.metric_name = 'WDDA' and hm.value_type = 'I' and DATE_TRUNC('day',wlda.timestamp) = DATE_TRUNC('day',hm.timestamp) and hm.sensor_identifier=wlda.sensor_identifier and hm.sensor_type=wlda.sensor_type AND hm.station_id = wlda.station_id
                 WHERE
                     wlda.metric_name = 'WLDA';
               """

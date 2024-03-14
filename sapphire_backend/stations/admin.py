@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import HydrologicalStation, MeteorologicalStation, Remark, Site
+from .models import HydrologicalStation, MeteorologicalStation, Remark, Site, VirtualStation, VirtualStationAssociation
 
 
 class HydroStationInline(admin.TabularInline):
@@ -9,6 +9,10 @@ class HydroStationInline(admin.TabularInline):
 
 class MeteoStationInline(admin.TabularInline):
     model = MeteorologicalStation
+
+
+class VirtualStationAssociationInline(admin.TabularInline):
+    model = VirtualStationAssociation
 
 
 @admin.register(Site)
@@ -25,16 +29,16 @@ class RemarkInline(admin.TabularInline):
 
 @admin.register(HydrologicalStation)
 class HydrologicalStationAdmin(admin.ModelAdmin):
-    list_display = ["name", "station_code", "site", "uuid"]
-    list_filter = ["site__basin", "site__region", "site__organization", "station_type"]
+    list_display = ["name", "station_code", "station_type", "site", "uuid"]
+    list_filter = ["site__basin", "site__region", "site__organization", "station_type", "is_deleted"]
     readonly_fields = ["uuid"]
-    inlines = [RemarkInline]
+    inlines = [RemarkInline, VirtualStationAssociationInline]
 
 
 @admin.register(MeteorologicalStation)
 class MeteorologicalStationAdmin(admin.ModelAdmin):
     list_display = ["name", "station_code", "site", "uuid"]
-    list_filter = ["site__basin", "site__region", "site__organization"]
+    list_filter = ["site__basin", "site__region", "site__organization", "is_deleted"]
     readonly_fields = ["uuid"]
     inlines = [RemarkInline]
 
@@ -44,3 +48,12 @@ class RemarkAdmin(admin.ModelAdmin):
     list_display = ["hydro_station", "meteo_station", "user", "created_date"]
     list_filter = ["created_date"]
     readonly_fields = ["uuid", "created_date", "last_modified"]
+
+
+@admin.register(VirtualStation)
+class VirtualStationAdmin(admin.ModelAdmin):
+    list_display = ["name", "country", "uuid"]
+    list_filter = ["country", "basin", "organization", "region", "is_deleted"]
+    readonly_fields = ["uuid"]
+    exclude = ["hydro_stations"]
+    inlines = [VirtualStationAssociationInline]

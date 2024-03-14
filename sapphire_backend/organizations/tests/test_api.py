@@ -81,7 +81,7 @@ class TestBasinsAPIController:
             f"/api/v1/basins/{organization.uuid}/11111111-aaaa-bbbb-cccc-222222222222"
         )
         assert response.status_code == 404
-        assert response.json()["detail"] == "Basin not found."
+        assert response.json()["detail"] == "Object does not exist"
 
     @pytest.mark.django_db
     def test_get_basin_unauthorized(self, api_client, basin):
@@ -143,7 +143,7 @@ class TestRegionsAPIController:
             f"{self.endpoint}/{organization.uuid}/11111111-aaaa-bbbb-cccc-222222222222"
         )
         assert response.status_code == 404
-        assert response.json()["detail"] == "Region not found."
+        assert response.json()["detail"] == "Object does not exist"
 
     @pytest.mark.django_db
     def test_get_region_unauthorized(self, api_client, region):
@@ -217,4 +217,4 @@ class TestOrganizationMembersAPIController:
             f"{self.endpoint}/{organization.uuid}/members/add", data=invalid_user_data, content_type="application/json"
         )
         assert response.status_code == 422
-        assert "detail" in response.json()
+        assert response.json() == {"detail": "Some data is invalid or missing", "code": "schema_error"}
