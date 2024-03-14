@@ -25,4 +25,4 @@ sudo apt install -y docker-compose
 
 mkdir /home/ubuntu/staging/dumps || echo '/home/ubuntu/staging/dumps already created'
 # DB dump at 23:00 daily and make sure the /staging/dumps contains dumps not older than 6 months. Dumps are gzipped.
-echo "0 23 * * * docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml exec timescale pg_dump -U sapphire sapphire_backend | gzip > /home/ubuntu/staging/dumps/dump_sapphire_backend_$(date +\%Y\%m\%d).sql.gz && find /home/ubuntu/staging/dumps/ -type f -name 'dump_sapphire_backend_*.sql.gz' -mtime +180 -exec rm {} \;" | crontab -
+echo '0 23 * * * docker-compose -f /home/ubuntu/staging/backend-staging-compose.yml exec timescale pg_dump -U sapphire sapphire_backend | gzip > /home/ubuntu/staging/dumps/dump_sapphire_backend_$(date +\%Y\%m\%d).sql.gz && find /home/ubuntu/staging/dumps/ -type f -name dump_sapphire_backend_*.sql.gz -mtime +180 -exec rm {} \;' | crontab -
