@@ -149,7 +149,6 @@ class MeteoStationsAPIController:
 
     @route.get("stats", response=MeteoStationStatsSchema)
     def get_meteorological_stations_stats(self, request: HttpRequest, organization_uuid: str):
-        print("bok")
         return MeteorologicalStation.objects.for_organization(organization_uuid).active().aggregate(total=Count("id"))
 
     @route.get("{station_uuid}", response={200: MeteoStationOutputDetailSchema})
