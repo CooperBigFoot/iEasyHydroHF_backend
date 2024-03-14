@@ -2,10 +2,10 @@ version: '3'
 
 volumes:
   sapphire_backend_staging_timescale_data:
-    driver_opts:
-      type: none
-      o: bind
-      device: /ebs_volume/timescale_data
+#    driver_opts:
+#      type: none
+#      o: bind
+#      device: /ebs_volume/timescale_data
   sapphire_backend_staging_timescale_data_backups:
     driver_opts:
       type: none
@@ -30,7 +30,7 @@ services:
 
   timescale:
     image: timescale/timescaledb:latest-pg16
-    command: -c "max_locks_per_transaction=256"
+    command: -c "max_locks_per_transaction=512"
     env_file:
       - .backend.env
     volumes:
