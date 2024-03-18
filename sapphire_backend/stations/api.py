@@ -21,6 +21,7 @@ from .schema import (
     HydroStationInputSchema,
     HydroStationOutputDetailSchema,
     HydroStationUpdateSchema,
+    MeteoStationInputSchema,
     MeteoStationOutputDetailSchema,
     MeteoStationStatsSchema,
     RemarkInputSchema,
@@ -55,7 +56,6 @@ class HydroStationsAPIController:
             station_dict["site_id"] = site.uuid
         else:
             station_dict["site_id"] = site_uuid
-            site = Site.objects.get(uuid=site_uuid)
 
         station = HydrologicalStation.objects.create(**station_dict)
 
@@ -154,6 +154,24 @@ class MeteoStationsAPIController:
     @route.get("{station_uuid}", response={200: MeteoStationOutputDetailSchema})
     def get_meteorological_station(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
         return MeteorologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
+
+    @route.post("", response={201: MeteoStationOutputDetailSchema})
+    def create_meteorological_station(
+        self, request: HttpRequest, organization_uuid: str, station_data: MeteoStationInputSchema
+    ):
+        station_dict = station_data.dict()
+        site_uuid = station_dict.pop("site_uuid", None)
+        site_data = station_dict.pop("site_data", {})
+        if not site_uuid:
+            site_data["organization_id"] = organization_uuid
+            site = Site.objects.create(**site_data)
+            station_dict["site_id"] = site.uuid
+        else:
+            station_dict["site_id"] = site_uuid
+
+        station = MeteorologicalStation.objects.create(**station_dict)
+
+        return 201, station
 
 
 @api_controller(

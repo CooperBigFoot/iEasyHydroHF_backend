@@ -111,7 +111,7 @@ class MeteoStationBaseSchema(Schema):
     station_code: str
 
 
-class MeteoStationInputSchema(SiteInputSchema, MeteoStationBaseSchema):
+class MeteoStationInputSchema(MeteoStationBaseSchema):
     site_uuid: str | None = None
     site_data: SiteInputSchema = None
 
