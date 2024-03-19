@@ -24,6 +24,7 @@ from .schema import (
     MeteoStationInputSchema,
     MeteoStationOutputDetailSchema,
     MeteoStationStatsSchema,
+    MeteoStationUpdateSchema,
     RemarkInputSchema,
     RemarkOutputSchema,
     VirtualStationAssociationInputSchema,
@@ -172,6 +173,32 @@ class MeteoStationsAPIController:
         station = MeteorologicalStation.objects.create(**station_dict)
 
         return 201, station
+
+    @route.put("{station_uuid}", response={200: MeteoStationOutputDetailSchema, 404: Message})
+    def update_station(
+        self, request: HttpRequest, organization_uuid: str, station_uuid: str, station_data: MeteoStationUpdateSchema
+    ):
+        station = MeteorologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
+        station_dict = station_data.dict(exclude_unset=True)
+        site_data = station_dict.pop("site_data", {})
+        if site_data:
+            site = station.site
+            for attr, value in site_data.items():
+                setattr(site, attr, value)
+            site.save()
+
+        for attr, value in station_dict.items():
+            setattr(station, attr, value)
+
+        station.save()
+        return station
+
+    @route.delete("{station_uuid}", response={200: Message}, permissions=admin_permissions)
+    def delete_meteorological_station(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
+        station = MeteorologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
+        station.is_deleted = True
+        station.save()
+        return 200, {"detail": _(f"{station.name} station successfully deleted"), "code": "success"}
 
 
 @api_controller(
