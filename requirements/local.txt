@@ -7,11 +7,11 @@ watchfiles==0.21.0  # https://github.com/samuelcolvin/watchfiles
 
 # Testing
 # ------------------------------------------------------------------------------
-mypy==1.8.0  # https://github.com/python/mypy
+mypy==1.9.0  # https://github.com/python/mypy
 django-stubs==4.2.7  # https://github.com/typeddjango/django-stubs
-pytest==8.1.0  # https://github.com/pytest-dev/pytest
+pytest==8.1.1  # https://github.com/pytest-dev/pytest
 pytest-sugar==1.0.0  # https://github.com/Frozenball/pytest-sugar
-pytest-factoryboy==2.6.0  # https://github.com/pytest-dev/pytest-factoryboy
+pytest-factoryboy==2.7.0  # https://github.com/pytest-dev/pytest-factoryboy
 tqdm==4.66.2  # https://tqdm.github.io/
 
 # Documentation
@@ -21,7 +21,7 @@ sphinx-autobuild==2024.2.4 # https://github.com/GaretJax/sphinx-autobuild
 
 # Code quality
 # ------------------------------------------------------------------------------
-ruff==0.3.0  # https://github.com/astral-sh/ruff
+ruff==0.3.3  # https://github.com/astral-sh/ruff
 coverage==7.4.3  # https://github.com/nedbat/coveragepy
 black==24.2.0  # https://github.com/psf/black
 pylint-django==2.5.5  # https://github.com/PyCQA/pylint-django

@@ -96,6 +96,7 @@ class HydroStationOutputDetailSchema(HydroStationBaseSchema, UUIDSchemaMixin):
 class HydrologicalStationFilterSchema(FilterSchema):
     site__uuid: str | None = None
     station_type: HydrologicalStation.StationType | None = None
+    station_code: str | None = None
 
 
 class HydrologicalStationStatsSchema(Schema):
@@ -110,7 +111,7 @@ class MeteoStationBaseSchema(Schema):
     station_code: str
 
 
-class MeteoStationInputSchema(SiteInputSchema, MeteoStationBaseSchema):
+class MeteoStationInputSchema(MeteoStationBaseSchema):
     site_uuid: str | None = None
     site_data: SiteInputSchema = None
 
@@ -121,10 +122,9 @@ class MeteoStationUpdateSchema(MeteoStationBaseSchema):
     site_data: SiteUpdateSchema | None = None
 
 
-class MeteoStationOutputDetailSchema(MeteoStationBaseSchema):
+class MeteoStationOutputDetailSchema(MeteoStationBaseSchema, UUIDSchemaMixin):
     site: SiteOutputSchema
     id: int
-    uuid: str
     remarks: list[RemarkOutputSchema] = None
 
 
