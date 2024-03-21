@@ -129,8 +129,8 @@ class TelegramsAPIController:
                 trend_ok = False
                 if water_level_query_manager_result is not None:
                     previous_day_morning_water_level = water_level_query_manager_result.avg_value
-                    previous_day_water_level_average = (
-                                                           previous_day_morning_water_level + previous_day_evening_water_level) / 2
+                    previous_day_water_level_average = round(0.5 * (
+                        float(previous_day_morning_water_level) + float(previous_day_evening_water_level)))
                     trend_ok = (
                                    previous_day_morning_water_level + telegram_day_water_level_trend) == telegram_day_water_level_trend
 
@@ -204,43 +204,24 @@ class TelegramsAPIController:
                                                                ).first()
             # telegram day
             telegram_day_date = parsed["telegram_day_date"]
-
             # morning
             result[station_code][telegram_day_date]["morning"] = fill_morning_operational(station=hydro_station,
                                                                                           date=telegram_day_date,
                                                                                           water_level_new=parsed[
                                                                                               "telegram_day_morning_water_level"],
                                                                                           )
-
             # evening
-            # if result[station_code][telegram_day_date].get("evening", None) is not None:
+            # keep the water_level_new value if it's already been filled in previous iterations
             water_level_new = result[station_code][telegram_day_date]["evening"].water_level_new
             result[station_code][telegram_day_date]["evening"] = fill_evening_operational(station=hydro_station,
                                                                                           date=telegram_day_date,
                                                                                           water_level_new=water_level_new,
                                                                                           )
 
-            # average TODO CALCULATE AVERAGES IN THE NEXT LOOP
-            # telegram_day_average_water_level_new = None  # CALCULATE (if the evening data exists from telegrams or from DB!!!)
-            # telegram_day_average_discharge_estimation_new = None  # CALCULATE (if the average calculated)
-            #
-            # result[station_code][telegram_day_date]["average"][
-            #     "water_level_new"] = telegram_day_average_water_level_new
-            # result[station_code][telegram_day_date]["average"][
-            #     "discharge_new"] = telegram_day_average_discharge_estimation_new
-            #
-            # telegram_day_average_water_level_old = None  # GET
-            # telegram_day_average_discharge_estimation_old = None  # GET
-            #
-            # result[station_code][telegram_day_date]["average"][
-            #     "water_level_old"] = telegram_day_average_water_level_old
-            # result[station_code][telegram_day_date]["average"][
-            #     "discharge_old"] = telegram_day_average_discharge_estimation_old
-
             # previous day
             # morning
             previous_day_date = parsed["previous_day_date"]
-            # if result[station_code][previous_day_date].get("morning") is not None:
+            # keep the water_level_new value if it's already been filled in previous iterations
             water_level_new = result[station_code][previous_day_date]["morning"].water_level_new
             result[station_code][previous_day_date]["morning"] = fill_morning_operational(station=hydro_station,
                                                                                           date=previous_day_date,
@@ -255,27 +236,11 @@ class TelegramsAPIController:
             if None not in [result[station_code][previous_day_date]["morning"].water_level_new,
                             result[station_code][previous_day_date]["evening"].water_level_new] and \
                 result[station_code][previous_day_date]["average"].water_level_new is None:
-                avg_water_level_new = 0.5 * (result[station_code][previous_day_date]["morning"].water_level_new +
-                                             result[station_code][previous_day_date]["evening"].water_level_new)
+                avg_water_level_new = round(0.5 * (float(result[station_code][previous_day_date]["morning"].water_level_new) +
+                                                   float(result[station_code][previous_day_date]["evening"].water_level_new)))
                 result[station_code][previous_day_date]["average"] = fill_average_operational(station=hydro_station,
                                                                                               date=previous_day_date,
                                                                                               water_level_new=avg_water_level_new,
                                                                                               )
 
-        # average
-        # previous_day_average_water_level_new = None  # CALCULATE
-        # previous_day_average_discharge_estimation_new = None  # CALCULATE
-        #
-        # previous_day_average_water_level_old = None  # GET FROM DB
-        # previous_day_average_discharge_estimation_old = None  # GET FROM DB
-        #
-        # result[station_code][previous_day_date]["average"][
-        #     "water_level_new"] = previous_day_average_water_level_new
-        # result[station_code][previous_day_date]["average"][
-        #     "discharge_new"] = previous_day_average_discharge_estimation_new
-        #
-        # result[station_code][previous_day_date]["average"][
-        #     "water_level_old"] = previous_day_average_water_level_old
-        # result[station_code][previous_day_date]["average"][
-        #     "discharge_old"] = previous_day_average_discharge_estimation_old
-        print(result)
+        return 201, result

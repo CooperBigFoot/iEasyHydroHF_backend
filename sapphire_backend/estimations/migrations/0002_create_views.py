@@ -99,7 +99,7 @@ class Migration(migrations.Migration):
             reverse_sql=[("DROP VIEW IF EXISTS estimations_water_discharge_daily CASCADE;")],
         ),
 
-        migrations.RunSQL(gt
+        migrations.RunSQL(
             sql=[(
                 """
                 create or replace view estimations_water_discharge_daily_average as
