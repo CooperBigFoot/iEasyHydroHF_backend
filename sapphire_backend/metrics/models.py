@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from django import db
 from django.db import connection, models
@@ -12,6 +13,12 @@ from .choices import (
     MetricUnit,
 )
 from .managers import HydrologicalMetricQuerySet, MeteorologicalMetricQuerySet
+
+ESTIMATIONS_TABLE_MAP = {HydrologicalMetricName.WATER_DISCHARGE_DAILY: 'estimations_water_discharge_daily',
+                         HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: 'estimations_water_discharge_daily_average',
+                         HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: 'estimations_water_discharge_fiveday_average',
+                         HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: 'estimations_water_discharge_decade_average',
+                         }
 
 
 class HydrologicalMetric(models.Model):
@@ -145,7 +152,6 @@ class HydrologicalMetric(models.Model):
             if refresh_view and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY and self.value_type == HydrologicalMeasurementType.MANUAL:
                 self._refresh_view()
 
-
     def _refresh_view(self):
         # Extract the ISO date as a string
         start_date_str = self.timestamp.strftime('%Y-%m-%d')
@@ -154,13 +160,17 @@ class HydrologicalMetric(models.Model):
         with connection.cursor() as cursor:
             cursor.execute(sql_refresh_view)
 
-    def select_first(self): # TODO JUST TEMPORARY USAGE, NOT SERIOUS
+    def select_first(self):  # TODO JUST TEMPORARY USAGE, NOT SERIOUS
+        table_name = self._meta.db_table
+        if self.value_type == HydrologicalMeasurementType.ESTIMATED:
+            table_name = ESTIMATIONS_TABLE_MAP.get(self.metric_name, self._meta.db_table)
 
         sql_query_select = """
-            SELECT min_value, avg_value, max_value, unit, sensor_type FROM metrics_hydrologicalmetric WHERE
+            SELECT min_value, avg_value, max_value, unit, sensor_type FROM {table_name} WHERE
             timestamp='{timestamp}' AND station_id={station_id} AND metric_name='{metric_name}'
             AND value_type='{value_type}' AND sensor_identifier='{sensor_identifier}';
             """.format(
+            table_name=table_name,
             timestamp=self.timestamp,
             station_id=self.station_id,
             metric_name=self.metric_name,

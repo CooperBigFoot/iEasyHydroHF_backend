@@ -1,13 +1,24 @@
+import logging
+from datetime import datetime
+
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
-from sapphire_backend.utils.permissions import IsOrganizationMember, OrganizationExists
-
+from sapphire_backend.metrics.choices import (
+    HydrologicalMeasurementType,
+    HydrologicalMetricName,
+)
+from sapphire_backend.utils.datetime_helper import SmartDatetime
+from sapphire_backend.utils.permissions import IsOrganizationMember, IsSuperAdmin, OrganizationExists
 from .exceptions import TelegramParserException
 from .parser import KN15TelegramParser
 from .schema import BulkParseOutputSchema, TelegramBulkInputSchema, TelegramInputSchema, TelegramOutputSchema, \
-    TelegramBulkWithDatesInputSchema, DailyOverviewOutputSchema
+    TelegramBulkWithDatesInputSchema, DailyOverviewOutputSchema, DataProcessingOverviewOutputSchema, TimeData
+from .utils import fill_morning_operational, fill_evening_operational, fill_average_operational
 from ..metrics.models import HydrologicalMetric
+from ..metrics.timeseries.query import TimeseriesQueryManager
+from ..stations.models import HydrologicalStation
+from ..utils.mixins.schemas import Message
 
 
 @api_controller(
@@ -50,16 +61,6 @@ class TelegramsAPIController:
                     data["errors"].append({"index": idx, "telegram": telegram, "error": error})
                     parser.save_parsing_error(error)
 
-                daily_discharge_entry = {
-                    "previous_day": {
-
-                    },
-                    "telegram_day":
-                        {
-
-                        }
-                }
-
                 data["processed"].append({"index": idx, "telegram": telegram,
 
                                           "parsed_data": decoded})
@@ -90,7 +91,7 @@ class TelegramsAPIController:
                 if parser.exists_hydro_station:
                     hydro_station_org_uuid = str(getattr(parser.hydro_station.site.organization, 'uuid'))
                     hydro_station_code = parser.hydro_station.station_code
-                    hydro_station_codes.add((hydro_station_code,  parser.hydro_station.id))
+                    hydro_station_codes.add((hydro_station_code, parser.hydro_station.id))
                 if parser.exists_meteo_station:
                     meteo_station_org_uuid = str(getattr(parser.meteo_station.site.organization, 'uuid'))
                     meteo_station_code = parser.meteo_station.station_code
@@ -99,45 +100,50 @@ class TelegramsAPIController:
                     data["errors"].append({"index": idx, "telegram": telegram, "error": error})
                     parser.save_parsing_error(error)
 
-                # data["parsed"].append({"index": idx, "telegram": telegram, "parsed_data": decoded})
             except TelegramParserException as e:
                 data["errors"].append({"index": idx, "telegram": telegram, "error": str(e)})
                 logging.exception(e)
 
             if decoded.get("section_one", False):
-                telegram_morning_dt_local = datetime.fromisoformat(decoded["section_zero"]["date"])
+                telegram_day_smart = SmartDatetime(decoded["section_zero"]["date"], parser.hydro_station, local=True)
                 if override_date is not None:
-                    telegram_morning_dt_local = datetime.fromisoformat(override_date)
+                    telegram_day_smart = SmartDatetime(override_date, parser.hydro_station, local=True)
+                # telegram_morning_dt_local = telegram_day_smart.morning_local
+
                 telegram_day_morning_water_level = decoded["section_one"]["morning_water_level"]
                 telegram_day_water_level_trend = decoded["section_one"]["water_level_trend"]
-                previous_day_dt_local = yesterday_date(telegram_morning_dt_local)
-                previous_day_morning_dt_local = yesterday_morning(telegram_morning_dt_local)
+                # previous_day_dt_local = yesterday_date(telegram_morning_dt_local)
+                # previous_day_morning_dt_local = yesterday_morning(telegram_morning_dt_local)
                 previous_day_evening_water_level = decoded["section_one"]["water_level_20h_period"]
-                try:
-                    HydrologicalMetric(timestamp=to_utc(previous_day_morning_dt_local),
-                                       station=parser.hydro_station,
-                                       metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
-                                       value_type=HydrologicalMeasurementType.MANUAL,
-                                       avg_value=150.0).save(refresh_view=False)  # TODO REMOVE AND HANDLE WHEN EMPTY
-                except Exception as e:
-                    print(e)
-                previous_day_morning_water_level = HydrologicalMetric(timestamp=to_utc(previous_day_morning_dt_local),
-                                                                      station=parser.hydro_station,
-                                                                      metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
-                                                                      value_type=HydrologicalMeasurementType.MANUAL).select_first().avg_value
-                previous_day_water_level_average = (
-                                                       previous_day_morning_water_level + previous_day_evening_water_level) / 2
-                trend_ok = (
-                               previous_day_morning_water_level + telegram_day_water_level_trend) == telegram_day_water_level_trend
+
+                water_level_query_manager_result = TimeseriesQueryManager(HydrologicalMetric,
+                                                                          organization_uuid=organization_uuid,
+                                                                          filter_dict={
+                                                                              "timestamp": telegram_day_smart.previous_morning_utc,
+                                                                              "metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY,
+                                                                              "station": parser.hydro_station,
+                                                                              "value_type": HydrologicalMeasurementType.MANUAL
+                                                                          }, ).execute_query().first()
+                previous_day_morning_water_level = None
+                previous_day_water_level_average = None
+                trend_ok = False
+                if water_level_query_manager_result is not None:
+                    previous_day_morning_water_level = water_level_query_manager_result.avg_value
+                    previous_day_water_level_average = (
+                                                           previous_day_morning_water_level + previous_day_evening_water_level) / 2
+                    trend_ok = (
+                                   previous_day_morning_water_level + telegram_day_water_level_trend) == telegram_day_water_level_trend
+
                 entry = {
                     "index": idx,
                     "station_code": decoded["section_zero"]["station_code"],
                     "station_name": decoded["section_zero"]["station_name"],
-                    "telegram_day_date": telegram_morning_dt_local.date().isoformat(),
+                    "telegram_day_date": telegram_day_smart.local.date().isoformat(),
+                    # telegram_morning_dt_local.date().isoformat(),
                     "telegram_day_morning_water_level": telegram_day_morning_water_level,
                     "telegram_day_water_level_trend": telegram_day_water_level_trend,
                     "trend_ok": trend_ok,
-                    "previous_day_date": previous_day_dt_local.isoformat(),
+                    "previous_day_date": telegram_day_smart.previous_local.date().isoformat(),
                     "previous_day_morning_water_level": previous_day_morning_water_level,
                     "previous_day_evening_water_level": previous_day_evening_water_level,
                     "previous_day_water_level_average": previous_day_water_level_average,
@@ -160,8 +166,116 @@ class TelegramsAPIController:
             discharge_overview.append(entry)
             if decoded.get("section_eight", False):
                 meteo_overview.append({})
-                meteo_station_codes.add({'station_code': meteo_station_code, 'station_id': parser.meteo_station.id})  #include only codes which have section 988
+                meteo_station_codes.add({'station_code': meteo_station_code,
+                                         'station_id': parser.meteo_station.id})  # include only codes which have section 988
 
         data = {'discharge': discharge_overview, 'discharge_codes': list(hydro_station_codes),
-                'meteo': meteo_overview, 'meteo_codes': list(meteo_station_codes) }
+                'meteo': meteo_overview, 'meteo_codes': list(meteo_station_codes)}
         return 201, data
+
+    @route.post("get-data-processing-overview", response={201: DataProcessingOverviewOutputSchema, 400: Message})
+    def get_data_procesing_overview(self, request, organization_uuid: str,
+                                    encoded_telegrams_dates: TelegramBulkWithDatesInputSchema):
+
+        data = self.get_daily_overview(request, organization_uuid, encoded_telegrams_dates)
+        result = {}
+        if not data[0] == 201:
+            return data
+        parsed_data_list = data[1]
+        for parsed in parsed_data_list["discharge_codes"]:
+            station_code = parsed[0]
+            result[station_code] = {}
+
+        empty_timedata = TimeData(water_level_new=None, water_level_old=None, discharge_new=None, discharge_old=None)
+        for parsed in parsed_data_list["discharge"]:
+            station_code = parsed["station_code"]
+            telegram_day_date = parsed["telegram_day_date"]
+            previous_day_date = parsed["previous_day_date"]
+
+            result[station_code][telegram_day_date] = {'morning': empty_timedata, 'evening': empty_timedata,
+                                                       'average': empty_timedata}
+            result[station_code][previous_day_date] = {'morning': empty_timedata, 'evening': empty_timedata,
+                                                       'average': empty_timedata}
+
+        for parsed in parsed_data_list["discharge"]:
+            station_code = parsed["station_code"]
+            hydro_station = HydrologicalStation.objects.filter(station_code=station_code,
+                                                               station_type=HydrologicalStation.StationType.MANUAL
+                                                               ).first()
+            # telegram day
+            telegram_day_date = parsed["telegram_day_date"]
+
+            # morning
+            result[station_code][telegram_day_date]["morning"] = fill_morning_operational(station=hydro_station,
+                                                                                          date=telegram_day_date,
+                                                                                          water_level_new=parsed[
+                                                                                              "telegram_day_morning_water_level"],
+                                                                                          )
+
+            # evening
+            # if result[station_code][telegram_day_date].get("evening", None) is not None:
+            water_level_new = result[station_code][telegram_day_date]["evening"].water_level_new
+            result[station_code][telegram_day_date]["evening"] = fill_evening_operational(station=hydro_station,
+                                                                                          date=telegram_day_date,
+                                                                                          water_level_new=water_level_new,
+                                                                                          )
+
+            # average TODO CALCULATE AVERAGES IN THE NEXT LOOP
+            # telegram_day_average_water_level_new = None  # CALCULATE (if the evening data exists from telegrams or from DB!!!)
+            # telegram_day_average_discharge_estimation_new = None  # CALCULATE (if the average calculated)
+            #
+            # result[station_code][telegram_day_date]["average"][
+            #     "water_level_new"] = telegram_day_average_water_level_new
+            # result[station_code][telegram_day_date]["average"][
+            #     "discharge_new"] = telegram_day_average_discharge_estimation_new
+            #
+            # telegram_day_average_water_level_old = None  # GET
+            # telegram_day_average_discharge_estimation_old = None  # GET
+            #
+            # result[station_code][telegram_day_date]["average"][
+            #     "water_level_old"] = telegram_day_average_water_level_old
+            # result[station_code][telegram_day_date]["average"][
+            #     "discharge_old"] = telegram_day_average_discharge_estimation_old
+
+            # previous day
+            # morning
+            previous_day_date = parsed["previous_day_date"]
+            # if result[station_code][previous_day_date].get("morning") is not None:
+            water_level_new = result[station_code][previous_day_date]["morning"].water_level_new
+            result[station_code][previous_day_date]["morning"] = fill_morning_operational(station=hydro_station,
+                                                                                          date=previous_day_date,
+                                                                                          water_level_new=water_level_new, )
+            # evening
+            previous_day_evening_water_level_new = parsed["previous_day_evening_water_level"]
+
+            result[station_code][previous_day_date]["evening"] = fill_evening_operational(station=hydro_station,
+                                                                                          date=previous_day_date,
+                                                                                          water_level_new=previous_day_evening_water_level_new,
+                                                                                          )
+            if None not in [result[station_code][previous_day_date]["morning"].water_level_new,
+                            result[station_code][previous_day_date]["evening"].water_level_new] and \
+                result[station_code][previous_day_date]["average"].water_level_new is None:
+                avg_water_level_new = 0.5 * (result[station_code][previous_day_date]["morning"].water_level_new +
+                                             result[station_code][previous_day_date]["evening"].water_level_new)
+                result[station_code][previous_day_date]["average"] = fill_average_operational(station=hydro_station,
+                                                                                              date=previous_day_date,
+                                                                                              water_level_new=avg_water_level_new,
+                                                                                              )
+
+        # average
+        # previous_day_average_water_level_new = None  # CALCULATE
+        # previous_day_average_discharge_estimation_new = None  # CALCULATE
+        #
+        # previous_day_average_water_level_old = None  # GET FROM DB
+        # previous_day_average_discharge_estimation_old = None  # GET FROM DB
+        #
+        # result[station_code][previous_day_date]["average"][
+        #     "water_level_new"] = previous_day_average_water_level_new
+        # result[station_code][previous_day_date]["average"][
+        #     "discharge_new"] = previous_day_average_discharge_estimation_new
+        #
+        # result[station_code][previous_day_date]["average"][
+        #     "water_level_old"] = previous_day_average_water_level_old
+        # result[station_code][previous_day_date]["average"][
+        #     "discharge_old"] = previous_day_average_discharge_estimation_old
+        print(result)

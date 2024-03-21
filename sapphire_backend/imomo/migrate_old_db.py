@@ -27,6 +27,7 @@ from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMe
 from sapphire_backend.organizations.models import Basin, Organization, Region
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, Site
 from sapphire_backend.telegrams.models import Telegram
+from sapphire_backend.utils.datetime_helper import SmartDatetime
 
 nan_count = 0
 
@@ -285,7 +286,7 @@ def migrate_meteo_metrics(old_session):
                 unit=metric_unit,
                 station=meteo_station,
             )
-            new_meteo_metric.save(upsert=False)  # upsert slows down process significantly
+            new_meteo_metric.save()
 
 
 def migrate_hydro_metrics(old_session):
@@ -336,7 +337,7 @@ def migrate_hydro_metrics(old_session):
                 sensor_identifier="",
                 sensor_type="",
             )
-            new_hydro_metric.save(upsert=False)  # upsert slows down process significantly
+            new_hydro_metric.save()
 
     print(f"Nan count {nan_count}")
 
@@ -349,14 +350,18 @@ def migrate_virtual_metrics(old_session):
 
 
 def migrate_discharge_models(old_session):
+    logging.info("Cleaning up discharge models")
+    DischargeModel.objects.all().delete()
     old_discharge_models = old_session.query(OldDischargeModel).all()
     for old in tqdm(old_discharge_models, desc="Discharge models", position=0):
         hydro_station = HydrologicalStation.objects.get(station_code=old.site.site_code_repr)
-        valid_from = old.valid_from
-        if valid_from is None:
+        if old.valid_from is None:
             # when valid_from is None then it is initial discharge model
             # 2000-01-01 is sufficient as the beginning date of the initial model
-            valid_from = datetime(2000, 1, 1, 0, 0, 0, tzinfo=zoneinfo.ZoneInfo("UTC"))
+            valid_from = SmartDatetime(datetime(2000, 1, 1, 0, 0, 0), hydro_station, local=True).day_beginning_utc
+        else:
+            valid_from = SmartDatetime(old.valid_from, hydro_station, local=True).day_beginning_utc
+
         new_discharge_model = DischargeModel(
             name=old.model_name,
             param_a=old.param_a,
@@ -411,9 +416,9 @@ def migrate():
         logging.info(f"Starting migrations in debugging mode (LIMITER = {LIMITER})")
     # migrate_organizations(old_session)
     # migrate_sites_and_stations(old_session)
-    # migrate_discharge_models(old_session)
-    migrate_hydro_metrics(old_session)
-    migrate_meteo_metrics(old_session)
+    migrate_discharge_models(old_session)
+    # migrate_hydro_metrics(old_session)
+    # migrate_meteo_metrics(old_session)
     # migrate_virtual_metrics(old_session)  # TODO
     old_session.close()
     print("Data migration completed successfully.")

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict
 
 from ninja import Schema
 
@@ -10,9 +10,11 @@ class TelegramInputSchema(Schema):
 class TelegramBulkInputSchema(Schema):
     telegrams: list[str]
 
+
 class TelegramWithDateInputSchema(Schema):
     raw: str
     override_date: Optional[str] = None
+
 
 class TelegramBulkWithDatesInputSchema(Schema):
     telegrams: list[TelegramWithDateInputSchema]
@@ -86,9 +88,9 @@ class DischargeOverviewSchema(Schema):
     telegram_day_water_level_trend: float
     trend_ok: bool
     previous_day_date: str
-    previous_day_morning_water_level: float
+    previous_day_morning_water_level: Optional[float] = None
     previous_day_evening_water_level: float
-    previous_day_water_level_average: float
+    previous_day_water_level_average: Optional[float] = None
     reported_discharge: list
 
 
@@ -97,3 +99,24 @@ class DailyOverviewOutputSchema(Schema):
     meteo: list[dict]  # list[MeteoTelegramOverviewSchema]
     discharge_codes: list[tuple]
     meteo_codes: list[tuple]
+
+
+class TimeData(Schema):
+    water_level_new: Optional[int] = None
+    water_level_old: Optional[int] = None
+    discharge_new: Optional[float] = None
+    discharge_old: Optional[float] = None
+
+
+class DataProcessingDayTimes(Schema):
+    morning: TimeData
+    evening: TimeData
+    average: TimeData
+
+
+class DataProcessingDate(Schema):
+    dates: Dict[str, DataProcessingDayTimes]
+
+
+class DataProcessingOverviewOutputSchema(Schema):
+    codes: Dict[str, DataProcessingDate]

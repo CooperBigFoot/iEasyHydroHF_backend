@@ -1,6 +1,13 @@
+import logging
+
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import IntegrityError
+from django.http import Http404
 from django.utils.translation import gettext_lazy as _
+from ninja.errors import ValidationError as NinjaValidationError
 from ninja_extra import NinjaExtraAPI
+from pydantic import ValidationError as PydanticValidationError
 
 from sapphire_backend.estimations.api import DischargeModelsAPIController
 from sapphire_backend.metrics.api import HydroMetricsAPIController, MeteoMetricsAPIController
