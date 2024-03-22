@@ -1,24 +1,24 @@
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.utils import timezone
+from zoneinfo import ZoneInfo
 
-from sapphire_backend.stations.models import MeteorologicalStation, HydrologicalStation
+from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 
 
-class SmartDatetime():
+class SmartDatetime:
     def __init__(self, dt: [str | datetime], station: [HydrologicalStation | MeteorologicalStation], local=True):
         if isinstance(dt, str):
             if local:
-                self._dt_utc = datetime.fromisoformat(dt).astimezone(ZoneInfo('UTC'))
+                self._dt_utc = datetime.fromisoformat(dt).astimezone(ZoneInfo("UTC"))
             else:
-                self._dt_utc = timezone.make_aware(datetime.fromisoformat(dt), timezone=ZoneInfo('UTC'))
+                self._dt_utc = timezone.make_aware(datetime.fromisoformat(dt), timezone=ZoneInfo("UTC"))
         elif isinstance(dt, datetime):
             if local:
-                self._dt_utc = dt.astimezone(ZoneInfo('UTC'))
+                self._dt_utc = dt.astimezone(ZoneInfo("UTC"))
             else:
-                self._dt_utc = timezone.make_aware(dt, timezone=ZoneInfo('UTC'))
+                self._dt_utc = timezone.make_aware(dt, timezone=ZoneInfo("UTC"))
 
         self._local_timezone = station.site.timezone or settings.TIME_ZONE
         self._dt_local = self._dt_utc.astimezone(ZoneInfo(self._local_timezone))
@@ -41,7 +41,7 @@ class SmartDatetime():
 
     @property
     def previous_utc(self):
-        return self.previous_local.astimezone(ZoneInfo('UTC'))
+        return self.previous_local.astimezone(ZoneInfo("UTC"))
 
     @property
     def morning_local(self):
@@ -49,7 +49,7 @@ class SmartDatetime():
 
     @property
     def morning_utc(self):
-        return self.morning_local.astimezone(ZoneInfo('UTC'))
+        return self.morning_local.astimezone(ZoneInfo("UTC"))
 
     @property
     def previous_morning_local(self):
@@ -57,7 +57,7 @@ class SmartDatetime():
 
     @property
     def previous_morning_utc(self):
-        return self.previous_morning_local.astimezone(ZoneInfo('UTC'))
+        return self.previous_morning_local.astimezone(ZoneInfo("UTC"))
 
     @property
     def evening_local(self):
@@ -65,7 +65,7 @@ class SmartDatetime():
 
     @property
     def evening_utc(self):
-        return self.evening_local.astimezone(ZoneInfo('UTC'))
+        return self.evening_local.astimezone(ZoneInfo("UTC"))
 
     @property
     def previous_evening_local(self):
@@ -73,7 +73,7 @@ class SmartDatetime():
 
     @property
     def previous_evening_utc(self):
-        return self.previous_evening_local.astimezone(ZoneInfo('UTC'))
+        return self.previous_evening_local.astimezone(ZoneInfo("UTC"))
 
     @property
     def midday_local(self):
@@ -81,7 +81,7 @@ class SmartDatetime():
 
     @property
     def midday_utc(self):
-        return self.midday_local.astimezone(ZoneInfo('UTC'))
+        return self.midday_local.astimezone(ZoneInfo("UTC"))
 
     @property
     def previous_midday_local(self):
@@ -89,7 +89,7 @@ class SmartDatetime():
 
     @property
     def previous_midday_utc(self):
-        return self.previous_midday_local.astimezone(ZoneInfo('UTC'))
+        return self.previous_midday_local.astimezone(ZoneInfo("UTC"))
 
     @property
     def day_beginning_local(self):
@@ -97,4 +97,4 @@ class SmartDatetime():
 
     @property
     def day_beginning_utc(self):
-        return self.day_beginning_local.astimezone(ZoneInfo('UTC'))
+        return self.day_beginning_local.astimezone(ZoneInfo("UTC"))

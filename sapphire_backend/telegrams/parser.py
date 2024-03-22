@@ -86,11 +86,10 @@ class BaseTelegramParser(ABC):
         if not station_code.isdigit() or len(station_code) != 5:
             raise InvalidTokenException(f"Invalid station code: {station_code}")
 
-        self.hydro_station = HydrologicalStation.objects.filter(station_code=station_code,
-                                                             station_type=HydrologicalStation.StationType.MANUAL
-                                                             ).first()
-        self.meteo_station = MeteorologicalStation.objects.filter(station_code=station_code
-                                                               ).first()
+        self.hydro_station = HydrologicalStation.objects.filter(
+            station_code=station_code, station_type=HydrologicalStation.StationType.MANUAL
+        ).first()
+        self.meteo_station = MeteorologicalStation.objects.filter(station_code=station_code).first()
         if self.hydro_station is None and self.meteo_station is None:
             # except HydrologicalStation.DoesNotExist:
             raise InvalidTokenException(f"Station with code {station_code} does not exist")
@@ -310,7 +309,7 @@ class KN15TelegramParser(BaseTelegramParser):
 
         return {
             "station_code": station_code,
-            "station_name": getattr(self.hydro_station, 'name', None) or getattr(self.meteo_station, 'name', None),
+            "station_name": getattr(self.hydro_station, "name", None) or getattr(self.meteo_station, "name", None),
             "date": date.isoformat(),
             "section_code": section_code,
         }

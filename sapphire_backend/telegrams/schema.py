@@ -1,5 +1,3 @@
-from typing import Optional, Dict
-
 from ninja import Schema
 
 
@@ -13,7 +11,7 @@ class TelegramBulkInputSchema(Schema):
 
 class TelegramWithDateInputSchema(Schema):
     raw: str
-    override_date: Optional[str] = None
+    override_date: str | None = None
 
 
 class TelegramBulkWithDatesInputSchema(Schema):
@@ -30,8 +28,8 @@ class TelegramSectionOneSchema(Schema):
     morning_water_level: int
     water_level_trend: int
     water_level_20h_period: int
-    water_temperature: Optional[int] = None
-    air_temperature: Optional[int] = None
+    water_temperature: int | None = None
+    air_temperature: int | None = None
     ice_phenomena: list[dict[str, int]]
 
 
@@ -88,9 +86,9 @@ class DischargeOverviewSchema(Schema):
     telegram_day_water_level_trend: float
     trend_ok: bool
     previous_day_date: str
-    previous_day_morning_water_level: Optional[float] = None
+    previous_day_morning_water_level: float | None = None
     previous_day_evening_water_level: float
-    previous_day_water_level_average: Optional[float] = None
+    previous_day_water_level_average: float | None = None
     reported_discharge: list
 
 
@@ -102,10 +100,10 @@ class DailyOverviewOutputSchema(Schema):
 
 
 class TimeData(Schema):
-    water_level_new: Optional[int] = None
-    water_level_old: Optional[int] = None
-    discharge_new: Optional[float] = None
-    discharge_old: Optional[float] = None
+    water_level_new: int | None = None
+    water_level_old: int | None = None
+    discharge_new: float | None = None
+    discharge_old: float | None = None
 
 
 class DataProcessingDayTimes(Schema):
@@ -115,8 +113,8 @@ class DataProcessingDayTimes(Schema):
 
 
 class DataProcessingDate(Schema):
-    dates: Dict[str, DataProcessingDayTimes]
+    dates: dict[str, DataProcessingDayTimes]
 
 
 class DataProcessingOverviewOutputSchema(Schema):
-    codes: Dict[str, DataProcessingDate]
+    codes: dict[str, DataProcessingDate]

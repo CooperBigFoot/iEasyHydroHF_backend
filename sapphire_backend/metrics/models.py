@@ -14,12 +14,13 @@ from .choices import (
 )
 from .managers import HydrologicalMetricQuerySet, MeteorologicalMetricQuerySet
 
-ESTIMATIONS_TABLE_MAP = {HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: 'estimations_water_level_daily_average',
-                         HydrologicalMetricName.WATER_DISCHARGE_DAILY: 'estimations_water_discharge_daily',
-                         HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: 'estimations_water_discharge_daily_average',
-                         HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: 'estimations_water_discharge_fiveday_average',
-                         HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: 'estimations_water_discharge_decade_average',
-                         }
+ESTIMATIONS_TABLE_MAP = {
+    HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: "estimations_water_level_daily_average",
+    HydrologicalMetricName.WATER_DISCHARGE_DAILY: "estimations_water_discharge_daily",
+    HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: "estimations_water_discharge_daily_average",
+    HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: "estimations_water_discharge_fiveday_average",
+    HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: "estimations_water_discharge_decade_average",
+}
 
 
 class HydrologicalMetric(models.Model):
@@ -150,13 +151,17 @@ class HydrologicalMetric(models.Model):
         except Exception as e:
             raise Exception(e)
         finally:
-            if refresh_view and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY and self.value_type == HydrologicalMeasurementType.MANUAL:
+            if (
+                refresh_view
+                and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY
+                and self.value_type == HydrologicalMeasurementType.MANUAL
+            ):
                 self._refresh_view()
 
     def _refresh_view(self):
         # Extract the ISO date as a string
-        start_date_str = self.timestamp.strftime('%Y-%m-%d')
-        end_date_str = (self.timestamp + timedelta(days=1)).strftime('%Y-%m-%d')
+        start_date_str = self.timestamp.strftime("%Y-%m-%d")
+        end_date_str = (self.timestamp + timedelta(days=1)).strftime("%Y-%m-%d")
         sql_refresh_view = f"CALL refresh_continuous_aggregate('estimations_water_level_daily_average', '{start_date_str}', '{end_date_str}');"
         with connection.cursor() as cursor:
             cursor.execute(sql_refresh_view)
@@ -166,18 +171,11 @@ class HydrologicalMetric(models.Model):
         if self.value_type == HydrologicalMeasurementType.ESTIMATED:
             table_name = ESTIMATIONS_TABLE_MAP.get(self.metric_name, self._meta.db_table)
 
-        sql_query_select = """
+        sql_query_select = f"""
             SELECT min_value, avg_value, max_value, unit, sensor_type FROM {table_name} WHERE
-            timestamp='{timestamp}' AND station_id={station_id} AND metric_name='{metric_name}'
-            AND value_type='{value_type}' AND sensor_identifier='{sensor_identifier}';
-            """.format(
-            table_name=table_name,
-            timestamp=self.timestamp,
-            station_id=self.station_id,
-            metric_name=self.metric_name,
-            value_type=self.value_type,
-            sensor_identifier=self.sensor_identifier,
-        )
+            timestamp='{self.timestamp}' AND station_id={self.station_id} AND metric_name='{self.metric_name}'
+            AND value_type='{self.value_type}' AND sensor_identifier='{self.sensor_identifier}';
+            """
         with connection.cursor() as cursor:
             cursor.execute(sql_query_select)
             row = cursor.fetchone()

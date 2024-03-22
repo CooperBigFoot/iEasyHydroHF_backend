@@ -19,3 +19,6 @@ class DischargeModel(UUIDMixin, models.Model):
 
     def __str__(self):
         return f"DischargeModel ({self.name}): Q = {self.param_c} (H + {self.param_a} ) ^ {self.param_b}, valid from: {self.valid_from}"
+
+    def estimate_discharge(self, water_level):
+        return float(self.param_c) * (water_level + float(self.param_a)) ** float(self.param_b)
