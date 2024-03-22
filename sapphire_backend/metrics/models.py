@@ -14,7 +14,8 @@ from .choices import (
 )
 from .managers import HydrologicalMetricQuerySet, MeteorologicalMetricQuerySet
 
-ESTIMATIONS_TABLE_MAP = {HydrologicalMetricName.WATER_DISCHARGE_DAILY: 'estimations_water_discharge_daily',
+ESTIMATIONS_TABLE_MAP = {HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: 'estimations_water_level_daily_average',
+                         HydrologicalMetricName.WATER_DISCHARGE_DAILY: 'estimations_water_discharge_daily',
                          HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: 'estimations_water_discharge_daily_average',
                          HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: 'estimations_water_discharge_fiveday_average',
                          HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: 'estimations_water_discharge_decade_average',

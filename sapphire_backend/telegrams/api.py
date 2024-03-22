@@ -173,7 +173,7 @@ class TelegramsAPIController:
                 'meteo': meteo_overview, 'meteo_codes': list(meteo_station_codes)}
         return 201, data
 
-    @route.post("get-data-processing-overview", response={201: DataProcessingOverviewOutputSchema, 400: Message})
+    @route.post("get-data-processing-overview", response={201: dict, 400: Message})
     def get_data_procesing_overview(self, request, organization_uuid: str,
                                     encoded_telegrams_dates: TelegramBulkWithDatesInputSchema):
 
@@ -233,14 +233,25 @@ class TelegramsAPIController:
                                                                                           date=previous_day_date,
                                                                                           water_level_new=previous_day_evening_water_level_new,
                                                                                           )
-            if None not in [result[station_code][previous_day_date]["morning"].water_level_new,
-                            result[station_code][previous_day_date]["evening"].water_level_new] and \
-                result[station_code][previous_day_date]["average"].water_level_new is None:
-                avg_water_level_new = round(0.5 * (float(result[station_code][previous_day_date]["morning"].water_level_new) +
-                                                   float(result[station_code][previous_day_date]["evening"].water_level_new)))
-                result[station_code][previous_day_date]["average"] = fill_average_operational(station=hydro_station,
-                                                                                              date=previous_day_date,
-                                                                                              water_level_new=avg_water_level_new,
-                                                                                              )
+
+        for station_code, station_data in result.items():
+            hydro_station = HydrologicalStation.objects.filter(station_code=station_code,
+                                                               station_type=HydrologicalStation.StationType.MANUAL
+                                                               ).first()
+            for date, date_entry in station_data.items():
+                for time_of_day in ['morning', 'evening']:
+                    if date_entry[time_of_day].water_level_new is None:
+                        result[station_code][date][time_of_day].water_level_new = date_entry[time_of_day].water_level_old
+                        result[station_code][date][time_of_day].discharge_new = date_entry[time_of_day].discharge_old
+
+                    avg_water_level_new = None
+                    if None not in [date_entry["morning"].water_level_new, date_entry["evening"].water_level_new]:
+                        avg_water_level_new = round(0.5 * (date_entry["morning"].water_level_new) + float(
+                            date_entry["evening"].water_level_new))
+
+                    result[station_code][date]["average"] = fill_average_operational(station=hydro_station,
+                                                                     date=date,
+                                                                     water_level_new=avg_water_level_new,
+                                                                     )
 
         return 201, result
