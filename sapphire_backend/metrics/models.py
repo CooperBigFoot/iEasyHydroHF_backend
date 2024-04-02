@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 
 from django import db
-from django.db import connection, models
+from django.db import connection, models, transaction
 from django.utils.translation import gettext_lazy as _
 
 from .choices import (
@@ -123,11 +123,26 @@ class HydrologicalMetric(models.Model):
         """
 
         try:
-            with connection.cursor() as cursor:
+            import psycopg2
+
+            conn = psycopg2.connect(
+                f"host={connection.client.connection.settings_dict['HOST']} port={connection.client.connection.settings_dict['PORT']} user={connection.client.connection.settings_dict['USER']} password={connection.client.connection.settings_dict['PASSWORD']} dbname={connection.client.connection.settings_dict['NAME']}")
+
+            conn.set_session(autocommit=True)
+            with conn.cursor() as cursor:
                 if upsert:
                     cursor.execute(sql_query_upsert)
                 else:
                     cursor.execute(sql_query_insert)
+            conn.close()
+
+            # with connection.cursor() as cursor:
+            #     if upsert:
+            #         cursor.execute(sql_query_upsert)
+            #
+            #     else:
+            #         cursor.execute(sql_query_insert)
+
         except db.utils.NotSupportedError as e:
             """
             Handle specific error. Timescale has this bug, hyper chunks should not have insert blockers.
@@ -150,21 +165,33 @@ class HydrologicalMetric(models.Model):
                 raise Exception(e)
         except Exception as e:
             raise Exception(e)
-        finally:
-            if (
-                refresh_view
-                and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY
-                and self.value_type == HydrologicalMeasurementType.MANUAL
-            ):
-                self._refresh_view()
+        # finally:
+        if (
+            refresh_view
+            and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY
+            and self.value_type == HydrologicalMeasurementType.MANUAL
+        ):
+            self._refresh_view()
 
-    def _refresh_view(self):
-        # Extract the ISO date as a string
+    def _refresh_view(self):  # Extract the ISO date as a string
         start_date_str = self.timestamp.strftime("%Y-%m-%d")
         end_date_str = (self.timestamp + timedelta(days=1)).strftime("%Y-%m-%d")
         sql_refresh_view = f"CALL refresh_continuous_aggregate('estimations_water_level_daily_average', '{start_date_str}', '{end_date_str}');"
-        with connection.cursor() as cursor:
+        # sql_refresh_view2 = f"CALL _timescaledb_internal.refresh_continuous_aggregate('estimations_water_level_daily_average', '{start_date_str}', '{end_date_str}');"
+
+        import psycopg2
+
+        conn = psycopg2.connect(
+            f"host={connection.client.connection.settings_dict['HOST']} port={connection.client.connection.settings_dict['PORT']} user={connection.client.connection.settings_dict['USER']} password={connection.client.connection.settings_dict['PASSWORD']} dbname={connection.client.connection.settings_dict['NAME']}")
+        # try:
+        conn.set_session(autocommit=True)
+        with conn.cursor() as cursor:
             cursor.execute(sql_refresh_view)
+        # finally:
+        conn.close()
+
+        # with connection.cursor() as cursor:
+        #     cursor.execute(sql_refresh_view)
 
     def select_first(self):  # TODO JUST TEMPORARY USAGE, NOT SERIOUS
         table_name = self._meta.db_table
