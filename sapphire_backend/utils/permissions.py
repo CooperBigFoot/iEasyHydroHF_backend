@@ -16,13 +16,15 @@ def get_station_from_kwargs(kwargs):
         model_obj = DischargeModel.objects.filter(id=kwargs.get("model_id")).first()
         station = model_obj.station
     elif kwargs.get("station_id") is not None:
-        station = HydrologicalStation.objects.filter(
-            id=kwargs.get("station_id")).first() or MeteorologicalStation.objects.filter(
-            id=kwargs.get("station_id")).first()
+        station = (
+            HydrologicalStation.objects.filter(id=kwargs.get("station_id")).first()
+            or MeteorologicalStation.objects.filter(id=kwargs.get("station_id")).first()
+        )
     elif kwargs.get("station_uuid") is not None:
-        station = HydrologicalStation.objects.filter(
-            uuid=kwargs.get("station_uuid")).first() or MeteorologicalStation.objects.filter(
-            uuid=kwargs.get("station_uuid")).first()
+        station = (
+            HydrologicalStation.objects.filter(uuid=kwargs.get("station_uuid")).first()
+            or MeteorologicalStation.objects.filter(uuid=kwargs.get("station_uuid")).first()
+        )
     return station
 
 

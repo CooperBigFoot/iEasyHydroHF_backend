@@ -15,6 +15,7 @@ class DischargeModelBaseSchema(Schema):
 class DischargeModelOutputDetailSchema(DischargeModelBaseSchema):
     id: int
 
+
 class DischargeModelCreateBaseSchema(Schema):
     name: str
     valid_from: str

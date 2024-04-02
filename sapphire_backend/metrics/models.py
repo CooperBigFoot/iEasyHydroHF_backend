@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 
 from django import db
-from django.db import connection, models, transaction
+from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
 
 from .choices import (
@@ -126,7 +126,8 @@ class HydrologicalMetric(models.Model):
             import psycopg2
 
             conn = psycopg2.connect(
-                f"host={connection.client.connection.settings_dict['HOST']} port={connection.client.connection.settings_dict['PORT']} user={connection.client.connection.settings_dict['USER']} password={connection.client.connection.settings_dict['PASSWORD']} dbname={connection.client.connection.settings_dict['NAME']}")
+                f"host={connection.client.connection.settings_dict['HOST']} port={connection.client.connection.settings_dict['PORT']} user={connection.client.connection.settings_dict['USER']} password={connection.client.connection.settings_dict['PASSWORD']} dbname={connection.client.connection.settings_dict['NAME']}"
+            )
 
             conn.set_session(autocommit=True)
             with conn.cursor() as cursor:
@@ -182,7 +183,8 @@ class HydrologicalMetric(models.Model):
         import psycopg2
 
         conn = psycopg2.connect(
-            f"host={connection.client.connection.settings_dict['HOST']} port={connection.client.connection.settings_dict['PORT']} user={connection.client.connection.settings_dict['USER']} password={connection.client.connection.settings_dict['PASSWORD']} dbname={connection.client.connection.settings_dict['NAME']}")
+            f"host={connection.client.connection.settings_dict['HOST']} port={connection.client.connection.settings_dict['PORT']} user={connection.client.connection.settings_dict['USER']} password={connection.client.connection.settings_dict['PASSWORD']} dbname={connection.client.connection.settings_dict['NAME']}"
+        )
         # try:
         conn.set_session(autocommit=True)
         with conn.cursor() as cursor:

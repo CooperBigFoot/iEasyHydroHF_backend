@@ -6,10 +6,16 @@ from ninja_jwt.authentication import JWTAuth
 
 from sapphire_backend.metrics.choices import (
     HydrologicalMeasurementType,
-    HydrologicalMetricName, MetricUnit,
+    HydrologicalMetricName,
+    MetricUnit,
 )
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.permissions import IsOrganizationMember, IsSuperAdmin, OrganizationExists
+
+from ..metrics.models import HydrologicalMetric
+from ..metrics.timeseries.query import TimeseriesQueryManager
+from ..stations.models import HydrologicalStation
+from ..utils.mixins.schemas import Message
 from .exceptions import TelegramParserException
 from .parser import KN15TelegramParser
 from .schema import (
@@ -20,12 +26,13 @@ from .schema import (
     TelegramInputSchema,
     TelegramOutputSchema,
 )
-from .utils import save_reported_discharge, build_data_processing_structure, fill_with_old_metrics, \
-    insert_new_metrics, insert_new_averages
-from ..metrics.models import HydrologicalMetric
-from ..metrics.timeseries.query import TimeseriesQueryManager
-from ..stations.models import HydrologicalStation
-from ..utils.mixins.schemas import Message
+from .utils import (
+    build_data_processing_structure,
+    fill_with_old_metrics,
+    insert_new_averages,
+    insert_new_metrics,
+    save_reported_discharge,
+)
 
 
 @api_controller(
@@ -105,13 +112,13 @@ class TelegramsAPIController:
                 "previous_day_date": telegram_day_smart.previous_local.date().isoformat(),
                 "section_one": {},
                 "reported_discharge": [],
-                "meteo": {}
+                "meteo": {},
             }
 
             if decoded.get("section_one", False):
                 hydro_station_codes.add(
-                    (parser.hydro_station.station_code,
-                     parser.hydro_station.id))  # include only codes which have section 988
+                    (parser.hydro_station.station_code, parser.hydro_station.id)
+                )  # include only codes which have section 988
                 telegram_day_morning_water_level = decoded["section_one"]["morning_water_level"]
                 telegram_day_water_level_trend = decoded["section_one"]["water_level_trend"]
                 previous_day_evening_water_level = decoded["section_one"]["water_level_20h_period"]
@@ -138,8 +145,9 @@ class TelegramsAPIController:
                     previous_day_water_level_average = round(
                         0.5 * (float(previous_day_morning_water_level) + float(previous_day_evening_water_level))
                     )
-                    trend_ok = (previous_day_morning_water_level + telegram_day_water_level_trend
-                                ) == telegram_day_morning_water_level
+                    trend_ok = (
+                        previous_day_morning_water_level + telegram_day_water_level_trend
+                    ) == telegram_day_morning_water_level
 
                 overview_entry["section_one"]["telegram_day_morning_water_level"] = telegram_day_morning_water_level
                 overview_entry["section_one"]["telegram_day_water_level_trend"] = telegram_day_water_level_trend
@@ -163,7 +171,8 @@ class TelegramsAPIController:
                 overview_entry["meteo"] = {}
                 meteo_station_code = parser.meteo_station.station_code
                 meteo_station_codes.add(
-                    (meteo_station_code, parser.meteo_station.id))  # include only codes which have section 988
+                    (meteo_station_code, parser.meteo_station.id)
+                )  # include only codes which have section 988
 
             data_overview.append(overview_entry)
 
@@ -194,7 +203,9 @@ class TelegramsAPIController:
         # make station codes as keys and list of sorted date entries as their values
         result_sorted = {}
         for station_code, station_data in result.items():
-            date_entries_list = [(key, value) for key, value in station_data.items()]
+            date_entries_list = []
+            for key, value in station_data.items():
+                date_entries_list.append((key, value))
             sorted_entries_list = sorted(date_entries_list, key=lambda x: x[0])  # sort by date
             result_sorted[station_code] = sorted_entries_list
 
@@ -208,8 +219,9 @@ class TelegramsAPIController:
         if not resp_code == 201:
             return resp_code, daily_overview
 
-        resp_code, data_processing_overview = self.get_data_procesing_overview(request, organization_uuid,
-                                                                               encoded_telegrams_dates)
+        resp_code, data_processing_overview = self.get_data_procesing_overview(
+            request, organization_uuid, encoded_telegrams_dates
+        )
         if not resp_code == 201:
             return resp_code, data_processing_overview
         result_overview = []
@@ -217,10 +229,10 @@ class TelegramsAPIController:
         data_processing_dict = {}
         for station_code, station_data_list in data_processing_overview.items():
             data_processing_dict[station_code] = {}
-            for (date, station_data) in station_data_list:
+            for date, station_data in station_data_list:
                 data_processing_dict[station_code][date] = station_data
 
-        for telegram_entry in daily_overview['data']:
+        for telegram_entry in daily_overview["data"]:
             item = {}
             station_code = telegram_entry["station_code"]
             previous_day_date = telegram_entry["previous_day_date"]
@@ -246,7 +258,7 @@ class TelegramsAPIController:
         if not resp_code == 201:
             return resp_code, daily_overview
 
-        for telegram_entry in daily_overview['data']:
+        for telegram_entry in daily_overview["data"]:
             station_code = telegram_entry["station_code"]
             hydro_station = HydrologicalStation.objects.filter(
                 station_code=station_code, station_type=HydrologicalStation.StationType.MANUAL
