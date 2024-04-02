@@ -1,6 +1,7 @@
 import logging
 from datetime import timedelta
 
+import psycopg2
 from django import db
 from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
@@ -21,6 +22,14 @@ ESTIMATIONS_TABLE_MAP = {
     HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: "estimations_water_discharge_fiveday_average",
     HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: "estimations_water_discharge_decade_average",
 }
+
+CONN_STRING = (
+    f"host={connection.client.connection.settings_dict['HOST']} "
+    f"port={connection.client.connection.settings_dict['PORT']} "
+    f"user={connection.client.connection.settings_dict['USER']} "
+    f"password={connection.client.connection.settings_dict['PASSWORD']} "
+    f"dbname={connection.client.connection.settings_dict['NAME']}"
+)
 
 
 class HydrologicalMetric(models.Model):
@@ -123,11 +132,8 @@ class HydrologicalMetric(models.Model):
         """
 
         try:
-            import psycopg2
-
-            conn = psycopg2.connect(
-                f"host={connection.client.connection.settings_dict['HOST']} port={connection.client.connection.settings_dict['PORT']} user={connection.client.connection.settings_dict['USER']} password={connection.client.connection.settings_dict['PASSWORD']} dbname={connection.client.connection.settings_dict['NAME']}"
-            )
+            # since 'with connection' doesn't close the transaction block, we have to go directly to the DB
+            conn = psycopg2.connect(CONN_STRING)
 
             conn.set_session(autocommit=True)
             with conn.cursor() as cursor:
@@ -136,13 +142,6 @@ class HydrologicalMetric(models.Model):
                 else:
                     cursor.execute(sql_query_insert)
             conn.close()
-
-            # with connection.cursor() as cursor:
-            #     if upsert:
-            #         cursor.execute(sql_query_upsert)
-            #
-            #     else:
-            #         cursor.execute(sql_query_insert)
 
         except db.utils.NotSupportedError as e:
             """
@@ -166,34 +165,23 @@ class HydrologicalMetric(models.Model):
                 raise Exception(e)
         except Exception as e:
             raise Exception(e)
-        # finally:
-        if (
-            refresh_view
-            and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY
-            and self.value_type == HydrologicalMeasurementType.MANUAL
-        ):
-            self._refresh_view()
+        finally:
+            if (
+                refresh_view
+                and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY
+                and self.value_type == HydrologicalMeasurementType.MANUAL
+            ):
+                self._refresh_view()
 
     def _refresh_view(self):  # Extract the ISO date as a string
         start_date_str = self.timestamp.strftime("%Y-%m-%d")
         end_date_str = (self.timestamp + timedelta(days=1)).strftime("%Y-%m-%d")
         sql_refresh_view = f"CALL refresh_continuous_aggregate('estimations_water_level_daily_average', '{start_date_str}', '{end_date_str}');"
-        # sql_refresh_view2 = f"CALL _timescaledb_internal.refresh_continuous_aggregate('estimations_water_level_daily_average', '{start_date_str}', '{end_date_str}');"
-
-        import psycopg2
-
-        conn = psycopg2.connect(
-            f"host={connection.client.connection.settings_dict['HOST']} port={connection.client.connection.settings_dict['PORT']} user={connection.client.connection.settings_dict['USER']} password={connection.client.connection.settings_dict['PASSWORD']} dbname={connection.client.connection.settings_dict['NAME']}"
-        )
-        # try:
+        conn = psycopg2.connect(CONN_STRING)
         conn.set_session(autocommit=True)
         with conn.cursor() as cursor:
             cursor.execute(sql_refresh_view)
-        # finally:
         conn.close()
-
-        # with connection.cursor() as cursor:
-        #     cursor.execute(sql_refresh_view)
 
     def select_first(self):  # TODO JUST TEMPORARY USAGE, NOT SERIOUS
         table_name = self._meta.db_table
