@@ -1,21 +1,7 @@
-import logging
-from datetime import datetime
-
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
-from sapphire_backend.metrics.choices import (
-    HydrologicalMeasurementType,
-    HydrologicalMetricName,
-    MetricUnit,
-)
-from sapphire_backend.utils.datetime_helper import SmartDatetime
-from sapphire_backend.utils.permissions import IsOrganizationMember, IsSuperAdmin, OrganizationExists
-
-from ..metrics.models import HydrologicalMetric
-from ..metrics.timeseries.query import TimeseriesQueryManager
-from ..stations.models import HydrologicalStation
-from ..utils.mixins.schemas import Message
+from sapphire_backend.utils.permissions import IsOrganizationMember, OrganizationExists
 from .exceptions import TelegramParserException
 from .parser import KN15TelegramParser
 from .schema import (
@@ -33,6 +19,10 @@ from .utils import (
     insert_new_metrics,
     save_reported_discharge,
 )
+from ..metrics.models import HydrologicalMetric
+from ..metrics.timeseries.query import TimeseriesQueryManager
+from ..stations.models import HydrologicalStation
+from ..utils.mixins.schemas import Message
 
 
 @api_controller(
@@ -146,8 +136,8 @@ class TelegramsAPIController:
                         0.5 * (float(previous_day_morning_water_level) + float(previous_day_evening_water_level))
                     )
                     trend_ok = (
-                        previous_day_morning_water_level + telegram_day_water_level_trend
-                    ) == telegram_day_morning_water_level
+                                   previous_day_morning_water_level + telegram_day_water_level_trend
+                               ) == telegram_day_morning_water_level
 
                 overview_entry["section_one"]["telegram_day_morning_water_level"] = telegram_day_morning_water_level
                 overview_entry["section_one"]["telegram_day_water_level_trend"] = telegram_day_water_level_trend

@@ -350,8 +350,6 @@ def migrate_virtual_metrics(old_session):
 
 
 def migrate_discharge_models(old_session):
-    logging.info("Cleaning up discharge models")
-    DischargeModel.objects.all().delete()
     old_discharge_models = old_session.query(OldDischargeModel).all()
     for old in tqdm(old_discharge_models, desc="Discharge models", position=0):
         hydro_station = HydrologicalStation.objects.get(station_code=old.site.site_code_repr)
@@ -411,14 +409,14 @@ def migrate():
     # Update with your old database connection string
     Session = sessionmaker(bind=old_db_engine)
     old_session = Session()
-    # cleanup_all()
+    cleanup_all()
     if LIMITER != 0:
         logging.info(f"Starting migrations in debugging mode (LIMITER = {LIMITER})")
-    # migrate_organizations(old_session)
-    # migrate_sites_and_stations(old_session)
+    migrate_organizations(old_session)
+    migrate_sites_and_stations(old_session)
     migrate_discharge_models(old_session)
-    # migrate_hydro_metrics(old_session)
-    # migrate_meteo_metrics(old_session)
-    # migrate_virtual_metrics(old_session)  # TODO
+    migrate_hydro_metrics(old_session)
+    migrate_meteo_metrics(old_session)
+    migrate_virtual_metrics(old_session)  # TODO
     old_session.close()
     print("Data migration completed successfully.")

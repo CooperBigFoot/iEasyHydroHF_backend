@@ -75,3 +75,40 @@ def not_found_error(request, exc):
 def telegram_parse_error(request, exc):
     logging.error(str(exc))
     return api.create_response(request, {"detail": str(exc), "code": "invalid_telegram"}, status=400)
+
+
+api.register_controllers(VirtualStationsAPIController)
+
+
+@api.exception_handler(NinjaValidationError)
+@api.exception_handler(PydanticValidationError)
+def validation_error(request, exc):
+    logging.error(str(exc))
+    return api.create_response(
+        request,
+        {"detail": "Some data is invalid or missing", "code": "schema_error"},
+        status=422,
+    )
+
+
+@api.exception_handler(IntegrityError)
+def integrity_error(request, exc):
+    logging.error(str(exc))
+    return api.create_response(
+        request,
+        {"detail": "Object could not be saved", "code": "integrity_error"},
+        status=400,
+    )
+
+
+@api.exception_handler(Http404)
+@api.exception_handler(ObjectDoesNotExist)
+def not_found_error(request, exc):
+    logging.error(str(exc))
+    return api.create_response(request, {"detail": "Object does not exist", "code": "not_found"}, status=404)
+
+
+@api.exception_handler(TelegramParserException)
+def telegram_parse_error(request, exc):
+    logging.error(str(exc))
+    return api.create_response(request, {"detail": str(exc), "code": "invalid_telegram"}, status=400)
