@@ -18,8 +18,10 @@ class SmartDatetime:
             if local:
                 self._dt_utc = dt.astimezone(ZoneInfo("UTC"))
             else:
-                self._dt_utc = timezone.make_aware(dt, timezone=ZoneInfo("UTC"))
-
+                if dt.tzinfo is None:
+                    self._dt_utc = timezone.make_aware(dt, timezone=ZoneInfo("UTC"))
+                else:
+                    self._dt_utc = dt
         self._local_timezone = station.site.timezone or settings.TIME_ZONE
         self._dt_local = self._dt_utc.astimezone(ZoneInfo(self._local_timezone))
 

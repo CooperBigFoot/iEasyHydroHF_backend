@@ -7,7 +7,7 @@ class Migration(migrations.Migration):
         ('estimations', '0001_initial'),
         ("metrics", "0003_create_hypertables"),
     ]
-
+    #'Asia/Bishkek'
     operations = [
         migrations.RunSQL(
             sql=[(
@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
                 CREATE MATERIALIZED VIEW estimations_water_level_daily_average WITH (timescaledb.continuous)
                 AS
                 SELECT
-                    time_bucket('1 day', hm.timestamp, 'Asia/Bishkek') at time zone 'UTC' + '12 hours' as timestamp,
+                    time_bucket('1 day', hm.timestamp) at time zone 'UTC' + '6 hours' as timestamp,
                                     CAST(NULL AS NUMERIC) as min_value,
                                     CEIL(AVG(hm.avg_value)) AS avg_value,
                                     CAST(NULL AS NUMERIC) as max_value,
@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
                 WHERE
                      hm.metric_name = 'WLD' and hm.value_type='M'
                 GROUP BY
-                    time_bucket('1 day', hm.timestamp, 'Asia/Bishkek'),
+                    time_bucket('1 day', hm.timestamp),
                     hm.station_id
                 WITH NO DATA;
               """
@@ -171,7 +171,7 @@ class Migration(migrations.Migration):
                         CAST(NULL AS NUMERIC) as max_value,
                         'm^3/s' as unit,
                         'E' as value_type,
-                        'WDFA' as metric_name,
+                        'WDDA' as metric_name,
                         '' as sensor_identifier,
                         '' as sensor_type,
                         wdda.station_id

@@ -17,12 +17,14 @@ from sapphire_backend.telegrams.models import Telegram
 
 
 class BaseTelegramParser(ABC):
-    def __init__(self, telegram: str, store_parsed_telegram: bool = True, automatic_ingestion: bool = False):
+    def __init__(self, telegram: str, organization_uuid, store_parsed_telegram: bool = True,
+                 automatic_ingestion: bool = False):
         self.original_telegram = telegram.strip()
         self.telegram = self.handle_telegram_termination_character()
         self.store_in_db = store_parsed_telegram
         self.automatic_ingestion = automatic_ingestion
         self.tokens = self.tokenize()
+        self.organization_uuid = organization_uuid
         self.hydro_station = None
         self.meteo_station = None
 
@@ -87,9 +89,11 @@ class BaseTelegramParser(ABC):
             raise InvalidTokenException(f"Invalid station code: {station_code}")
 
         self.hydro_station = HydrologicalStation.objects.filter(
+            site__organization_id=self.organization_uuid,
             station_code=station_code, station_type=HydrologicalStation.StationType.MANUAL
         ).first()
-        self.meteo_station = MeteorologicalStation.objects.filter(station_code=station_code).first()
+        self.meteo_station = MeteorologicalStation.objects.filter(site__organization_id=self.organization_uuid,
+                                                                  station_code=station_code).first()
         if self.hydro_station is None and self.meteo_station is None:
             # except HydrologicalStation.DoesNotExist:
             raise InvalidTokenException(f"Station with code {station_code} does not exist")
@@ -122,8 +126,9 @@ class BaseTelegramParser(ABC):
 
 
 class KN15TelegramParser(BaseTelegramParser):
-    def __init__(self, telegram: str, store_parsed_telegram: bool = True, automatic_ingestion: bool = False):
-        super().__init__(telegram, store_parsed_telegram, automatic_ingestion)
+    def __init__(self, telegram: str, organization_uuid: str, store_parsed_telegram: bool = True,
+                 automatic_ingestion: bool = False):
+        super().__init__(telegram, organization_uuid, store_parsed_telegram, automatic_ingestion)
 
     def parse(self):
         """

@@ -14,16 +14,14 @@ class DischargeModelBaseSchema(Schema):
 
 class DischargeModelOutputDetailSchema(DischargeModelBaseSchema):
     id: int
-    uuid: str
-
-    @staticmethod
-    def resolve_uuid(obj):
-        return str(obj.uuid)
-
 
 class DischargeModelCreateBaseSchema(Schema):
     name: str
     valid_from: str
+
+
+class DischargeModelDeleteOutputSchema(Schema):
+    name: str
 
 
 class DischargeModelPointsPair(Schema):

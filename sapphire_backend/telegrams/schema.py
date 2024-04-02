@@ -77,24 +77,28 @@ class ReportedDischargeSchema(Schema):
     date: str
 
 
-class DischargeOverviewSchema(Schema):
+class SectionOneSchema(Schema):
+    telegram_day_morning_water_level: float
+    telegram_day_water_level_trend: float
+    trend_ok: bool
+    previous_day_morning_water_level: float | None = None
+    previous_day_evening_water_level: float
+    previous_day_water_level_average: float | None = None
+
+
+class TelegramOverviewSchema(Schema):
     index: int
     station_code: str
     station_name: str
     telegram_day_date: str
-    telegram_day_morning_water_level: float
-    telegram_day_water_level_trend: float
-    trend_ok: bool
     previous_day_date: str
-    previous_day_morning_water_level: float | None = None
-    previous_day_evening_water_level: float
-    previous_day_water_level_average: float | None = None
+    section_one: SectionOneSchema
     reported_discharge: list
+    meteo: dict
 
 
 class DailyOverviewOutputSchema(Schema):
-    discharge: list[DischargeOverviewSchema]
-    meteo: list[dict]  # list[MeteoTelegramOverviewSchema]
+    data: list[TelegramOverviewSchema]
     discharge_codes: list[tuple]
     meteo_codes: list[tuple]
 
