@@ -14,7 +14,7 @@ from .schema import EstimationsFilterSchema, OrderQueryParamSchema
 
 
 @api_controller(
-    "{organization_uuid}/estimations", tags=["Estimations"], auth=JWTAuth(), permissions=regular_permissions
+    "estimations/{organization_uuid}", tags=["Estimations"], auth=JWTAuth(), permissions=regular_permissions
 )
 class EstimationsAPIController:
     def _run_query(
@@ -36,12 +36,60 @@ class EstimationsAPIController:
 
         return manager.execute_query(limit=limit)
 
-    @route.get("", response={200: list[dict[str, Any]], 400: Message})
-    def get_water_level_daily_averages(
+    @route.get("water-level-daily-average", response={200: list[dict[str, Any]], 400: Message})
+    def get_water_level_daily_average(
         self, organization_uuid: str, order: Query[OrderQueryParamSchema], filters: Query[EstimationsFilterSchema]
     ):
         return self._run_query(
             "estimations_water_level_daily_average",
+            organization_uuid,
+            filters.dict(exclude_none=True),
+            order.order_param,
+            order.order_direction,
+        )
+
+    @route.get("discharge-daily", response={200: list[dict[str, Any]], 400: Message})
+    def get_water_discharge_daily(
+        self, organization_uuid: str, order: Query[OrderQueryParamSchema], filters: Query[EstimationsFilterSchema]
+    ):
+        return self._run_query(
+            "estimations_water_discharge_daily",
+            organization_uuid,
+            filters.dict(exclude_none=True),
+            order.order_param,
+            order.order_direction,
+        )
+
+    @route.get("discharge-daily-average", response={200: list[dict[str, Any]], 400: Message})
+    def get_water_discharge_daily_average(
+        self, organization_uuid: str, order: Query[OrderQueryParamSchema], filters: Query[EstimationsFilterSchema]
+    ):
+        return self._run_query(
+            "estimations_water_discharge_daily_average",
+            organization_uuid,
+            filters.dict(exclude_none=True),
+            order.order_param,
+            order.order_direction,
+        )
+
+    @route.get("discharge-pentad-average", response={200: list[dict[str, Any]], 400: Message})
+    def get_water_discharge_pentad_average(
+        self, organization_uuid: str, order: Query[OrderQueryParamSchema], filters: Query[EstimationsFilterSchema]
+    ):
+        return self._run_query(
+            "estimations_water_discharge_fiveday_average",
+            organization_uuid,
+            filters.dict(exclude_none=True),
+            order.order_param,
+            order.order_direction,
+        )
+
+    @route.get("discharge-decade-average", response={200: list[dict[str, Any]], 400: Message})
+    def get_water_discharge_decade_average(
+        self, organization_uuid: str, order: Query[OrderQueryParamSchema], filters: Query[EstimationsFilterSchema]
+    ):
+        return self._run_query(
+            "estimations_water_discharge_decade_average",
             organization_uuid,
             filters.dict(exclude_none=True),
             order.order_param,

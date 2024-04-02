@@ -44,7 +44,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
         return ["avg_value", "timestamp", "station_id"]
 
     def _validate_filter_dict(self):
-        if "station_id" not in self.filter_dict.keys():
+        if "station_id" not in self.filter_dict.keys() or "station_id__uuid" not in self.filter_dict.keys():
             raise ValueError("EstimationsViewQueryManager requires filtering by station ID")
 
         if not HydrologicalStation.objects.filter(
@@ -56,8 +56,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
         super()._validate_filter_dict()
 
     def _construct_filter(self, organization_uuid: str) -> dict[str, Any]:
-        if self.filter_dict:
-            self._validate_filter_dict()
+        self._validate_filter_dict()
         return self.filter_dict
 
     def _construct_sql_filter_string(self):
@@ -95,11 +94,11 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
                         where_clauses.append("avg_value <= %s")
                         params.append(value)
                     case "station_id":
-                        where_clauses.append("st.id = %s")
+                        where_clauses.append("station_id = %s")
                         params.append(value)
                     case "station_id__in":
                         placeholders = ", ".join(["%s"] * len(value))
-                        where_clauses.append(f"st.id IN ({placeholders})")
+                        where_clauses.append(f"station_id IN ({placeholders})")
                         params.extend(value)
                     case _:
                         raise ValueError(f"{field} field does not exist on the {self.model} view.")
@@ -116,7 +115,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
             FROM {self.model}
             WHERE {where_string}
             ORDER BY timestamp {self.order_direction}
-            LIMIT %S
+            LIMIT %s
         """
 
         try:
