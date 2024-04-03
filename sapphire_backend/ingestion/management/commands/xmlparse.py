@@ -10,4 +10,3 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         parser = XMLParser(file_path=options["filepath"])
         parser.run()
-
