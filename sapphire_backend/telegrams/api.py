@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 
+from django.utils.translation import gettext as _
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
@@ -21,6 +22,7 @@ from .parser import KN15TelegramParser
 from .schema import (
     BulkParseOutputSchema,
     DailyOverviewOutputSchema,
+    SaveDataOverviewOutputSchema,
     TelegramBulkInputSchema,
     TelegramBulkWithDatesInputSchema,
     TelegramInputSchema,
@@ -81,7 +83,7 @@ class TelegramsAPIController:
 
         return 201, data
 
-    @route.post("get-daily-overview", response={201: DailyOverviewOutputSchema, 400: Message})
+    @route.post("get-daily-overview", response={200: DailyOverviewOutputSchema, 400: Message})
     def get_daily_overview(
         self, request, organization_uuid: str, encoded_telegrams_dates: TelegramBulkWithDatesInputSchema
     ):
@@ -181,18 +183,18 @@ class TelegramsAPIController:
             "discharge_codes": list(hydro_station_codes),
             "meteo_codes": list(meteo_station_codes),
         }
-        return 201, data
+        return 200, data
 
-    @route.post("get-data-processing-overview", response={201: dict, 400: Message})
+    @route.post("get-data-processing-overview", response={200: dict, 400: Message})
     def get_data_procesing_overview(
         self, request, organization_uuid: str, encoded_telegrams_dates: TelegramBulkWithDatesInputSchema
     ):
-        data = self.get_daily_overview(request, organization_uuid, encoded_telegrams_dates)
+        resp_code, resp_content = self.get_daily_overview(request, organization_uuid, encoded_telegrams_dates)
 
-        if not data[0] == 201:
-            return data
-        parsed_data_list = data[1]["data"]
+        if not resp_code == 200:
+            return resp_code, resp_content
 
+        parsed_data_list = resp_content["data"]
         initial_struct = build_data_processing_structure(parsed_data_list)
 
         template_filled_old = fill_with_old_metrics(initial_struct, organization_uuid)
@@ -209,20 +211,20 @@ class TelegramsAPIController:
             sorted_entries_list = sorted(date_entries_list, key=lambda x: x[0])  # sort by date
             result_sorted[station_code] = sorted_entries_list
 
-        return 201, result_sorted
+        return 200, result_sorted
 
-    @route.post("get-save-data-overview", response={201: list, 400: Message})
+    @route.post("get-save-data-overview", response={200: list[SaveDataOverviewOutputSchema], 400: Message})
     def get_save_data_overview(
         self, request, organization_uuid: str, encoded_telegrams_dates: TelegramBulkWithDatesInputSchema
     ):
         resp_code, daily_overview = self.get_daily_overview(request, organization_uuid, encoded_telegrams_dates)
-        if not resp_code == 201:
+        if not resp_code == 200:
             return resp_code, daily_overview
 
         resp_code, data_processing_overview = self.get_data_procesing_overview(
             request, organization_uuid, encoded_telegrams_dates
         )
-        if not resp_code == 201:
+        if not resp_code == 200:
             return resp_code, data_processing_overview
         result_overview = []
 
@@ -248,14 +250,14 @@ class TelegramsAPIController:
             item["temperature_data"] = telegram_entry.get("temperature_data")  # TODO
             item["type"] = "discharge / meteo ???"  # TODO determine if discharge / meteo or both or single
             result_overview.append(item)
-        return 201, result_overview
+        return 200, result_overview
 
-    @route.post("save-input-telegrams", response={201: bool, 400: Message})
+    @route.post("save-input-telegrams", response={201: Message, 400: Message})
     def save_input_telegrams(
         self, request, organization_uuid: str, encoded_telegrams_dates: TelegramBulkWithDatesInputSchema
     ):
         resp_code, daily_overview = self.get_daily_overview(request, organization_uuid, encoded_telegrams_dates)
-        if not resp_code == 201:
+        if not resp_code == 200:
             return resp_code, daily_overview
 
         for telegram_entry in daily_overview["data"]:
@@ -297,4 +299,4 @@ class TelegramsAPIController:
             reported_discharge = telegram_entry.get("reported_discharge")
             if reported_discharge is not None:
                 save_reported_discharge(reported_discharge, hydro_station)
-        return 201, True
+        return 201, {"detail": _("Telegram metrics successfully saved"), "code": "success"}

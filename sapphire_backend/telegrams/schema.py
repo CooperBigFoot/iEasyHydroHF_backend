@@ -122,3 +122,16 @@ class DataProcessingDate(Schema):
 
 class DataProcessingOverviewOutputSchema(Schema):
     codes: dict[str, DataProcessingDate]
+
+
+class SaveDataOverviewOutputSchema(Schema):
+    station_code: str
+    station_name: str
+    telegram_day_date: str
+    previous_day_date: str
+    previous_day_data: DataProcessingDayTimes
+    telegram_day_data: DataProcessingDayTimes
+    reported_discharge: list[TelegramSectionSixSingleSchema]  # TODO
+    meteo_data: list | None  # TODO when implemented
+    temperature_data: list | None  # TODO when implemented
+    type: str

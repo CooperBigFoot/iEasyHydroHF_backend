@@ -12,8 +12,8 @@ User = get_user_model()
 
 def get_station_from_kwargs(kwargs):
     station = None
-    if kwargs.get("model_id") is not None:
-        model_obj = DischargeModel.objects.filter(id=kwargs.get("model_id")).first()
+    if kwargs.get("discharge_model_id") is not None:
+        model_obj = DischargeModel.objects.filter(id=kwargs.get("discharge_model_id")).first()
         station = model_obj.station
     elif kwargs.get("station_id") is not None:
         station = (
