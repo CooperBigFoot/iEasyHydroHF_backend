@@ -120,7 +120,7 @@ class TelegramsAPIController:
             if decoded.get("section_one", False):
                 hydro_station_codes.add(
                     (parser.hydro_station.station_code, parser.hydro_station.id)
-                )  # include only codes which have section 988
+                )  # include only codes which have section one
                 telegram_day_morning_water_level = decoded["section_one"]["morning_water_level"]
                 telegram_day_water_level_trend = decoded["section_one"]["water_level_trend"]
                 previous_day_evening_water_level = decoded["section_one"]["water_level_20h_period"]

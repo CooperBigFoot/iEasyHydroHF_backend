@@ -11,8 +11,3 @@ class Command(BaseCommand):
         parser = XMLParser(file_path=options["filepath"])
         parser.run()
 
-    # for all files in a dir
-    # def handle(self, *args, **options):
-    #     for file in os.listdir(options["filepath"]):
-    #         parser = XMLParser(file_path=os.path.join(options["filepath"], file))
-    #         parser.run()

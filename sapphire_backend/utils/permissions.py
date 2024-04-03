@@ -54,7 +54,6 @@ class IsSuperAdmin(permissions.BasePermission):
 class IsOrganizationAdmin(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
         user = request.user
-        # organization = Organization.objects.get(uuid=controller.context.kwargs.get("organization_uuid"))
         organization = get_organization_from_kwargs(controller.context.kwargs)
         if user.is_authenticated:
             return user.organization.id == organization.id and user.user_role == User.UserRoles.ORGANIZATION_ADMIN
@@ -64,7 +63,6 @@ class IsOrganizationAdmin(permissions.BasePermission):
 class IsOrganizationMember(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
         user = request.user
-        # organization = Organization.objects.get(uuid=controller.context.kwargs.get("organization_uuid"))
         organization = get_organization_from_kwargs(controller.context.kwargs)
         if user.is_authenticated:
             return user.organization.id == organization.id
@@ -73,7 +71,6 @@ class IsOrganizationMember(permissions.BasePermission):
 
 class OrganizationExists(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
-        # return Organization.objects.filter(uuid=controller.context.kwargs.get("organization_uuid")).exists()
         return get_organization_from_kwargs(controller.context.kwargs) is not None
 
 
