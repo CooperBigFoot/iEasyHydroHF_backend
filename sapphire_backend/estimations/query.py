@@ -44,7 +44,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
         return ["avg_value", "timestamp", "station_id"]
 
     def _validate_filter_dict(self):
-        if "station_id" not in self.filter_dict.keys() or "station_id__uuid" not in self.filter_dict.keys():
+        if "station_id" not in self.filter_dict and "station_id__uuid" not in self.filter_dict:
             raise ValueError("EstimationsViewQueryManager requires filtering by station ID")
 
         if not HydrologicalStation.objects.filter(
