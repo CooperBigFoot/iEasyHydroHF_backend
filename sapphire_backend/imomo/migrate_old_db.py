@@ -449,7 +449,7 @@ def migrate():
             password="hydrosolutions",
             host="localhost",
             port="5433",
-            db_name="hydromet",
+            db_name="hydrosolutions",
         )
     )
     # Update with your old database connection string
