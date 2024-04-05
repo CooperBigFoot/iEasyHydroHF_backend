@@ -25,7 +25,6 @@ class EstimationsAPIController:
         filters: Query[EstimationsFilterSchema],
         limit: int | None = 365,
     ):
-        print(filters.dict(exclude_none=True))
         return EstimationsViewQueryManager(
             "estimations_water_discharge_daily_average",
             organization_uuid,
