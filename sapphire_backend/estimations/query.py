@@ -14,6 +14,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
             "estimations_water_discharge_daily",
             "estimations_water_discharge_daily_average",
             "estimations_water_discharge_fiveday_average",
+            "estimations_water_discharge_decade_average",
         ],
         organization_uuid: str,
         filter_dict: dict[str, str | list[str]] = None,
@@ -29,6 +30,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
             "estimations_water_discharge_daily",
             "estimations_water_discharge_daily_average",
             "estimations_water_discharge_fiveday_average",
+            "estimations_water_discharge_decade_average",
         ],
     ):
         if model not in [
@@ -36,6 +38,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
             "estimations_water_discharge_daily",
             "estimations_water_discharge_daily_average",
             "estimations_water_discharge_fiveday_average",
+            "estimations_water_discharge_decade_average",
         ]:
             raise ValueError("EstimationsViewQueryManager can only be instantiated with an existing view.")
         return model
