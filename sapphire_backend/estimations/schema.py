@@ -15,6 +15,7 @@ class EstimationsViewSchema(Schema):
         "estimations_water_discharge_daily",
         "estimations_water_discharge_daily_average",
         "estimations_water_discharge_fiveday_average",
+        "estimations_water_discharge_decade_average",
     ]
 
 

@@ -1,21 +1,17 @@
-from typing import Any, Literal
+from typing import Any
 
 from django.db import connection
 
 from sapphire_backend.metrics.timeseries.query import TimeseriesQueryManager
 from sapphire_backend.stations.models import HydrologicalStation
 
+from .schema import EstimationsViewSchema
+
 
 class EstimationsViewQueryManager(TimeseriesQueryManager):
     def __init__(
         self,
-        model: Literal[
-            "estimations_water_level_daily_average",
-            "estimations_water_discharge_daily",
-            "estimations_water_discharge_daily_average",
-            "estimations_water_discharge_fiveday_average",
-            "estimations_water_discharge_decade_average",
-        ],
+        model: EstimationsViewSchema,
         organization_uuid: str,
         filter_dict: dict[str, str | list[str]] = None,
         order_param: str = "timestamp",
@@ -25,13 +21,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
 
     @staticmethod
     def _set_model(
-        model: Literal[
-            "estimations_water_level_daily_average",
-            "estimations_water_discharge_daily",
-            "estimations_water_discharge_daily_average",
-            "estimations_water_discharge_fiveday_average",
-            "estimations_water_discharge_decade_average",
-        ],
+        model: EstimationsViewSchema,
     ):
         if model not in [
             "estimations_water_level_daily_average",
