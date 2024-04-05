@@ -446,10 +446,10 @@ def migrate():
     old_db_engine = create_engine(
         "postgresql+psycopg2://{user}:{password}@{host}:{port}/{db_name}".format(
             user="hydrosolutions",
-            password="X86TolQkbZlnRh3NRsjw",
-            host="hydromet-db-new.cxyi3s6ykhtz.eu-central-1.rds.amazonaws.com",
-            port="5432",
-            db_name="hydromet_db_staging_2",
+            password="hydrosolutions",
+            host="localhost",
+            port="5433",
+            db_name="hydrosolutions",
         )
     )
     # Update with your old database connection string
