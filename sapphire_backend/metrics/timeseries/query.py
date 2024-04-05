@@ -20,6 +20,7 @@ class TimeseriesQueryManager:
         order_direction: str = "DESC",
     ):
         self.model = self._set_model(model)
+        self.filter_fields = self._add_filter_fields()
         self.organization = self._set_organization(organization_uuid)
         self.filter_dict = filter_dict
         self.order_param = order_param
@@ -36,6 +37,9 @@ class TimeseriesQueryManager:
 
         return model
 
+    def _add_filter_fields(self):
+        return [field.name for field in self.model._meta.get_fields()]
+
     @staticmethod
     def _set_organization(organization_uuid: str):
         try:
@@ -44,10 +48,9 @@ class TimeseriesQueryManager:
             raise ValueError("Organization with the given UUID does not exist.")
 
     def _validate_filter_dict(self):
-        field_names = [field.name for field in self.model._meta.get_fields()]
         for key in self.filter_dict.keys():
             cleaned_key = key.split("__")[0]
-            if cleaned_key not in field_names:
+            if cleaned_key not in self.filter_fields:
                 raise ValueError(f"{cleaned_key} field does not exist on the {self.model._meta.object_name} model.")
 
     @staticmethod
