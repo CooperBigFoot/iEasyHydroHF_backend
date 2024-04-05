@@ -53,7 +53,10 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
         ).exists():
             raise ValueError(f"Station with the ID {self.filter_dict['station_id']} does not exist.")
 
-        super()._validate_filter_dict()
+        for key in self.filter_dict.keys():
+            cleaned_key = key.split("__")[0]
+            if cleaned_key not in self.filter_fields:
+                raise ValueError(f"{cleaned_key} field does not exist on the {self.model} view.")
 
     def _construct_filter(self, organization_uuid: str) -> dict[str, Any]:
         self._validate_filter_dict()
