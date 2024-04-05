@@ -27,7 +27,13 @@ from sapphire_backend.metrics.choices import (
 )
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
 from sapphire_backend.organizations.models import Basin, Organization, Region
-from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, Site
+from sapphire_backend.stations.models import (
+    HydrologicalStation,
+    MeteorologicalStation,
+    Site,
+    VirtualStation,
+    VirtualStationAssociation,
+)
 from sapphire_backend.telegrams.models import Telegram
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 
@@ -204,7 +210,7 @@ def migrate_sites_and_stations(old_session):
     old_data = old_session.query(OldSite).order_by(OldSite.id).all()
     cnt_hydro = 0
     cnt_meteo = 0
-    cnt_virtual = 0
+
     for old in tqdm(old_data, desc="Stations", position=0):
         organization = MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ[old.source_id]
 
@@ -259,10 +265,51 @@ def migrate_sites_and_stations(old_session):
             )
             hydro_station.save()
             cnt_hydro = cnt_hydro + 1
-        elif old.site_type == "virtual-discharge":
-            # TODO what to do with virtual stations
-            cnt_virtual = cnt_virtual + 1
-    logging.info(f"Meteo count: {cnt_meteo}, hydro count: {cnt_hydro}, virtual: {cnt_virtual}")
+
+    logging.info(f"Meteo count: {cnt_meteo}, hydro count: {cnt_hydro}")
+
+
+def migrate_virtual_stations(old_session):
+    old_virtual_stations = old_session.query(OldSite).filter(OldSite.is_virtual == True).order_by(OldSite.id).all()
+    cnt_virtual = 0
+    cnt_associations = 0
+
+    for old in tqdm(old_virtual_stations, desc="Virtual stations", position=0):
+        organization = MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ[old.source_id]
+        virtual_station = VirtualStation(
+            name=old.site_name,
+            station_code=old.site_code_repr,
+            country=old.country,
+            organization=organization,
+            latitude=old.latitude,
+            longitude=old.longitude,
+            timezone=None,
+            elevation=old.elevation_m,
+            basin=get_or_create_basin(basin_name=old.basin, organization=organization),
+            region=get_or_create_region(region_name=old.region, organization=organization)
+        )
+        virtual_station.save()
+        cnt_virtual += 1
+        for association in old.aggregation_site_associations:
+            weight = float(association.weighting)
+            discharge_station_code = association.aggregation.site_code_repr
+            try:
+                hydro_station = HydrologicalStation.objects.get(
+                    station_code=discharge_station_code, station_type=HydrologicalStation.StationType.MANUAL
+                )
+                virtual_station_association = VirtualStationAssociation.objects.create(
+                    hydro_station=hydro_station,
+                    virtual_station=virtual_station,
+                    weight=weight
+                )
+                cnt_associations += 1
+            except HydrologicalStation.DoesNotExist:
+                logging.error(
+                    f"Could not find Hydrological station with the code {discharge_station_code} to associate "
+                    f"with the virtual station."
+                )
+
+    logging.info(f"Virtual count: {cnt_virtual}, associations count: {cnt_associations}")
 
 
 def migrate_meteo_metrics(old_session):
@@ -344,13 +391,6 @@ def migrate_hydro_metrics(old_session):
     print(f"Nan count {nan_count}")
 
 
-def migrate_virtual_metrics(old_session):
-    # TODO
-    # old_data = old_session.query(OldSite).all()
-    # virtual_stations = [station for station in old_data if station.site_type=='virtual-discharge']
-    pass
-
-
 def migrate_discharge_models(old_session):
     logging.info("Cleaning up discharge models")
     DischargeModel.objects.all().delete()
@@ -388,6 +428,8 @@ def cleanup_all():
     HydrologicalStation.objects.all().delete()
     logging.info("Cleaning up meteo stations")
     MeteorologicalStation.objects.all().delete()
+    logging.info("Cleaning up virtual stations")
+    VirtualStation.objects.all().delete()
     logging.info("Cleaning up sites")
     Site.objects.all().delete()
     logging.info("Cleaning up basins")
@@ -418,9 +460,9 @@ def migrate():
         logging.info(f"Starting migrations in debugging mode (LIMITER = {LIMITER})")
     migrate_organizations(old_session)
     migrate_sites_and_stations(old_session)
+    migrate_virtual_stations(old_session)
     migrate_discharge_models(old_session)
     migrate_hydro_metrics(old_session)
     migrate_meteo_metrics(old_session)
-    migrate_virtual_metrics(old_session)  # TODO
     old_session.close()
     print("Data migration completed successfully.")
