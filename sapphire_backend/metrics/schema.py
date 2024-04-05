@@ -2,14 +2,16 @@ from datetime import datetime
 from enum import Enum
 from typing import Literal
 
-from ninja import FilterSchema, Schema
+from ninja import FilterSchema, ModelSchema, Schema
 
 from .choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
+    NormType,
 )
+from .models import DischargeNorm
 
 
 class BaseTimeseriesFilterSchema(FilterSchema):
@@ -85,3 +87,13 @@ class TimeBucketQueryParams(Schema):
     interval: str
     agg_func: TimeBucketAggregationFunctions
     limit: int = 100
+
+
+class DischargeNormTypeFiltersSchema(FilterSchema):
+    norm_type: NormType
+
+
+class DischargeNormOutputSchema(ModelSchema):
+    class Meta:
+        model = DischargeNorm
+        fields = ["ordinal_number", "value"]

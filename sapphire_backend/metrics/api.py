@@ -12,6 +12,7 @@ from sapphire_backend.utils.permissions import (
 
 from .models import HydrologicalMetric, MeteorologicalMetric
 from .schema import (
+    DischargeNormTypeFiltersSchema,
     HydrologicalMetricOutputSchema,
     HydroMetricFilterSchema,
     MeteoMetricFilterSchema,
@@ -124,3 +125,14 @@ class MeteoMetricsAPIController:
             return {"total": manager.get_total()}
         else:
             return manager.get_metric_distribution()
+
+
+@api_controller(
+    "discharge_norms/{station_uuid}",
+    tags=["Discharge norms"],
+    auth=JWTAuth(),  # permissions=regular_permissions
+)
+class DischargeNormsAPIController:
+    @route.get("", response="")
+    def get_station_discharge_norm(self, station_uuid: str, norm_types: Query[DischargeNormTypeFiltersSchema]):
+        pass
