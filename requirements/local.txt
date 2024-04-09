@@ -1,6 +1,6 @@
 -r base.txt
 
-Werkzeug[watchdog]==3.0.1 # https://github.com/pallets/werkzeug
+Werkzeug[watchdog]==3.0.2 # https://github.com/pallets/werkzeug
 ipdb==0.13.13  # https://github.com/gotcha/ipdb
 psycopg==3.1.18 # https://github.com/psycopg/psycopg
 watchfiles==0.21.0  # https://github.com/samuelcolvin/watchfiles
@@ -21,11 +21,11 @@ sphinx-autobuild==2024.2.4 # https://github.com/GaretJax/sphinx-autobuild
 
 # Code quality
 # ------------------------------------------------------------------------------
-ruff==0.3.3  # https://github.com/astral-sh/ruff
-coverage==7.4.3  # https://github.com/nedbat/coveragepy
-black==24.2.0  # https://github.com/psf/black
+ruff==0.3.5  # https://github.com/astral-sh/ruff
+coverage==7.4.4  # https://github.com/nedbat/coveragepy
+black==24.3.0  # https://github.com/psf/black
 pylint-django==2.5.5  # https://github.com/PyCQA/pylint-django
-pre-commit==3.6.2  # https://github.com/pre-commit/pre-commit
+pre-commit==3.7.0  # https://github.com/pre-commit/pre-commit
 
 # Django
 # ------------------------------------------------------------------------------
