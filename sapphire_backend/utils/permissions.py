@@ -14,7 +14,7 @@ def get_station_from_kwargs(kwargs):
     station = None
     if kwargs.get("discharge_model_id") is not None:
         model_obj = DischargeModel.objects.filter(id=kwargs.get("discharge_model_id")).first()
-        station = model_obj.station
+        station = getattr(model_obj, "station", None)
     elif kwargs.get("station_id") is not None:
         station = (
             HydrologicalStation.objects.filter(id=kwargs.get("station_id")).first()
@@ -76,8 +76,8 @@ class OrganizationExists(permissions.BasePermission):
 
 class StationExists(permissions.BasePermission):
     def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
-        hydro_station = get_station_from_kwargs(controller.context.kwargs)
-        return hydro_station is not None
+        station = get_station_from_kwargs(controller.context.kwargs)
+        return station is not None
 
 
 class HydroStationBelongsToOrganization(permissions.BasePermission):

@@ -1,14 +1,6 @@
 from ninja import Schema
 
 
-class TelegramInputSchema(Schema):
-    telegram: str
-
-
-class TelegramBulkInputSchema(Schema):
-    telegrams: list[str]
-
-
 class TelegramWithDateInputSchema(Schema):
     raw: str
     override_date: str | None = None
@@ -45,65 +37,7 @@ class TelegramSectionSixSingleSchema(Schema):
     date: str
 
 
-class TelegramOutputSchema(Schema):
-    section_zero: TelegramSectionZeroSchema
-    section_one: TelegramSectionOneSchema
-    section_three: TelegramSectionThreeSchema = None
-    section_six: list[TelegramSectionSixSingleSchema] = None
-
-
-class BulkParseSuccessTelegramSchema(Schema):
-    index: int
-    telegram: str
-    parsed_data: TelegramOutputSchema
-
-
-class BulkParseErrorTelegramSchema(Schema):
-    index: int
-    telegram: str
-    error: str
-
-
-class BulkParseOutputSchema(Schema):
-    parsed: list[BulkParseSuccessTelegramSchema]
-    errors: list[BulkParseErrorTelegramSchema]
-
-
-class ReportedDischargeSchema(Schema):
-    water_level: float
-    discharge: float
-    cross_section_area: float
-    maximum_depth: float
-    date: str
-
-
-class SectionOneSchema(Schema):
-    telegram_day_morning_water_level: float
-    telegram_day_water_level_trend: float
-    trend_ok: bool
-    previous_day_morning_water_level: float | None = None
-    previous_day_evening_water_level: float
-    previous_day_water_level_average: float | None = None
-
-
-class TelegramOverviewSchema(Schema):
-    index: int
-    station_code: str
-    station_name: str
-    telegram_day_date: str
-    previous_day_date: str
-    section_one: SectionOneSchema
-    reported_discharge: list
-    meteo: dict
-
-
-class DailyOverviewOutputSchema(Schema):
-    data: list[TelegramOverviewSchema]
-    discharge_codes: list[tuple]
-    meteo_codes: list[tuple]
-
-
-class TimeData(Schema):
+class NewOldMetrics(Schema):
     water_level_new: int | None = None
     water_level_old: int | None = None
     discharge_new: float | None = None
@@ -111,27 +45,40 @@ class TimeData(Schema):
 
 
 class DataProcessingDayTimes(Schema):
-    morning: TimeData
-    evening: TimeData
-    average: TimeData
+    morning: NewOldMetrics
+    evening: NewOldMetrics
+    average: NewOldMetrics
 
 
-class DataProcessingDate(Schema):
-    dates: dict[str, DataProcessingDayTimes]
+class DailyOverviewSingleSchema(Schema):
+    station_code: str
+    station_name: str
+    telegram_day_date: str
+    previous_day_date: str
+    section_one: TelegramSectionOneSchema
+    section_six: list[TelegramSectionSixSingleSchema]
+    section_eight: None  # TODO when meteo parsing is implemented
+    calc_trend_ok: bool
+    calc_previous_day_water_level_average: int | None = None
+    db_previous_day_morning_water_level: int | None = None
 
 
-class DataProcessingOverviewOutputSchema(Schema):
-    codes: dict[str, DataProcessingDate]
-
-
-class SaveDataOverviewOutputSchema(Schema):
+class SaveDataOverviewSingleSchema(Schema):
     station_code: str
     station_name: str
     telegram_day_date: str
     previous_day_date: str
     previous_day_data: DataProcessingDayTimes
     telegram_day_data: DataProcessingDayTimes
-    reported_discharge: list[TelegramSectionSixSingleSchema]  # TODO
-    meteo_data: list | None  # TODO when implemented
-    temperature_data: list | None  # TODO when implemented
+    section_six: list[TelegramSectionSixSingleSchema]
+    section_eight: None  # TODO when meteo parsing is implemented
     type: str
+
+
+class TelegramOverviewOutputSchema(Schema):
+    daily_overview: list[DailyOverviewSingleSchema]
+    data_processing_overview: dict[str, list[tuple[str, DataProcessingDayTimes]]]
+    save_data_overview: list[SaveDataOverviewSingleSchema]
+    discharge_codes: list[tuple[str, int]]
+    meteo_codes: list[tuple[str, int]]
+    errors: list[str]

@@ -124,7 +124,7 @@ class Migration(migrations.Migration):
                         LEAD(station_id) OVER (PARTITION BY station_id ORDER BY valid_from) AS next_site_id
                     FROM
                         estimations_dischargemodel dm
-                ) dm ON wlda.timestamp >= dm.valid_from AND (wlda.timestamp < dm.next_valid_from) AND wlda.station_id = dm.station_id
+                ) dm ON wlda.timestamp >= dm.valid_from AND (wlda.timestamp < dm.next_valid_from OR dm.next_valid_from IS NULL) AND wlda.station_id = dm.station_id
                 WHERE
                     wlda.metric_name = 'WLDA';
               """

@@ -28,9 +28,7 @@ class DischargeModelsAPIController:
     )
     def get_discharge_models(self, station_id: str, year: int = Query(None, description="Filter by year")):
         try:
-            hydro_station = HydrologicalStation.objects.filter(id=station_id).first()
-
-            queryset = DischargeModel.objects.filter(station_id=station_id)
+            queryset = DischargeModel.objects.filter(station_id=station_id).select_related("station")
 
             if year is not None:
                 start_of_year = datetime(year, 1, 1)
@@ -40,17 +38,10 @@ class DischargeModelsAPIController:
             queryset = queryset.order_by("-valid_from")
             return_list = []
             for obj in queryset:
-                transform_valid_from = SmartDatetime(obj.valid_from, station=hydro_station, local=False).local.date()
-                transform = DischargeModelOutputDetailSchema(
-                    id=obj.id,
-                    name=obj.name,
-                    param_a=obj.param_a,
-                    param_b=obj.param_b,
-                    param_c=obj.param_c,
-                    valid_from=transform_valid_from,
-                    station_id=obj.station_id,
-                )
-                return_list.append(transform)
+                transform_valid_from = SmartDatetime(obj.valid_from, station=obj.station, local=False).local.date()
+                schema_model_obj = DischargeModelOutputDetailSchema.from_orm(obj)
+                schema_model_obj.valid_from = transform_valid_from
+                return_list.append(schema_model_obj)
             return 200, return_list
         except DischargeModel.DoesNotExist:
             return 404, {"detail": _("Discharge model not found."), "code": "not_found"}
@@ -69,9 +60,7 @@ class DischargeModelsAPIController:
                 datetime.fromisoformat(input_data.valid_from).replace(hour=0), hydro_station, local=True
             ).day_beginning_utc
 
-            existing_model = DischargeModel.objects.filter(station_id=station_id, valid_from=valid_from_utc).first()
-            if existing_model is not None:
-                existing_model.delete()
+            DischargeModel.objects.filter(station_id=station_id, valid_from=valid_from_utc).delete()
 
             new_model = DischargeModel(
                 name=input_data.name,
@@ -100,9 +89,7 @@ class DischargeModelsAPIController:
                 datetime.fromisoformat(input_data.valid_from).replace(hour=0), hydro_station, local=True
             ).day_beginning_utc
 
-            existing_model = DischargeModel.objects.filter(station_id=station_id, valid_from=valid_from_utc).first()
-            if existing_model is not None:
-                existing_model.delete()
+            DischargeModel.objects.filter(station_id=station_id, valid_from=valid_from_utc).delete()
 
             new_model = DischargeModel(
                 name=input_data.name,

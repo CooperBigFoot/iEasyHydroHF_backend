@@ -1,7 +1,7 @@
 import logging
 from datetime import timedelta
 
-import psycopg2
+import psycopg
 from django import db
 from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
@@ -22,14 +22,6 @@ ESTIMATIONS_TABLE_MAP = {
     HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: "estimations_water_discharge_fiveday_average",
     HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: "estimations_water_discharge_decade_average",
 }
-
-CONN_STRING = (
-    f"host={connection.client.connection.settings_dict['HOST']} "
-    f"port={connection.client.connection.settings_dict['PORT']} "
-    f"user={connection.client.connection.settings_dict['USER']} "
-    f"password={connection.client.connection.settings_dict['PASSWORD']} "
-    f"dbname={connection.client.connection.settings_dict['NAME']}"
-)
 
 
 class HydrologicalMetric(models.Model):
@@ -132,17 +124,21 @@ class HydrologicalMetric(models.Model):
         """
 
         try:
-            # since 'with connection' doesn't close the transaction block, we have to go directly to the DB
-            conn = psycopg2.connect(CONN_STRING)
+            CONN_STRING = (
+                f"host={connection.client.connection.settings_dict['HOST']} "
+                f"port={connection.client.connection.settings_dict['PORT']} "
+                f"user={connection.client.connection.settings_dict['USER']} "
+                f"password={connection.client.connection.settings_dict['PASSWORD']} "
+                f"dbname={connection.client.connection.settings_dict['NAME']}"
+            )
 
-            conn.set_session(autocommit=True)
+            conn = psycopg.connect(CONN_STRING, autocommit=True)
             with conn.cursor() as cursor:
                 if upsert:
                     cursor.execute(sql_query_upsert)
                 else:
                     cursor.execute(sql_query_insert)
             conn.close()
-
         except db.utils.NotSupportedError as e:
             """
             Handle specific error. Timescale has this bug, hyper chunks should not have insert blockers.
@@ -171,14 +167,22 @@ class HydrologicalMetric(models.Model):
                 and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY
                 and self.value_type == HydrologicalMeasurementType.MANUAL
             ):
+                pass
                 self._refresh_view()
 
-    def _refresh_view(self):  # Extract the ISO date as a string
+    def _refresh_view(self):
+        # cannot be in the same transaction block so we ensure this by creating a new connection with autocommit
+        CONN_STRING = (
+            f"host={connection.client.connection.settings_dict['HOST']} "
+            f"port={connection.client.connection.settings_dict['PORT']} "
+            f"user={connection.client.connection.settings_dict['USER']} "
+            f"password={connection.client.connection.settings_dict['PASSWORD']} "
+            f"dbname={connection.client.connection.settings_dict['NAME']}"
+        )
         start_date_str = self.timestamp.strftime("%Y-%m-%d")
         end_date_str = (self.timestamp + timedelta(days=1)).strftime("%Y-%m-%d")
         sql_refresh_view = f"CALL refresh_continuous_aggregate('estimations_water_level_daily_average', '{start_date_str}', '{end_date_str}');"
-        conn = psycopg2.connect(CONN_STRING)
-        conn.set_session(autocommit=True)
+        conn = psycopg.connect(CONN_STRING, autocommit=True)
         with conn.cursor() as cursor:
             cursor.execute(sql_refresh_view)
         conn.close()
