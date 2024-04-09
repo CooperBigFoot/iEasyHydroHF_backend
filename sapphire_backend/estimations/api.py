@@ -11,6 +11,9 @@ from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
+
+from ..stations.models import HydrologicalStation
+from ..utils.datetime_helper import SmartDatetime
 from .models import DischargeModel
 from .query import EstimationsViewQueryManager
 from .schema import (
@@ -18,11 +21,10 @@ from .schema import (
     DischargeModelCreateInputPointsSchema,
     DischargeModelDeleteOutputSchema,
     DischargeModelOutputDetailSchema,
+    EstimationsFilterSchema,
+    OrderQueryParamSchema,
 )
-from .schema import EstimationsFilterSchema, OrderQueryParamSchema
 from .utils import least_squares_fit
-from ..stations.models import HydrologicalStation
-from ..utils.datetime_helper import SmartDatetime
 
 
 @api_controller("estimations", tags=["Discharge Models"], auth=JWTAuth(), permissions=regular_permissions)

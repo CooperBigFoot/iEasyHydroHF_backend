@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Literal
 
-from ninja import Schema
+from ninja import FilterSchema, Schema
 
 
 class DischargeModelBaseSchema(Schema):
@@ -37,11 +38,6 @@ class DischargeModelCreateInputPointsSchema(DischargeModelCreateBaseSchema):
 class DischargeModelCreateInputDeltaSchema(DischargeModelCreateBaseSchema):
     param_delta: float
     from_model_id: int
-
-
-from typing import Literal
-
-from ninja import FilterSchema, Schema
 
 
 class OrderQueryParamSchema(Schema):
