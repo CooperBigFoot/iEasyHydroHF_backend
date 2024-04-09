@@ -123,22 +123,18 @@ class HydrologicalMetric(models.Model):
                 sensor_type = EXCLUDED.sensor_type;
         """
 
-        try:
-            CONN_STRING = (
-                f"host={connection.client.connection.settings_dict['HOST']} "
-                f"port={connection.client.connection.settings_dict['PORT']} "
-                f"user={connection.client.connection.settings_dict['USER']} "
-                f"password={connection.client.connection.settings_dict['PASSWORD']} "
-                f"dbname={connection.client.connection.settings_dict['NAME']}"
-            )
-
-            conn = psycopg.connect(CONN_STRING, autocommit=True)
+        try:  # TODO this is horrible, the metrics test factory only transactional block, need to find a better way
+            if connection.client.connection.settings_dict["NAME"] == "test_sapphire_backend":
+                conn = connection
+            else:
+                conn = psycopg.connect(self.conn_string, autocommit=True)
             with conn.cursor() as cursor:
                 if upsert:
                     cursor.execute(sql_query_upsert)
                 else:
                     cursor.execute(sql_query_insert)
-            conn.close()
+            if connection.client.connection.settings_dict["NAME"] != "test_sapphire_backend":
+                conn.close()
         except db.utils.NotSupportedError as e:
             """
             Handle specific error. Timescale has this bug, hyper chunks should not have insert blockers.
@@ -152,9 +148,12 @@ class HydrologicalMetric(models.Model):
                     sql_query_remove_trigger = (
                         f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
                     )
-                    cursor.execute(sql_query_remove_trigger)
-                    logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
-                    cursor.execute(sql_query_insert)
+                    conn = psycopg.connect(self.conn_string, autocommit=True)
+                    with conn.cursor() as cursor:
+                        cursor.execute(sql_query_remove_trigger)
+                        logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
+                        cursor.execute(sql_query_insert)
+                    conn.close()
                 else:
                     raise Exception(e)
             else:
@@ -167,11 +166,10 @@ class HydrologicalMetric(models.Model):
                 and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY
                 and self.value_type == HydrologicalMeasurementType.MANUAL
             ):
-                pass
                 self._refresh_view()
 
-    def _refresh_view(self):
-        # cannot be in the same transaction block so we ensure this by creating a new connection with autocommit
+    @property
+    def conn_string(self):
         CONN_STRING = (
             f"host={connection.client.connection.settings_dict['HOST']} "
             f"port={connection.client.connection.settings_dict['PORT']} "
@@ -179,10 +177,14 @@ class HydrologicalMetric(models.Model):
             f"password={connection.client.connection.settings_dict['PASSWORD']} "
             f"dbname={connection.client.connection.settings_dict['NAME']}"
         )
+        return CONN_STRING
+
+    def _refresh_view(self):
+        # cannot be in the same transaction block so we ensure this by creating a new connection with autocommit
         start_date_str = self.timestamp.strftime("%Y-%m-%d")
         end_date_str = (self.timestamp + timedelta(days=1)).strftime("%Y-%m-%d")
         sql_refresh_view = f"CALL refresh_continuous_aggregate('estimations_water_level_daily_average', '{start_date_str}', '{end_date_str}');"
-        conn = psycopg.connect(CONN_STRING, autocommit=True)
+        conn = psycopg.connect(self.conn_string, autocommit=True)
         with conn.cursor() as cursor:
             cursor.execute(sql_refresh_view)
         conn.close()
