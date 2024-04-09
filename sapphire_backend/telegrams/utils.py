@@ -321,7 +321,7 @@ def insert_new_averages(data_template: dict, parsed_data: dict) -> dict:
                 station=hydro_station, timestamp=smart_datetime.midday_utc
             )
             if None not in [wl_morning_new, wl_evening_new]:
-                wl_average_new = (wl_morning_new + wl_evening_new) / 2
+                wl_average_new = custom_ceil((wl_morning_new + wl_evening_new) / 2)
                 discharge_average_new = discharge_model.estimate_discharge(wl_average_new)
             elif wl_morning_new is None and wl_evening_new is None:
                 wl_average_new = None
@@ -329,7 +329,7 @@ def insert_new_averages(data_template: dict, parsed_data: dict) -> dict:
                 wl_average_new = wl_morning_new or wl_evening_new
                 discharge_average_new = discharge_model.estimate_discharge(wl_average_new)
 
-            result[station_code][date]["average"].water_level_new = custom_ceil(wl_average_new)
+            result[station_code][date]["average"].water_level_new = wl_average_new
             result[station_code][date]["average"].discharge_new = custom_round(discharge_average_new, 1)
 
     return result
