@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 from typing import Any
 
@@ -58,71 +57,60 @@ class DischargeModelsAPIController:
     def create_discharge_model_from_points(
         self, request, station_id: str, input_data: DischargeModelCreateInputPointsSchema
     ):
-        try:
-            fit_params = least_squares_fit(input_data.points)
+        fit_params = least_squares_fit(input_data.points)
 
-            hydro_station = HydrologicalStation.objects.filter(id=station_id).first()
-            valid_from_utc = SmartDatetime(
-                datetime.fromisoformat(input_data.valid_from).replace(hour=0), hydro_station, local=True
-            ).day_beginning_utc
+        hydro_station = HydrologicalStation.objects.filter(id=station_id).first()
+        valid_from_utc = SmartDatetime(
+            datetime.fromisoformat(input_data.valid_from).replace(hour=0), hydro_station, local=True
+        ).day_beginning_utc
 
-            DischargeModel.objects.filter(station_id=station_id, valid_from=valid_from_utc).delete()
+        DischargeModel.objects.filter(station_id=station_id, valid_from=valid_from_utc).delete()
 
-            new_model = DischargeModel(
-                name=input_data.name,
-                param_a=fit_params["param_a"],
-                param_b=fit_params["param_b"],
-                param_c=fit_params["param_c"],
-                valid_from=valid_from_utc,
-                station_id=station_id,
-            )
-            new_model.save()
-            return 200, new_model
-        except DischargeModel.DoesNotExist:
-            return 404, {"detail": _("Discharge model could not be created."), "code": "not_found"}
+        new_model = DischargeModel(
+            name=input_data.name,
+            param_a=fit_params["param_a"],
+            param_b=fit_params["param_b"],
+            param_c=fit_params["param_c"],
+            valid_from=valid_from_utc,
+            station_id=station_id,
+        )
+        new_model.save()
+        return 200, new_model
 
     @route.post("discharge-models/{station_id}/create-delta", response={200: DischargeModelOutputDetailSchema})
     def create_discharge_model_from_delta(
         self, request, station_id: str, input_data: DischargeModelCreateInputDeltaSchema
     ):
-        try:
-            old_model = DischargeModel.objects.get(id=input_data.from_model_id)
-            param_a = float(old_model.param_a) + input_data.param_delta
-            param_b = float(old_model.param_b)
-            param_c = float(old_model.param_c)
-            hydro_station = HydrologicalStation.objects.filter(id=station_id).first()
-            valid_from_utc = SmartDatetime(
-                datetime.fromisoformat(input_data.valid_from).replace(hour=0), hydro_station, local=True
-            ).day_beginning_utc
+        old_model = DischargeModel.objects.get(id=input_data.from_model_id)
+        param_a = float(old_model.param_a) + input_data.param_delta
+        param_b = float(old_model.param_b)
+        param_c = float(old_model.param_c)
+        hydro_station = HydrologicalStation.objects.filter(id=station_id).first()
+        valid_from_utc = SmartDatetime(
+            datetime.fromisoformat(input_data.valid_from).replace(hour=0), hydro_station, local=True
+        ).day_beginning_utc
 
-            DischargeModel.objects.filter(station_id=station_id, valid_from=valid_from_utc).delete()
+        DischargeModel.objects.filter(station_id=station_id, valid_from=valid_from_utc).delete()
 
-            new_model = DischargeModel(
-                name=input_data.name,
-                param_a=param_a,
-                param_b=param_b,
-                param_c=param_c,
-                valid_from=valid_from_utc,
-                station_id=station_id,
-            )
-            new_model.save()
-            return 200, new_model
-        except Exception as e:
-            logging.exception(e)
-            return 500, {"detail": _("Discharge model could not be created."), "code": "internal_server_error"}
+        new_model = DischargeModel(
+            name=input_data.name,
+            param_a=param_a,
+            param_b=param_b,
+            param_c=param_c,
+            valid_from=valid_from_utc,
+            station_id=station_id,
+        )
+        new_model.save()
+        return 200, new_model
 
     @route.delete("discharge-models/{discharge_model_id}", response={200: DischargeModelDeleteOutputSchema})
     def delete_discharge_model(self, request, discharge_model_id: str):
-        try:
-            model = DischargeModel.objects.filter(id=discharge_model_id).first()
-            name = model.name
-            model.delete()
+        model = DischargeModel.objects.filter(id=discharge_model_id).first()
+        name = model.name
+        model.delete()
 
-            response = DischargeModelDeleteOutputSchema(name=name)
-            return 200, response
-        except Exception as e:
-            logging.exception(e)
-            return 500, {"detail": _("Discharge model could not be deleted."), "code": "internal_server_error"}
+        response = DischargeModelDeleteOutputSchema(name=name)
+        return 200, response
 
 
 @api_controller(
