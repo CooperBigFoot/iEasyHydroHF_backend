@@ -9,18 +9,18 @@ from sapphire_backend.stations.models import HydrologicalStation, Meteorological
 
 class SmartDatetime:
     def __init__(self, dt: [str | datetime], station: [HydrologicalStation | MeteorologicalStation], local=True):
+        self._local_timezone = station.site.timezone or ZoneInfo(settings.TIME_ZONE)
         if isinstance(dt, str):
             if local:
-                self._dt_utc = datetime.fromisoformat(dt).astimezone(ZoneInfo("UTC"))
+                self._dt_utc = datetime.fromisoformat(dt).replace(tzinfo=self._local_timezone).astimezone(ZoneInfo("UTC"))
             else:
-                self._dt_utc = timezone.make_aware(datetime.fromisoformat(dt), timezone=ZoneInfo("UTC"))
+                self._dt_utc = datetime.fromisoformat(dt).replace(tzinfo=ZoneInfo("UTC"))
         elif isinstance(dt, datetime):
             if local:
                 self._dt_utc = dt.astimezone(ZoneInfo("UTC"))
             else:
                 # overwrite any tzinfo and enforce UTC
                 self._dt_utc = dt.replace(tzinfo=ZoneInfo("UTC"))
-        self._local_timezone = station.site.timezone or ZoneInfo(settings.TIME_ZONE)
         self._dt_local = self._dt_utc.astimezone(self._local_timezone)
 
     @property
