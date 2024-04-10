@@ -51,7 +51,6 @@ class TestSmartDatetimeModel:
 
         assert smart_dt.utc == datetime(2024, 1, 1, 0, 0, 0, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
         assert smart_dt.day_beginning_utc == datetime(2024, 1, 1, 0, 0, 0, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
-        assert smart_dt.day_beginning_utc == datetime(2024, 1, 1, 0, 0, 0, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
         assert smart_dt.morning_utc == datetime(2024, 1, 1, 8, 0, 0, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
         assert smart_dt.midday_utc == datetime(2024, 1, 1, 12, 0, 0, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
         assert smart_dt.evening_utc == datetime(2024, 1, 1, 20, 0, 0, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
