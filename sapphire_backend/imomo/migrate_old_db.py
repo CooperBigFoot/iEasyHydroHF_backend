@@ -1,12 +1,11 @@
 import logging
-
 # Configure SQLAlchemy connection to the old database
 import math
+import os
+import zoneinfo
 from datetime import datetime
 
-import zoneinfo
 from django.utils import timezone
-
 # Import necessary libraries
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -41,7 +40,6 @@ nan_count = 0
 
 MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ = {}
 MAP_OLD_SITE_CODE_TO_NEW_SITE_OBJ = {}
-LIMITER = 0  # FOR DEBUGGING PURPOSES, FOR PRODUCTION NEEDS TO BE 0
 
 
 def migrate_organizations(old_session):
@@ -312,23 +310,26 @@ def migrate_virtual_stations(old_session):
     logging.info(f"Virtual count: {cnt_virtual}, associations count: {cnt_associations}")
 
 
-def migrate_meteo_metrics(old_session):
-    old_data = old_session.query(OldSite).all()
+def migrate_meteo_metrics(old_session, limiter, target_station):
+    if target_station == "":
+        old_data = old_session.query(OldSite).all()
+    else:
+        old_data = old_session.query(OldSite).filter(OldSite.site_code == f"{target_station}m")
     meteo_stations = [station for station in old_data if station.site_type == "meteo"]
-    for old in tqdm(meteo_stations, desc="Meteo stations", position=0):  # TODO limiter remove
+    for old in tqdm(meteo_stations, desc="Meteo stations", position=0):
         meteo_station = MeteorologicalStation.objects.get(station_code=old.site_code_repr)
 
         for data_row in tqdm(
-            old.data_values[LIMITER:], desc="Meteo metrics", position=1, leave=False
-        ):  # TODO remove limit
+            old.data_values[-limiter:], desc="Meteo metrics", position=1, leave=False
+        ):
             naive_datetime = data_row.date_time_utc
             aware_datetime_utc = timezone.make_aware(
                 naive_datetime, timezone=zoneinfo.ZoneInfo("UTC")
-            )  # TODO double check this
+            )
             metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
 
             new_meteo_metric = MeteorologicalMetric(
-                timestamp=aware_datetime_utc,  # TODO is local time needed?
+                timestamp=aware_datetime_utc,
                 value=data_row.data_value,
                 value_type=measurement_type,
                 metric_name=metric_name,
@@ -338,19 +339,22 @@ def migrate_meteo_metrics(old_session):
             new_meteo_metric.save()
 
 
-def migrate_hydro_metrics(old_session):
+def migrate_hydro_metrics(old_session, limiter, target_station):
     global nan_count
-    old_data = old_session.query(OldSite).all()
+    if target_station == "":
+        old_data = old_session.query(OldSite).all()
+    else:
+        old_data = old_session.query(OldSite).filter(OldSite.site_code == target_station)
     hydro_stations = [station for station in old_data if station.site_type == "discharge"]
     for old in tqdm(hydro_stations, desc="Hydro stations", position=0):
         hydro_station = HydrologicalStation.objects.get(station_code=old.site_code_repr)
         for data_row in tqdm(
-            old.data_values[LIMITER:], desc="Hydro metrics", position=1, leave=False
-        ):  # TODO remove limit
+            old.data_values[-limiter:], desc="Hydro metrics", position=1, leave=False
+        ):
             naive_datetime = data_row.date_time_utc
             aware_datetime_utc = timezone.make_aware(
                 naive_datetime, timezone=zoneinfo.ZoneInfo("UTC")
-            )  # TODO double check this
+            )
 
             # exceptionally set the maximum discharge on the hydro station level, exclude from metrics
             data_value = data_row.data_value
@@ -375,7 +379,7 @@ def migrate_hydro_metrics(old_session):
                 continue  # TODO skip NaN data value rows
 
             new_hydro_metric = HydrologicalMetric(
-                timestamp=aware_datetime_utc,  # TODO is local time needed?
+                timestamp=aware_datetime_utc,
                 min_value=None,
                 avg_value=data_value,
                 max_value=None,
@@ -392,8 +396,6 @@ def migrate_hydro_metrics(old_session):
 
 
 def migrate_discharge_models(old_session):
-    logging.info("Cleaning up discharge models")
-    DischargeModel.objects.all().delete()
     old_discharge_models = old_session.query(OldDischargeModel).all()
     for old in tqdm(old_discharge_models, desc="Discharge models", position=0):
         hydro_station = HydrologicalStation.objects.get(station_code=old.site.site_code_repr)
@@ -404,6 +406,7 @@ def migrate_discharge_models(old_session):
         else:
             valid_from = SmartDatetime(old.valid_from, hydro_station, local=True).day_beginning_utc
 
+        DischargeModel.objects.filter(station_id=hydro_station.id, valid_from=valid_from).delete()  # upsert
         new_discharge_model = DischargeModel(
             name=old.model_name,
             param_a=old.param_a,
@@ -441,28 +444,38 @@ def cleanup_all():
     logging.info("Done")
 
 
-def migrate():
+def migrate(skip_cleanup: bool, skip_structure: bool, target_station: str, limiter: int):
     # now do the things that you want with your models here
     old_db_engine = create_engine(
         "postgresql+psycopg2://{user}:{password}@{host}:{port}/{db_name}".format(
-            user="hydrosolutions",
-            password="hydrosolutions",
-            host="localhost",
-            port="5433",
-            db_name="hydrosolutions",
+            user=os.environ.get("OLD_MIGRATION_DB_USERNAME", "hydrosolutions"),
+            password=os.environ.get("OLD_MIGRATION_DB_PASSWORD", "hydrosolutions"),
+            host=os.environ.get("OLD_MIGRATION_DB_HOST", "localhost"),
+            port=os.environ.get("OLD_MIGRATION_DB_PORT", "5433"),
+            db_name=os.environ.get("OLD_MIGRATION_DB_NAME", "hydrosolutions"),
         )
     )
     # Update with your old database connection string
     Session = sessionmaker(bind=old_db_engine)
     old_session = Session()
-    cleanup_all()
-    if LIMITER != 0:
-        logging.info(f"Starting migrations in debugging mode (LIMITER = {LIMITER})")
-    migrate_organizations(old_session)
-    migrate_sites_and_stations(old_session)
-    migrate_virtual_stations(old_session)
+    if limiter != 0:
+        logging.info(f"Starting migrations in debugging mode (limiter = {limiter})")
+    if not skip_cleanup:
+        cleanup_all()
+    else:
+        logging.info(f"Skipped cleanup (--skip-cleanup = {skip_cleanup})")
+
+    if not skip_structure:
+        migrate_organizations(old_session)
+        migrate_sites_and_stations(old_session)
+        migrate_virtual_stations(old_session)
+    else:
+        logging.info(f"Skipped structure build (--skip-structure = {skip_structure})")
+    if target_station != "":
+        logging.info(f"Will migrate only station {target_station} (--station)")
+
     migrate_discharge_models(old_session)
-    migrate_hydro_metrics(old_session)
-    migrate_meteo_metrics(old_session)
+    migrate_hydro_metrics(old_session, limiter, target_station)
+    migrate_meteo_metrics(old_session, limiter, target_station)
     old_session.close()
     print("Data migration completed successfully.")

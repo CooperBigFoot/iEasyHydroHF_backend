@@ -18,10 +18,10 @@ class SmartDatetime:
             if local:
                 self._dt_utc = dt.astimezone(ZoneInfo("UTC"))
             else:
-                self._dt_utc = timezone.make_aware(dt, timezone=ZoneInfo("UTC"))
-
-        self._local_timezone = station.site.timezone or settings.TIME_ZONE
-        self._dt_local = self._dt_utc.astimezone(ZoneInfo(self._local_timezone))
+                # overwrite any tzinfo and enforce UTC
+                self._dt_utc = dt.replace(tzinfo=ZoneInfo("UTC"))
+        self._local_timezone = station.site.timezone or ZoneInfo(settings.TIME_ZONE)
+        self._dt_local = self._dt_utc.astimezone(self._local_timezone)
 
     @property
     def local_timezone(self):
@@ -98,3 +98,6 @@ class SmartDatetime:
     @property
     def day_beginning_utc(self):
         return self.day_beginning_local.astimezone(ZoneInfo("UTC"))
+
+    def __str__(self):
+        return f"Smart Datetime - > local {self.local.isoformat()}, UTC {self.utc.isoformat()}"

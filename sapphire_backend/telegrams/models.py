@@ -17,6 +17,13 @@ class Telegram(CreatedDateMixin, models.Model):
         null=True,
         blank=True,
     )
+    meteo_station = models.ForeignKey(
+        "stations.MeteorologicalStation",
+        verbose_name=_("Meteorological station"),
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         verbose_name = _("Telegram")

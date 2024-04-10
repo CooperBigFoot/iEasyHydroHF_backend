@@ -1,12 +1,13 @@
 from ninja import Schema
 
 
-class TelegramInputSchema(Schema):
-    telegram: str
+class TelegramWithDateInputSchema(Schema):
+    raw: str
+    override_date: str | None = None
 
 
-class TelegramBulkInputSchema(Schema):
-    telegrams: list[str]
+class TelegramBulkWithDatesInputSchema(Schema):
+    telegrams: list[TelegramWithDateInputSchema]
 
 
 class TelegramSectionZeroSchema(Schema):
@@ -19,8 +20,8 @@ class TelegramSectionOneSchema(Schema):
     morning_water_level: int
     water_level_trend: int
     water_level_20h_period: int
-    water_temperature: int = None
-    air_temperature: int = None
+    water_temperature: int | None = None
+    air_temperature: int | None = None
     ice_phenomena: list[dict[str, int]]
 
 
@@ -36,25 +37,48 @@ class TelegramSectionSixSingleSchema(Schema):
     date: str
 
 
-class TelegramOutputSchema(Schema):
-    section_zero: TelegramSectionZeroSchema
+class NewOldMetrics(Schema):
+    water_level_new: int | None = None
+    water_level_old: int | None = None
+    discharge_new: float | None = None
+    discharge_old: float | None = None
+
+
+class DataProcessingDayTimes(Schema):
+    morning: NewOldMetrics
+    evening: NewOldMetrics
+    average: NewOldMetrics
+
+
+class DailyOverviewSingleSchema(Schema):
+    station_code: str
+    station_name: str
+    telegram_day_date: str
+    previous_day_date: str
     section_one: TelegramSectionOneSchema
-    section_three: TelegramSectionThreeSchema = None
-    section_six: list[TelegramSectionSixSingleSchema] = None
+    section_six: list[TelegramSectionSixSingleSchema]
+    section_eight: None  # TODO when meteo parsing is implemented
+    calc_trend_ok: bool
+    calc_previous_day_water_level_average: int | None = None
+    db_previous_day_morning_water_level: int | None = None
 
 
-class BulkParseSuccessTelegramSchema(Schema):
-    index: int
-    telegram: str
-    parsed_data: TelegramOutputSchema
+class SaveDataOverviewSingleSchema(Schema):
+    station_code: str
+    station_name: str
+    telegram_day_date: str
+    previous_day_date: str
+    previous_day_data: DataProcessingDayTimes
+    telegram_day_data: DataProcessingDayTimes
+    section_six: list[TelegramSectionSixSingleSchema]
+    section_eight: None  # TODO when meteo parsing is implemented
+    type: str
 
 
-class BulkParseErrorTelegramSchema(Schema):
-    index: int
-    telegram: str
-    error: str
-
-
-class BulkParseOutputSchema(Schema):
-    parsed: list[BulkParseSuccessTelegramSchema]
-    errors: list[BulkParseErrorTelegramSchema]
+class TelegramOverviewOutputSchema(Schema):
+    daily_overview: list[DailyOverviewSingleSchema]
+    data_processing_overview: dict[str, list[tuple[str, DataProcessingDayTimes]]]
+    save_data_overview: list[SaveDataOverviewSingleSchema]
+    discharge_codes: list[tuple[str, int]]
+    meteo_codes: list[tuple[str, int]]
+    errors: list[str]

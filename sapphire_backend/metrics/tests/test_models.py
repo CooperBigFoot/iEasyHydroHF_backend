@@ -32,6 +32,7 @@ class TestMetricsModel:
 
             assert sorted(EXPECTED_HYPERTABLES) == sorted(ACTUAL_HYPERTABLES)
 
+    @pytest.mark.django_db(transaction=True)
     def test_hydro_metric_save(self, manual_hydro_station):
         hydro_metric = HydrologicalMetric(
             timestamp=datetime.datetime.utcnow(),
@@ -47,6 +48,7 @@ class TestMetricsModel:
         assert HydrologicalMetric.objects.count() == 1
         assert HydrologicalMetric.objects.last().avg_value == 15.5
 
+    @pytest.mark.django_db(transaction=True)
     def test_hydro_metric_save_with_upsert(self, manual_hydro_station):
         now_dt = datetime.datetime.utcnow()
 
@@ -74,6 +76,7 @@ class TestMetricsModel:
         assert HydrologicalMetric.objects.count() == 1
         assert HydrologicalMetric.objects.last().avg_value == 20.0
 
+    @pytest.mark.django_db(transaction=True)
     def test_hydro_metric_delete(self, manual_hydro_station):
         hydro_metric = HydrologicalMetric(
             timestamp=datetime.datetime.utcnow(),

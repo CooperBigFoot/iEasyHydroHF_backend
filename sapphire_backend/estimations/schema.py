@@ -4,6 +4,42 @@ from typing import Literal
 from ninja import FilterSchema, Schema
 
 
+class DischargeModelBaseSchema(Schema):
+    name: str
+    param_a: float
+    param_b: float
+    param_c: float
+    valid_from: datetime
+    station_id: int
+
+
+class DischargeModelOutputDetailSchema(DischargeModelBaseSchema):
+    id: int
+
+
+class DischargeModelCreateBaseSchema(Schema):
+    name: str
+    valid_from: str
+
+
+class DischargeModelDeleteOutputSchema(Schema):
+    name: str
+
+
+class DischargeModelPointsPair(Schema):
+    h: float
+    q: float
+
+
+class DischargeModelCreateInputPointsSchema(DischargeModelCreateBaseSchema):
+    points: list[DischargeModelPointsPair]
+
+
+class DischargeModelCreateInputDeltaSchema(DischargeModelCreateBaseSchema):
+    param_delta: float
+    from_model_id: int
+
+
 class OrderQueryParamSchema(Schema):
     order_direction: Literal["ASC", "DESC"] = "DESC"
     order_param: Literal["timestamp", "avg_value"] = "timestamp"
