@@ -1,4 +1,5 @@
 -r base.txt
+-r imomo_old.txt
 
 Werkzeug[watchdog]==3.0.2 # https://github.com/pallets/werkzeug
 ipdb==0.13.13  # https://github.com/gotcha/ipdb

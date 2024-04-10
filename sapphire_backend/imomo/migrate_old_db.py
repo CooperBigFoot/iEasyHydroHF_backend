@@ -5,6 +5,8 @@ import os
 import zoneinfo
 from datetime import datetime
 
+import psycopg
+from django.db import connection
 from django.utils import timezone
 # Import necessary libraries
 from sqlalchemy import create_engine
@@ -339,6 +341,23 @@ def migrate_meteo_metrics(old_session, limiter, target_station):
             new_meteo_metric.save()
 
 
+def refresh_water_level_daily_average(start_date: str, end_date: str):
+    logging.info('Refreshing CAGG view')
+    CONN_STRING = (
+        f"host={connection.client.connection.settings_dict['HOST']} "
+        f"port={connection.client.connection.settings_dict['PORT']} "
+        f"user={connection.client.connection.settings_dict['USER']} "
+        f"password={connection.client.connection.settings_dict['PASSWORD']} "
+        f"dbname={connection.client.connection.settings_dict['NAME']}"
+    )
+    sql_refresh_view = f"CALL refresh_continuous_aggregate('estimations_water_level_daily_average', '{start_date}', '{end_date}');"
+    conn = psycopg.connect(CONN_STRING, autocommit=True)
+    with conn.cursor() as cursor:
+        cursor.execute(sql_refresh_view)
+    conn.close()
+    logging.info('Done.')
+
+
 def migrate_hydro_metrics(old_session, limiter, target_station):
     global nan_count
     if target_station == "":
@@ -390,9 +409,8 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                 sensor_identifier="",
                 sensor_type="",
             )
-            new_hydro_metric.save()
-
-    print(f"Nan count {nan_count}")
+            new_hydro_metric.save(refresh_view=False)
+    refresh_water_level_daily_average('2015-01-01', '2030-01-01')
 
 
 def migrate_discharge_models(old_session):
