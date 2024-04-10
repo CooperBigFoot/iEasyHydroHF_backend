@@ -469,7 +469,7 @@ def migrate(skip_cleanup: bool, skip_structure: bool, target_station: str, limit
             user=os.environ.get("OLD_MIGRATION_DB_USERNAME", "hydrosolutions"),
             password=os.environ.get("OLD_MIGRATION_DB_PASSWORD", "hydrosolutions"),
             host=os.environ.get("OLD_MIGRATION_DB_HOST", "localhost"),
-            port=os.environ.get("OLD_MIGRATION_DB_PORT", "5433"),
+            port=os.environ.get("OLD_MIGRATION_DB_PORT", "5432"),
             db_name=os.environ.get("OLD_MIGRATION_DB_NAME", "hydrosolutions"),
         )
     )
