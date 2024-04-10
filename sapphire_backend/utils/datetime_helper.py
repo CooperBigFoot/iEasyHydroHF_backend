@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 from django.conf import settings
-from django.utils import timezone
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
@@ -12,7 +11,9 @@ class SmartDatetime:
         self._local_timezone = station.site.timezone or ZoneInfo(settings.TIME_ZONE)
         if isinstance(dt, str):
             if local:
-                self._dt_utc = datetime.fromisoformat(dt).replace(tzinfo=self._local_timezone).astimezone(ZoneInfo("UTC"))
+                self._dt_utc = (
+                    datetime.fromisoformat(dt).replace(tzinfo=self._local_timezone).astimezone(ZoneInfo("UTC"))
+                )
             else:
                 self._dt_utc = datetime.fromisoformat(dt).replace(tzinfo=ZoneInfo("UTC"))
         elif isinstance(dt, datetime):
