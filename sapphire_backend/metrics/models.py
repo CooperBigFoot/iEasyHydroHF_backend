@@ -260,7 +260,10 @@ class MeteorologicalMetric(models.Model):
 
 class DischargeNorm(models.Model):
     station = models.ForeignKey(
-        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.CASCADE
+        "stations.HydrologicalStation",
+        to_field="uuid",
+        verbose_name=_("Hydrological station"),
+        on_delete=models.CASCADE,
     )
     ordinal_number = models.PositiveIntegerField(verbose_name=_("Ordinal number"))
     value = models.DecimalField(verbose_name=_("Value"), max_digits=10, decimal_places=5)

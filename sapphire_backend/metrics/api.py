@@ -1,7 +1,8 @@
 from typing import Any
 
 from django.db.models import Avg, Count, Max, Min, Sum
-from ninja import Query
+from ninja import File, Query
+from ninja.files import UploadedFile
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
@@ -10,8 +11,9 @@ from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from .models import HydrologicalMetric, MeteorologicalMetric
+from .models import DischargeNorm, HydrologicalMetric, MeteorologicalMetric
 from .schema import (
+    DischargeNormOutputSchema,
     DischargeNormTypeFiltersSchema,
     HydrologicalMetricOutputSchema,
     HydroMetricFilterSchema,
@@ -128,11 +130,17 @@ class MeteoMetricsAPIController:
 
 
 @api_controller(
-    "discharge_norms/{station_uuid}",
-    tags=["Discharge norms"],
-    auth=JWTAuth(),  # permissions=regular_permissions
+    "discharge_norms/{station_uuid}", tags=["Discharge norms"], auth=JWTAuth(), permissions=regular_permissions
 )
 class DischargeNormsAPIController:
-    @route.get("", response="")
+    @route.get("", response=list[DischargeNormOutputSchema])
     def get_station_discharge_norm(self, station_uuid: str, norm_types: Query[DischargeNormTypeFiltersSchema]):
+        return DischargeNorm.objects.filter(station=station_uuid, norm_type=norm_types.norm_type.value)
+
+    @route.post("monthly", response={201: list[DischargeNormOutputSchema]})
+    def upload_monthly_discharge_norm(self, station_uuid: str, file: UploadedFile = File(...)):
+        pass
+
+    @route.post("decadal", response={201: list[DischargeNormOutputSchema]})
+    def upload_decadal_discharge_norm(self, station_uuid: str, file: UploadedFile = File(...)):
         pass
