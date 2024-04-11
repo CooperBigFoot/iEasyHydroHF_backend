@@ -6,7 +6,7 @@ from typing import Any
 from django.conf import settings
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 from sapphire_backend.telegrams.exceptions import (
     InvalidTokenException,
     MissingSectionException,
@@ -17,13 +17,25 @@ from sapphire_backend.telegrams.models import Telegram
 
 
 class BaseTelegramParser(ABC):
-    def __init__(self, telegram: str, store_parsed_telegram: bool = True, automatic_ingestion: bool = False):
+    def __init__(
+        self, telegram: str, organization_uuid, store_parsed_telegram: bool = True, automatic_ingestion: bool = False
+    ):
         self.original_telegram = telegram.strip()
         self.telegram = self.handle_telegram_termination_character()
         self.store_in_db = store_parsed_telegram
         self.automatic_ingestion = automatic_ingestion
         self.tokens = self.tokenize()
-        self.station = None
+        self.organization_uuid = organization_uuid
+        self.hydro_station = None
+        self.meteo_station = None
+
+    @property
+    def exists_hydro_station(self):
+        return self.hydro_station is not None
+
+    @property
+    def exists_meteo_station(self):
+        return self.meteo_station is not None
 
     def handle_telegram_termination_character(self, termination_character: str = "="):
         return (
@@ -76,11 +88,17 @@ class BaseTelegramParser(ABC):
     def validate_station(self, station_code: str) -> None:
         if not station_code.isdigit() or len(station_code) != 5:
             raise InvalidTokenException(f"Invalid station code: {station_code}")
-        try:
-            self.station = HydrologicalStation.objects.get(
-                station_code=station_code, station_type=HydrologicalStation.StationType.MANUAL
-            )
-        except HydrologicalStation.DoesNotExist:
+
+        self.hydro_station = HydrologicalStation.objects.filter(
+            site__organization_id=self.organization_uuid,
+            station_code=station_code,
+            station_type=HydrologicalStation.StationType.MANUAL,
+        ).first()
+        self.meteo_station = MeteorologicalStation.objects.filter(
+            site__organization_id=self.organization_uuid, station_code=station_code
+        ).first()
+        if self.hydro_station is None and self.meteo_station is None:
+            # except HydrologicalStation.DoesNotExist:
             raise InvalidTokenException(f"Station with code {station_code} does not exist")
 
     @classmethod
@@ -95,22 +113,30 @@ class BaseTelegramParser(ABC):
             telegram=self.original_telegram,
             decoded_values=decoded_values,
             automatically_ingested=self.automatic_ingestion,
-            station=self.station,
+            hydro_station=self.hydro_station,
+            meteo_station=self.meteo_station,
         )
 
     def save_parsing_error(self, error: str):
         Telegram.objects.create(
             telegram=self.original_telegram,
             automatically_ingested=self.automatic_ingestion,
-            station=self.station,
+            hydro_station=self.hydro_station,
+            meteo_station=self.meteo_station,
             errors=error,
             successfully_parsed=False,
         )
 
 
 class KN15TelegramParser(BaseTelegramParser):
-    def __init__(self, telegram: str, store_parsed_telegram: bool = True, automatic_ingestion: bool = False):
-        super().__init__(telegram, store_parsed_telegram, automatic_ingestion)
+    def __init__(
+        self,
+        telegram: str,
+        organization_uuid: str,
+        store_parsed_telegram: bool = True,
+        automatic_ingestion: bool = False,
+    ):
+        super().__init__(telegram, organization_uuid, store_parsed_telegram, automatic_ingestion)
 
     def parse(self):
         """
@@ -296,7 +322,7 @@ class KN15TelegramParser(BaseTelegramParser):
 
         return {
             "station_code": station_code,
-            "station_name": self.station.name,
+            "station_name": getattr(self.hydro_station, "name", None) or getattr(self.meteo_station, "name", None),
             "date": date.isoformat(),
             "section_code": section_code,
         }

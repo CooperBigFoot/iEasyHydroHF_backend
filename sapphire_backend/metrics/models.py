@@ -1,5 +1,7 @@
 import logging
+from datetime import timedelta
 
+import psycopg
 from django import db
 from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
@@ -13,6 +15,14 @@ from .choices import (
     NormType,
 )
 from .managers import HydrologicalMetricQuerySet, MeteorologicalMetricQuerySet
+
+ESTIMATIONS_TABLE_MAP = {
+    HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: "estimations_water_level_daily_average",
+    HydrologicalMetricName.WATER_DISCHARGE_DAILY: "estimations_water_discharge_daily",
+    HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: "estimations_water_discharge_daily_average",
+    HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: "estimations_water_discharge_fiveday_average",
+    HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: "estimations_water_discharge_decade_average",
+}
 
 
 class HydrologicalMetric(models.Model):
@@ -70,7 +80,7 @@ class HydrologicalMetric(models.Model):
                 # functionality
                 raise Exception(f"Delete statement {sql_query_delete} failed. {e}")
 
-    def save(self, upsert=True, **kwargs) -> None:
+    def save(self, upsert=True, refresh_view=True, **kwargs) -> None:
         min_value = self.min_value
         max_value = self.max_value
         avg_value = self.avg_value
@@ -102,12 +112,19 @@ class HydrologicalMetric(models.Model):
                 unit = EXCLUDED.unit,
                 sensor_type = EXCLUDED.sensor_type;
         """
-        try:
-            with connection.cursor() as cursor:
+
+        try:  # TODO this is horrible, the metrics test factory only transactional block, need to find a better way
+            if connection.client.connection.settings_dict["NAME"] == "test_sapphire_backend":
+                conn = connection
+            else:
+                conn = psycopg.connect(self.conn_string, autocommit=True)
+            with conn.cursor() as cursor:
                 if upsert:
                     cursor.execute(sql_query_upsert)
                 else:
                     cursor.execute(sql_query_insert)
+            if connection.client.connection.settings_dict["NAME"] != "test_sapphire_backend":
+                conn.close()
         except db.utils.NotSupportedError as e:
             """
             Handle specific error. Timescale has this bug, hyper chunks should not have insert blockers.
@@ -121,15 +138,63 @@ class HydrologicalMetric(models.Model):
                     sql_query_remove_trigger = (
                         f"drop trigger ts_insert_blocker on _timescaledb_internal.{hyper_chunk_name}; "
                     )
-                    cursor.execute(sql_query_remove_trigger)
-                    logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
-                    cursor.execute(sql_query_insert)
+                    conn = psycopg.connect(self.conn_string, autocommit=True)
+                    with conn.cursor() as cursor:
+                        cursor.execute(sql_query_remove_trigger)
+                        logging.info(f"Removed unwanted ts_insert_blocker on {hyper_chunk_name}")
+                        cursor.execute(sql_query_insert)
+                    conn.close()
                 else:
                     raise Exception(e)
             else:
                 raise Exception(e)
         except Exception as e:
             raise Exception(e)
+        finally:
+            if (
+                refresh_view
+                and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY
+                and self.value_type == HydrologicalMeasurementType.MANUAL
+            ):
+                self._refresh_view()
+
+    @property
+    def conn_string(self):
+        CONN_STRING = (
+            f"host={connection.client.connection.settings_dict['HOST']} "
+            f"port={connection.client.connection.settings_dict['PORT']} "
+            f"user={connection.client.connection.settings_dict['USER']} "
+            f"password={connection.client.connection.settings_dict['PASSWORD']} "
+            f"dbname={connection.client.connection.settings_dict['NAME']}"
+        )
+        return CONN_STRING
+
+    def _refresh_view(self):
+        # cannot be in the same transaction block so we ensure this by creating a new connection with autocommit
+        start_date_str = self.timestamp.strftime("%Y-%m-%d")
+        end_date_str = (self.timestamp + timedelta(days=1)).strftime("%Y-%m-%d")
+        sql_refresh_view = f"CALL refresh_continuous_aggregate('estimations_water_level_daily_average', '{start_date_str}', '{end_date_str}');"
+        conn = psycopg.connect(self.conn_string, autocommit=True)
+        with conn.cursor() as cursor:
+            cursor.execute(sql_refresh_view)
+        conn.close()
+
+    def select_first(self):  # TODO JUST TEMPORARY USAGE, NOT SERIOUS
+        table_name = self._meta.db_table
+        if self.value_type == HydrologicalMeasurementType.ESTIMATED:
+            table_name = ESTIMATIONS_TABLE_MAP.get(self.metric_name, self._meta.db_table)
+
+        sql_query_select = f"""
+            SELECT min_value, avg_value, max_value, unit, sensor_type FROM {table_name} WHERE
+            timestamp='{self.timestamp}' AND station_id={self.station_id} AND metric_name='{self.metric_name}'
+            AND value_type='{self.value_type}' AND sensor_identifier='{self.sensor_identifier}';
+            """
+        with connection.cursor() as cursor:
+            cursor.execute(sql_query_select)
+            row = cursor.fetchone()
+            if row is not None:
+                self.min_value, self.avg_value, self.max_value, self.unit, self.sensor_type = row
+                return self
 
 
 class MeteorologicalMetric(models.Model):
