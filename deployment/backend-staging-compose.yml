@@ -53,6 +53,8 @@ services:
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=test@encode.hr"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--entryPoints.web.transport.respondingTimeouts.tcp.lingeringTimeout=30s"
+      - "--entryPoints.websecure.transport.respondingTimeouts.tcp.lingeringTimeout=30s"
     volumes:
       - "./letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
