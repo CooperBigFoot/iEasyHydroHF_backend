@@ -27,10 +27,16 @@ class FileTooBigException(DischargeNormParserException):
     Raised when an invalid token is encountered during parsing.
     """
 
-    def __init__(self, file_size: float, message: str = "Maximum file size is"):
+    def __init__(
+        self,
+        file_size: float,
+        max_size: float,
+        message: str = "Maximum file size is {} MB, but uploaded file has {} MB",
+    ):
         self.file_size = file_size
-        logger.error(f"{message}: {file_size}")
-        super().__init__(f"{message}: {file_size}")
+        self.max_size = max_size
+        logger.error(message.format(max_size, file_size))
+        super().__init__(message.format(max_size, file_size))
 
 
 class MissingSheetsException(DischargeNormParserException):

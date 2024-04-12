@@ -7,6 +7,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName
+from sapphire_backend.metrics.exceptions import FileTooBigException
 
 
 class TestHydroMetricsAPI:
@@ -310,3 +311,23 @@ class TestDischargeNormsAPI:
         )
         assert response.status_code == 400
         assert response.json() == {"detail": "Invalid file extension: .wrongext", "code": "invalid_norm_file"}
+
+    def test_upload_large_file(self, authenticated_regular_user_api_client, manual_hydro_station):
+        file = self._get_decadal_test_file()
+        with patch(
+            "sapphire_backend.metrics.utils.parser.DecadalDischargeNormFileParser._validate_file_size"
+        ) as mock_validate:
+
+            def side_effect():
+                raise FileTooBigException(3, 2)
+
+            mock_validate.side_effect = side_effect
+            response = authenticated_regular_user_api_client.post(
+                f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+            )
+
+            assert response.status_code == 400
+            assert response.json() == {
+                "detail": "Maximum file size is 2 MB, but uploaded file has 3 MB",
+                "code": "invalid_norm_file",
+            }

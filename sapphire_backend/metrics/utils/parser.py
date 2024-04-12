@@ -26,8 +26,10 @@ class BaseNormFileParser(ABC):
             raise InvalidFileExtensionException(extension)
 
     def _validate_file_size(self):
+        print(self.file.size)
+        print(self.max_file_size)
         if self.file.size > self.max_file_size:
-            raise FileTooBigException(self.file.size / 1024 / 1024)
+            raise FileTooBigException(self.file.size / 1024 / 1024, self.max_file_size / 1024 / 1024)
 
     def _load_file(self):
         try:
