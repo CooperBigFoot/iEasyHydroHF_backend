@@ -31,3 +31,22 @@ class FileTooBigException(DischargeNormParserException):
         self.file_size = file_size
         logger.error(f"{message}: {file_size}")
         super().__init__(f"{message}: {file_size}")
+
+
+class MissingSheetsException(DischargeNormParserException):
+    def __init__(
+        self, required: list[str], found: list[str], message: str = "Missing required sheets: '{}', found: '{}'"
+    ):
+        self.required = required
+        self.found = found
+        msg = message.format(", ".join(required), ", ".join(found))
+        logger.error(msg)
+        super().__init__(msg)
+
+
+class InvalidFileStructureException(DischargeNormParserException):
+    def __init__(
+        self, message: str = "Could not read the file, please check to template file to see the expected format"
+    ):
+        logger.error(f"{message}")
+        super().__init__(f"{message}")

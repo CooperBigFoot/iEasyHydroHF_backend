@@ -1,6 +1,10 @@
+import os
 from typing import Any
 
+from django.conf import settings
 from django.db.models import Avg, Count, Max, Min, Sum
+from django.http import FileResponse
+from django.templatetags.static import static
 from ninja import File, Query
 from ninja.files import UploadedFile
 from ninja_extra import api_controller, route
@@ -11,6 +15,7 @@ from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
+from .choices import NormType
 from .models import DischargeNorm, HydrologicalMetric, MeteorologicalMetric
 from .schema import (
     DischargeNormOutputSchema,
@@ -25,6 +30,7 @@ from .schema import (
     TimeBucketQueryParams,
 )
 from .timeseries.query import TimeseriesQueryManager
+from .utils.parser import DecadalDischargeNormFileParser, MonthlyDischargeNormFileParser
 
 agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": Sum}
 
@@ -129,18 +135,75 @@ class MeteoMetricsAPIController:
             return manager.get_metric_distribution()
 
 
-@api_controller(
-    "discharge_norms/{station_uuid}", tags=["Discharge norms"], auth=JWTAuth(), permissions=regular_permissions
-)
+@api_controller("discharge-norms", tags=["Discharge norms"], auth=JWTAuth())
 class DischargeNormsAPIController:
-    @route.get("", response=list[DischargeNormOutputSchema])
+    @route.get("download-template", response={200: None, 404: Message})
+    def download_template_file(self, norm_types: Query[DischargeNormTypeFiltersSchema]):
+        filename = (
+            "discharge_norm_monthly_template.xlsx"
+            if norm_types.norm_type.value == NormType.MONTHLY
+            else "discharge_norm_decadal_template.xlsx"
+        )
+        file_path = static(f"templates/{filename}")
+        absolute_path = os.path.join(settings.APPS_DIR, file_path.strip("/"))
+        if os.path.exists(absolute_path):
+            response = FileResponse(open(absolute_path, "rb"), as_attachment=True, filename=filename)
+            return response
+        else:
+            return 404, {"detail": "Could not retrieve the file", "code": "file_not_found"}
+
+    @route.get("{station_uuid}", response=list[DischargeNormOutputSchema], permissions=regular_permissions)
     def get_station_discharge_norm(self, station_uuid: str, norm_types: Query[DischargeNormTypeFiltersSchema]):
         return DischargeNorm.objects.filter(station=station_uuid, norm_type=norm_types.norm_type.value)
 
-    @route.post("monthly", response={201: list[DischargeNormOutputSchema]})
+    @route.post(
+        "{station_uuid}/monthly", response={201: list[DischargeNormOutputSchema]}, permissions=regular_permissions
+    )
     def upload_monthly_discharge_norm(self, station_uuid: str, file: UploadedFile = File(...)):
-        pass
+        parser = MonthlyDischargeNormFileParser(file)
 
-    @route.post("decadal", response={201: list[DischargeNormOutputSchema]})
+        data = parser.parse()
+
+        # first delete the existing records
+        _ = DischargeNorm.objects.filter(station=station_uuid, norm_type=NormType.MONTHLY).delete()
+
+        # will not call the .save method, thus the pre_save and post_save signals won't be emitted
+        norms = DischargeNorm.objects.bulk_create(
+            [
+                DischargeNorm(
+                    station_id=station_uuid,
+                    value=point["value"],
+                    ordinal_number=point["ordinal_number"],
+                    norm_type=NormType.MONTHLY,
+                )
+                for point in data["discharge"]
+            ]
+        )
+
+        return 201, norms
+
+    @route.post(
+        "{station_uuid}/decadal", response={201: list[DischargeNormOutputSchema]}, permissions=regular_permissions
+    )
     def upload_decadal_discharge_norm(self, station_uuid: str, file: UploadedFile = File(...)):
-        pass
+        parser = DecadalDischargeNormFileParser(file)
+
+        data = parser.parse()
+
+        # first delete the existing records
+        _ = DischargeNorm.objects.filter(station=station_uuid, norm_type=NormType.DECADAL).delete()
+
+        # will not call the .save method, thus the pre_save and post_save signals won't be emitted
+        norms = DischargeNorm.objects.bulk_create(
+            [
+                DischargeNorm(
+                    station_id=station_uuid,
+                    value=point["value"],
+                    ordinal_number=point["ordinal_number"],
+                    norm_type=NormType.DECADAL,
+                )
+                for point in data["discharge"]
+            ]
+        )
+
+        return 201, norms

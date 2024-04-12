@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Literal
 
@@ -12,6 +12,7 @@ from .choices import (
     NormType,
 )
 from .models import DischargeNorm
+from .utils.helpers import calculate_decade_date
 
 
 class BaseTimeseriesFilterSchema(FilterSchema):
@@ -94,6 +95,15 @@ class DischargeNormTypeFiltersSchema(FilterSchema):
 
 
 class DischargeNormOutputSchema(ModelSchema):
+    timestamp: datetime
+
     class Meta:
         model = DischargeNorm
         fields = ["ordinal_number", "value"]
+
+    @staticmethod
+    def resolve_timestamp(obj):
+        if obj.norm_type == NormType.MONTHLY:
+            return datetime(datetime.utcnow().year, obj.ordinal_number, 1, 12, tzinfo=timezone.utc)
+        else:
+            return calculate_decade_date(obj.ordinal_number)

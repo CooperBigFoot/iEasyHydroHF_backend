@@ -1,4 +1,10 @@
 import datetime as dt
+import os
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName
 
@@ -177,8 +183,6 @@ class TestHydroMetricsAPI:
             },
         )
 
-        print(response.json())
-
         EXPECTED_RESPONSE = [
             {
                 "bucket": dt.datetime(
@@ -213,3 +217,96 @@ class TestHydroMetricsAPI:
         ]
 
         assert response.json() == EXPECTED_RESPONSE
+
+
+class TestDischargeNormsAPI:
+    endpoint = "/api/v1/discharge-norms"
+    decadal_test_file = os.path.join(Path(__file__).parent, "data", "decadal_norm_example.xlsx")
+    monthly_test_file = os.path.join(Path(__file__).parent, "data", "monthly_norm_example.xlsx")
+
+    def _get_decadal_test_file(self):
+        with open(self.decadal_test_file, "rb") as f:
+            file_content = f.read()
+
+        file = SimpleUploadedFile(
+            "decadal_norm_example.xlsx",
+            file_content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        return file
+
+    def _get_monthly_test_file(self):
+        with open(self.monthly_test_file, "rb") as f:
+            file_content = f.read()
+
+        file = SimpleUploadedFile(
+            "monthly_norm_example.xlsx",
+            file_content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        return file
+
+    @pytest.mark.django_db
+    def test_download_template_file_for_unauthenticated_user(self, api_client):
+        response = api_client.get(f"{self.endpoint}/download-template?norm_type=d")
+
+        assert response.status_code == 401
+
+    @pytest.mark.django_db
+    def test_download_decadal_norm_template_file(self, authenticated_regular_user_api_client):
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/download-template?norm_type=d")
+
+        assert response.status_code == 200
+        assert response["Content-Disposition"] == 'attachment; filename="discharge_norm_decadal_template.xlsx"'
+
+    @pytest.mark.django_db
+    def test_download_monthly_norm_template_file(self, authenticated_regular_user_api_client):
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/download-template?norm_type=m")
+
+        assert response.status_code == 200
+        assert response["Content-Disposition"] == 'attachment; filename="discharge_norm_monthly_template.xlsx"'
+
+    @pytest.mark.django_db
+    def test_download_missing_norm_template_file(self, authenticated_regular_user_api_client):
+        with patch("os.path.exists", return_value=False):
+            response = authenticated_regular_user_api_client.get(f"{self.endpoint}/download-template?norm_type=m")
+            assert response.status_code == 404
+            assert response.json() == {"detail": "Could not retrieve the file", "code": "file_not_found"}
+
+    def test_upload_decadal_norm_file_for_unauthenticated_user(self, api_client, manual_hydro_station):
+        file_content = b"Some file content"
+        files = {
+            "file": (
+                "filename.xlsx",
+                file_content,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        }
+
+        response = api_client.post(f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", files=files)
+        assert response.status_code == 401
+
+    def test_upload_decadal_norm_file_for_unauthorized_user(
+        self, authenticated_regular_user_other_organization_api_client, manual_hydro_station
+    ):
+        file = self._get_decadal_test_file()
+
+        response = authenticated_regular_user_other_organization_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+        )
+        assert response.status_code == 403
+
+    def test_upload_decadal_norm_file_wrong_extension(
+        self, authenticated_regular_user_api_client, manual_hydro_station
+    ):
+        file = SimpleUploadedFile(
+            "wrong_extension_file.wrongext", b"Dummy content", content_type="application/octet-stream"
+        )
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+        )
+        assert response.status_code == 400
+        assert response.json() == {"detail": "Invalid file extension: .wrongext", "code": "invalid_norm_file"}
