@@ -3,6 +3,8 @@ from typing import Literal
 
 from ninja import FilterSchema, Schema
 
+from sapphire_backend.utils.datetime_helper import SmartDatetime
+
 
 class DischargeModelBaseSchema(Schema):
     name: str
@@ -11,10 +13,16 @@ class DischargeModelBaseSchema(Schema):
     param_c: float
     valid_from: datetime
     station_id: int
+    uuid: str
 
+    @staticmethod
+    def resolve_uuid(obj):
+        return str(obj.uuid)
 
-class DischargeModelOutputDetailSchema(DischargeModelBaseSchema):
-    id: int
+    @staticmethod
+    def resolve_valid_from(obj):
+        transform_valid_from = SmartDatetime(obj.valid_from, station=obj.station, local=False).local.date()
+        return transform_valid_from
 
 
 class DischargeModelCreateBaseSchema(Schema):
@@ -37,7 +45,7 @@ class DischargeModelCreateInputPointsSchema(DischargeModelCreateBaseSchema):
 
 class DischargeModelCreateInputDeltaSchema(DischargeModelCreateBaseSchema):
     param_delta: float
-    from_model_id: int
+    from_model_uuid: str
 
 
 class OrderQueryParamSchema(Schema):

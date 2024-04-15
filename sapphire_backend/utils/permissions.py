@@ -15,6 +15,9 @@ def get_station_from_kwargs(kwargs):
     if kwargs.get("discharge_model_id") is not None:
         model_obj = DischargeModel.objects.filter(id=kwargs.get("discharge_model_id")).first()
         station = getattr(model_obj, "station", None)
+    if kwargs.get("discharge_model_uuid") is not None:
+        model_obj = DischargeModel.objects.filter(uuid=kwargs.get("discharge_model_uuid")).first()
+        station = getattr(model_obj, "station", None)
     elif kwargs.get("station_id") is not None:
         station = (
             HydrologicalStation.objects.filter(id=kwargs.get("station_id")).first()

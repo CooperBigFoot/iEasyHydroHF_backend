@@ -69,7 +69,7 @@ def get_parsed_telegrams_data(
 
             if decoded.get("section_one") is not None:
                 if parser.exists_hydro_station:
-                    hydro_station_codes.add((station_code, parser.hydro_station.id))
+                    hydro_station_codes.add((station_code, str(parser.hydro_station.uuid)))
                 else:
                     error = f"Hydro station with code {station_code} does not exist for this organization {organization_uuid}"
                     parsed_data["errors"].append({"index": idx, "telegram": telegram, "error": error})
@@ -77,7 +77,7 @@ def get_parsed_telegrams_data(
 
             if decoded.get("section_eight") is not None:
                 if parser.exists_meteo_station:
-                    meteo_station_codes.add((station_code, parser.meteo_station.id))
+                    meteo_station_codes.add((station_code, str(parser.meteo_station.uuid)))
                 else:
                     error = f"Meteo station with code {station_code} does not exist for this organization {organization_uuid}"
                     parsed_data["errors"].append({"index": idx, "telegram": telegram, "error": error})
