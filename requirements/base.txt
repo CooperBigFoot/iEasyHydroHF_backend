@@ -21,7 +21,7 @@ django-extensions==3.2.3  # https://github.com/django-extensions/django-extensio
 # ------------------------------------------------------------------------------W
 django-ninja==1.1.0  # https://github.com/vitalik/django-ninja
 django-ninja-jwt[crypto]==5.3.0  # https://github.com/eadwinCode/django-ninja-jwt
-django-ninja-extra==0.20.4  # https://github.com/eadwinCode/django-ninja-extra
+django-ninja-extra==0.20.5  # https://github.com/eadwinCode/django-ninja-extra
 
 # static files handling
 whitenoise==6.6.0  # https://github.com/evansd/whitenoise
