@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from timezone_field import TimeZoneField
 
+from sapphire_backend.metrics.choices import NormType
 from sapphire_backend.utils.mixins.models import UUIDMixin
 
 
@@ -42,6 +43,10 @@ class Organization(UUIDMixin, models.Model):
     )
     language = models.CharField(
         verbose_name=_("Language"), max_length=2, choices=Language.choices, default=Language.ENGLISH
+    )
+
+    discharge_norm_type = models.CharField(
+        verbose_name=_("Norm type"), choices=NormType, default=NormType.DECADAL, max_length=20
     )
 
     is_active = models.BooleanField(verbose_name=_("Is active?"), default=True)
