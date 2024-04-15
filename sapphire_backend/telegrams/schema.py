@@ -79,6 +79,6 @@ class TelegramOverviewOutputSchema(Schema):
     daily_overview: list[DailyOverviewSingleSchema]
     data_processing_overview: dict[str, list[tuple[str, DataProcessingDayTimes]]]
     save_data_overview: list[SaveDataOverviewSingleSchema]
-    discharge_codes: list[tuple[str, int]]
-    meteo_codes: list[tuple[str, int]]
+    discharge_codes: list[tuple[str, str]]
+    meteo_codes: list[tuple[str, str]]
     errors: list[str]

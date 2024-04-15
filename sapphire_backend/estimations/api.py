@@ -16,10 +16,10 @@ from ..utils.datetime_helper import SmartDatetime
 from .models import DischargeModel
 from .query import EstimationsViewQueryManager
 from .schema import (
+    DischargeModelBaseSchema,
     DischargeModelCreateInputDeltaSchema,
     DischargeModelCreateInputPointsSchema,
     DischargeModelDeleteOutputSchema,
-    DischargeModelOutputDetailSchema,
     EstimationsFilterSchema,
     OrderQueryParamSchema,
 )
@@ -28,43 +28,37 @@ from .utils import least_squares_fit
 
 @api_controller("estimations", tags=["Discharge Models"], auth=JWTAuth(), permissions=regular_permissions)
 class DischargeModelsAPIController:
-    @route.get(
-        "discharge-models/{station_id}/list", response={200: list[DischargeModelOutputDetailSchema], 404: Message}
-    )
-    def get_discharge_models(self, station_id: str, year: int = Query(None, description="Filter by year")):
+    @route.get("discharge-models/{station_uuid}/list", response={200: list[DischargeModelBaseSchema], 404: Message})
+    def get_discharge_models(self, station_uuid: str, year: int = Query(None, description="Filter by year")):
         try:
-            queryset = DischargeModel.objects.filter(station_id=station_id).select_related("station")
+            hydro_station = HydrologicalStation.objects.get(uuid=station_uuid)
+            queryset = DischargeModel.objects.filter(station__uuid=station_uuid)
 
             if year is not None:
-                start_of_year = datetime(year, 1, 1)
-                end_of_year = datetime(year, 12, 31, 23, 59, 59)
-                queryset = queryset.filter(valid_from__range=(start_of_year, end_of_year))
+                start_of_year_utc = SmartDatetime(datetime(year, 1, 1), hydro_station, local=True).day_beginning_utc
+                end_of_year_utc = SmartDatetime(datetime(year, 12, 31, 23, 59, 59), hydro_station, local=True).utc
+                queryset = queryset.filter(valid_from__range=(start_of_year_utc, end_of_year_utc))
 
             queryset = queryset.order_by("-valid_from")
-            return_list = []
-            for obj in queryset:
-                transform_valid_from = SmartDatetime(obj.valid_from, station=obj.station, local=False).local.date()
-                schema_model_obj = DischargeModelOutputDetailSchema.from_orm(obj)
-                schema_model_obj.valid_from = transform_valid_from
-                return_list.append(schema_model_obj)
-            return 200, return_list
+
+            return 200, queryset
         except DischargeModel.DoesNotExist:
             return 404, {"detail": _("Discharge model not found."), "code": "not_found"}
 
     @route.post(
-        "discharge-models/{station_id}/create-points", response={200: DischargeModelOutputDetailSchema, 404: Message}
+        "discharge-models/{station_uuid}/create-points", response={200: DischargeModelBaseSchema, 404: Message}
     )
     def create_discharge_model_from_points(
-        self, request, station_id: str, input_data: DischargeModelCreateInputPointsSchema
+        self, request, station_uuid: str, input_data: DischargeModelCreateInputPointsSchema
     ):
         fit_params = least_squares_fit(input_data.points)
 
-        hydro_station = HydrologicalStation.objects.filter(id=station_id).first()
+        hydro_station = HydrologicalStation.objects.get(uuid=station_uuid)
         valid_from_utc = SmartDatetime(
             datetime.fromisoformat(input_data.valid_from).replace(hour=0), hydro_station, local=True
         ).day_beginning_utc
 
-        DischargeModel.objects.filter(station_id=station_id, valid_from=valid_from_utc).delete()
+        DischargeModel.objects.filter(station__uuid=station_uuid, valid_from=valid_from_utc).delete()
 
         new_model = DischargeModel(
             name=input_data.name,
@@ -72,25 +66,23 @@ class DischargeModelsAPIController:
             param_b=fit_params["param_b"],
             param_c=fit_params["param_c"],
             valid_from=valid_from_utc,
-            station_id=station_id,
+            station=hydro_station,
         )
         new_model.save()
         return 200, new_model
 
-    @route.post("discharge-models/{station_id}/create-delta", response={200: DischargeModelOutputDetailSchema})
+    @route.post("discharge-models/{station_uuid}/create-delta", response={200: DischargeModelBaseSchema})
     def create_discharge_model_from_delta(
-        self, request, station_id: str, input_data: DischargeModelCreateInputDeltaSchema
+        self, request, station_uuid: str, input_data: DischargeModelCreateInputDeltaSchema
     ):
-        old_model = DischargeModel.objects.get(id=input_data.from_model_id)
+        old_model = DischargeModel.objects.get(uuid=input_data.from_model_uuid)
         param_a = float(old_model.param_a) + input_data.param_delta
         param_b = float(old_model.param_b)
         param_c = float(old_model.param_c)
-        hydro_station = HydrologicalStation.objects.filter(id=station_id).first()
-        valid_from_utc = SmartDatetime(
-            datetime.fromisoformat(input_data.valid_from).replace(hour=0), hydro_station, local=True
-        ).day_beginning_utc
+        hydro_station = HydrologicalStation.objects.get(uuid=station_uuid)
+        valid_from_utc = SmartDatetime(input_data.valid_from, hydro_station, local=True).day_beginning_utc
 
-        DischargeModel.objects.filter(station_id=station_id, valid_from=valid_from_utc).delete()
+        DischargeModel.objects.filter(station__uuid=station_uuid, valid_from=valid_from_utc).delete()
 
         new_model = DischargeModel(
             name=input_data.name,
@@ -98,14 +90,14 @@ class DischargeModelsAPIController:
             param_b=param_b,
             param_c=param_c,
             valid_from=valid_from_utc,
-            station_id=station_id,
+            station=hydro_station,
         )
         new_model.save()
         return 200, new_model
 
-    @route.delete("discharge-models/{discharge_model_id}", response={200: DischargeModelDeleteOutputSchema})
-    def delete_discharge_model(self, request, discharge_model_id: str):
-        model = DischargeModel.objects.filter(id=discharge_model_id).first()
+    @route.delete("discharge-models/delete/{discharge_model_uuid}", response={200: DischargeModelDeleteOutputSchema})
+    def delete_discharge_model(self, request, discharge_model_uuid: str):
+        model = DischargeModel.objects.filter(uuid=discharge_model_uuid).get()
         name = model.name
         model.delete()
 
