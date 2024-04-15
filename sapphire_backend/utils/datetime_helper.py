@@ -46,7 +46,7 @@ class SmartDatetime:
 
     @property
     def morning_local(self):
-        return self.local.replace(hour=8, minute=0, second=0)
+        return self.local.replace(hour=8, minute=0, second=0, microsecond=0)
 
     @property
     def morning_utc(self):
@@ -54,7 +54,7 @@ class SmartDatetime:
 
     @property
     def previous_morning_local(self):
-        return self.previous_local.replace(hour=8, minute=0, second=0)
+        return self.previous_local.replace(hour=8, minute=0, second=0, microsecond=0)
 
     @property
     def previous_morning_utc(self):
@@ -62,7 +62,7 @@ class SmartDatetime:
 
     @property
     def evening_local(self):
-        return self._dt_local.replace(hour=20, minute=0, second=0)
+        return self._dt_local.replace(hour=20, minute=0, second=0, microsecond=0)
 
     @property
     def evening_utc(self):
@@ -78,7 +78,7 @@ class SmartDatetime:
 
     @property
     def midday_local(self):
-        return self._dt_local.replace(hour=12, minute=0, second=0)
+        return self._dt_local.replace(hour=12, minute=0, second=0, microsecond=0)
 
     @property
     def midday_utc(self):
@@ -94,11 +94,11 @@ class SmartDatetime:
 
     @property
     def day_beginning_local(self):
-        return self.morning_local.replace(hour=0, minute=0, second=0)
+        return self.morning_local.replace(hour=0, minute=0, second=0, microsecond=0)
 
     @property
     def day_beginning_utc(self):
         return self.day_beginning_local.astimezone(ZoneInfo("UTC"))
 
     def __str__(self):
-        return f"Smart Datetime - > local {self.local.isoformat()}, UTC {self.utc.isoformat()}"
+        return f"SmartDatetime local {self.local.isoformat()}, UTC {self.utc.isoformat()}"
