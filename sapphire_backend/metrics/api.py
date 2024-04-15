@@ -154,7 +154,7 @@ class DischargeNormsAPIController:
 
     @route.get("{station_uuid}", response=list[DischargeNormOutputSchema], permissions=regular_permissions)
     def get_station_discharge_norm(self, station_uuid: str, norm_types: Query[DischargeNormTypeFiltersSchema]):
-        return DischargeNorm.objects.filter(station=station_uuid, norm_type=norm_types.norm_type.value)
+        return DischargeNorm.objects.for_station(station_uuid).filter(norm_type=norm_types.norm_type.value)
 
     @route.post(
         "{station_uuid}/monthly", response={201: list[DischargeNormOutputSchema]}, permissions=regular_permissions

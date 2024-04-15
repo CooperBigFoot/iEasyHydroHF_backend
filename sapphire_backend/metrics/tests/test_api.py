@@ -1,13 +1,16 @@
 import datetime as dt
 import os
+import uuid
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName
+from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, NormType
 from sapphire_backend.metrics.exceptions import FileTooBigException
+from sapphire_backend.metrics.models import DischargeNorm
 
 
 class TestHydroMetricsAPI:
@@ -331,3 +334,202 @@ class TestDischargeNormsAPI:
                 "detail": "Maximum file size is 2 MB, but uploaded file has 3 MB",
                 "code": "invalid_norm_file",
             }
+
+    def test_decadal_norm_wrong_sheet_name(self, authenticated_regular_user_api_client, manual_hydro_station):
+        file = self._get_decadal_test_file()
+
+        with patch(
+            "sapphire_backend.metrics.utils.parser.DecadalDischargeNormFileParser._get_sheet_names",
+            return_value=["test"],
+        ):
+            response = authenticated_regular_user_api_client.post(
+                f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+            )
+
+            assert response.status_code == 400
+            assert response.json() == {
+                "detail": "Missing required sheets: 'test', found: 'discharge'",
+                "code": "invalid_norm_file",
+            }
+
+    def test_incomplete_decadal_norm_upload(self, authenticated_regular_user_api_client, manual_hydro_station):
+        file = self._get_monthly_test_file()
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+        )
+
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "Invalid number of columns, need to have 36 values.",
+            "code": "invalid_norm_file",
+        }
+
+    def test_upload_decadal_norm(self, authenticated_regular_user_api_client, manual_hydro_station):
+        assert DischargeNorm.objects.for_station(manual_hydro_station).decadal().count() == 0
+
+        file = self._get_decadal_test_file()
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+        )
+
+        assert response.status_code == 201
+        assert DischargeNorm.objects.for_station(manual_hydro_station).decadal().count() == 36
+
+    def test_upload_monthly_norm(self, authenticated_regular_user_api_client, manual_hydro_station):
+        assert DischargeNorm.objects.for_station(manual_hydro_station).monthly().count() == 0
+
+        file = self._get_monthly_test_file()
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}/monthly", {"file": file}, format="multipart"
+        )
+
+        assert response.status_code == 201
+        assert DischargeNorm.objects.for_station(manual_hydro_station).monthly().count() == 12
+
+    def test_upload_monthly_norm_api_response(self, authenticated_regular_user_api_client, manual_hydro_station):
+        file = self._get_monthly_test_file()
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}/monthly", {"file": file}, format="multipart"
+        )
+
+        assert response.json() == [
+            {"timestamp": "2024-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.0"},
+            {"timestamp": "2024-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.0"},
+            {"timestamp": "2024-03-01T12:00:00Z", "ordinal_number": 3, "value": "3.0"},
+            {"timestamp": "2024-04-01T12:00:00Z", "ordinal_number": 4, "value": "4.0"},
+            {"timestamp": "2024-05-01T12:00:00Z", "ordinal_number": 5, "value": "5.0"},
+            {"timestamp": "2024-06-01T12:00:00Z", "ordinal_number": 6, "value": "6.0"},
+            {"timestamp": "2024-07-01T12:00:00Z", "ordinal_number": 7, "value": "7.0"},
+            {"timestamp": "2024-08-01T12:00:00Z", "ordinal_number": 8, "value": "8.0"},
+            {"timestamp": "2024-09-01T12:00:00Z", "ordinal_number": 9, "value": "9.0"},
+            {"timestamp": "2024-10-01T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
+            {"timestamp": "2024-11-01T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
+            {"timestamp": "2024-12-01T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
+        ]
+
+    def test_upload_decadal_norm_partial_api_response(
+        self, authenticated_regular_user_api_client, manual_hydro_station
+    ):
+        file = self._get_decadal_test_file()
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+        )
+
+        assert response.json()[:12] == [
+            {"timestamp": "2024-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.0"},
+            {"timestamp": "2024-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.0"},
+            {"timestamp": "2024-01-25T12:00:00Z", "ordinal_number": 3, "value": "3.0"},
+            {"timestamp": "2024-02-05T12:00:00Z", "ordinal_number": 4, "value": "4.0"},
+            {"timestamp": "2024-02-15T12:00:00Z", "ordinal_number": 5, "value": "5.0"},
+            {"timestamp": "2024-02-25T12:00:00Z", "ordinal_number": 6, "value": "6.0"},
+            {"timestamp": "2024-03-05T12:00:00Z", "ordinal_number": 7, "value": "7.0"},
+            {"timestamp": "2024-03-15T12:00:00Z", "ordinal_number": 8, "value": "8.0"},
+            {"timestamp": "2024-03-25T12:00:00Z", "ordinal_number": 9, "value": "9.0"},
+            {"timestamp": "2024-04-05T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
+            {"timestamp": "2024-04-15T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
+            {"timestamp": "2024-04-25T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
+        ]
+
+    def test_upload_norm_overwrites_existing_records(
+        self, authenticated_regular_user_api_client, manual_hydro_station
+    ):
+        for i in range(1, 13):
+            _ = DischargeNorm.objects.create(
+                station=manual_hydro_station, norm_type=NormType.MONTHLY, value=i + 10, ordinal_number=i
+            )
+
+        norms = DischargeNorm.objects.for_station(manual_hydro_station).monthly()
+
+        assert norms.count() == 12
+        assert list(norms.values_list("value", flat=True)) == [
+            Decimal("11.00000"),
+            Decimal("12.00000"),
+            Decimal("13.00000"),
+            Decimal("14.00000"),
+            Decimal("15.00000"),
+            Decimal("16.00000"),
+            Decimal("17.00000"),
+            Decimal("18.00000"),
+            Decimal("19.00000"),
+            Decimal("20.00000"),
+            Decimal("21.00000"),
+            Decimal("22.00000"),
+        ]
+
+        file = self._get_monthly_test_file()
+        _ = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}/monthly", {"file": file}, format="multipart"
+        )
+
+        assert norms.count() == 12
+        assert list(norms.values_list("value", flat=True)) == [
+            Decimal("1.00000"),
+            Decimal("2.00000"),
+            Decimal("3.00000"),
+            Decimal("4.00000"),
+            Decimal("5.00000"),
+            Decimal("6.00000"),
+            Decimal("7.00000"),
+            Decimal("8.00000"),
+            Decimal("9.00000"),
+            Decimal("10.00000"),
+            Decimal("11.00000"),
+            Decimal("12.00000"),
+        ]
+
+    def test_get_norm_for_anonymous_user(self, api_client, manual_hydro_station):
+        response = api_client.get(f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m")
+        assert response.status_code == 401
+
+    def test_get_norm_for_station_in_different_organization(
+        self, authenticated_regular_user_other_organization_api_client, manual_hydro_station
+    ):
+        response = authenticated_regular_user_other_organization_api_client.get(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m"
+        )
+        assert response.status_code == 403
+
+    def test_get_norm_for_non_existent_station(self, authenticated_regular_user_api_client):
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{uuid.uuid4()}?norm_type=m")
+        assert response.status_code == 403  # not ideal, permission class can't find the station so the check fails
+
+    def test_get_norm_for_station_with_no_data(self, authenticated_regular_user_api_client, manual_hydro_station):
+        response = authenticated_regular_user_api_client.get(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m"
+        )
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_get_decadal_norm(
+        self,
+        authenticated_regular_user_api_client,
+        manual_hydro_station,
+        decadal_discharge_norm_first,
+        decadal_discharge_norm_second,
+        monthly_discharge_norm_first,
+        monthly_discharge_norm_second,
+    ):
+        response = authenticated_regular_user_api_client.get(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d"
+        )
+        assert response.json() == [
+            {"timestamp": "2024-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.00000"},
+            {"timestamp": "2024-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.00000"},
+        ]
+
+    def test_get_monthly_norm(
+        self,
+        authenticated_regular_user_api_client,
+        manual_hydro_station,
+        decadal_discharge_norm_first,
+        decadal_discharge_norm_second,
+        monthly_discharge_norm_first,
+        monthly_discharge_norm_second,
+    ):
+        response = authenticated_regular_user_api_client.get(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m"
+        )
+        assert response.json() == [
+            {"timestamp": "2024-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.00000"},
+            {"timestamp": "2024-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.00000"},
+        ]
