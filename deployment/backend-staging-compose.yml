@@ -2,10 +2,10 @@ version: '3'
 
 volumes:
   sapphire_backend_staging_timescale_data:
-#    driver_opts:
-#      type: none
-#      o: bind
-#      device: /ebs_volume/timescale_data
+  #    driver_opts:
+  #      type: none
+  #      o: bind
+  #      device: /ebs_volume/timescale_data
   sapphire_backend_staging_timescale_data_backups:
     driver_opts:
       type: none
@@ -53,8 +53,8 @@ services:
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=test@encode.hr"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-      - "--entryPoints.web.transport.respondingTimeouts.tcp.lingeringTimeout=30s"
-      - "--entryPoints.websecure.transport.respondingTimeouts.tcp.lingeringTimeout=30s"
+      #- "--entryPoints.web.transport.respondingTimeouts.tcp.lingeringTimeout=30s" # latest traefik excludes this
+      #- "--entryPoints.websecure.transport.respondingTimeouts.tcp.lingeringTimeout=30s"  # latest traefik excludes this
     volumes:
       - "./letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
