@@ -79,16 +79,16 @@ class TestSmartDatetimeModel:
     def test_local_datetime_to_smartdatetime(self, manual_hydro_station_kyrgyz):
         tz_local = manual_hydro_station_kyrgyz.site.timezone
 
-        local_dt = datetime(2024, 1, 1, 15, 0, 0, tzinfo=tz_local)
+        local_dt = datetime(2024, 1, 1, 15, 10, 5, 123, tzinfo=tz_local)
         smart_dt = SmartDatetime(dt=local_dt, station=manual_hydro_station_kyrgyz, local=True)
 
-        assert smart_dt.local == datetime(2024, 1, 1, 15, 0, 0, tzinfo=tz_local)
+        assert smart_dt.local == datetime(2024, 1, 1, 15, 10, 5, 123, tzinfo=tz_local)
         assert smart_dt.day_beginning_local == datetime(2024, 1, 1, 0, 0, 0, tzinfo=tz_local)
         assert smart_dt.morning_local == datetime(2024, 1, 1, 8, 0, 0, tzinfo=tz_local)
         assert smart_dt.midday_local == datetime(2024, 1, 1, 12, 0, 0, tzinfo=tz_local)
         assert smart_dt.evening_local == datetime(2024, 1, 1, 20, 0, 0, tzinfo=tz_local)
 
-        assert smart_dt.utc == datetime(2024, 1, 1, 15, 0, 0, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
+        assert smart_dt.utc == datetime(2024, 1, 1, 15, 10, 5, 123, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
         assert smart_dt.day_beginning_utc == datetime(2024, 1, 1, 0, 0, 0, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
         assert smart_dt.day_beginning_utc == datetime(2024, 1, 1, 0, 0, 0, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
         assert smart_dt.morning_utc == datetime(2024, 1, 1, 8, 0, 0, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
@@ -98,15 +98,17 @@ class TestSmartDatetimeModel:
     def test_local_datetime_to_smartdatetime_previous_day(self, manual_hydro_station_kyrgyz):
         tz_local = manual_hydro_station_kyrgyz.site.timezone
 
-        local_dt = datetime(2024, 1, 1, 15, 0, 0, tzinfo=tz_local)
+        local_dt = datetime(2024, 1, 1, 15, 10, 5, 123, tzinfo=tz_local)
         smart_dt = SmartDatetime(dt=local_dt, station=manual_hydro_station_kyrgyz, local=True)
 
-        assert smart_dt.previous_local == datetime(2023, 12, 31, 15, 0, 0, tzinfo=tz_local)
+        assert smart_dt.previous_local == datetime(2023, 12, 31, 15, 10, 5, 123, tzinfo=tz_local)
         assert smart_dt.previous_morning_local == datetime(2023, 12, 31, 8, 0, 0, tzinfo=tz_local)
         assert smart_dt.previous_midday_local == datetime(2023, 12, 31, 12, 0, 0, tzinfo=tz_local)
         assert smart_dt.previous_evening_local == datetime(2023, 12, 31, 20, 0, 0, tzinfo=tz_local)
 
-        assert smart_dt.previous_utc == datetime(2023, 12, 31, 15, 0, 0, tzinfo=tz_local).astimezone(ZoneInfo("UTC"))
+        assert smart_dt.previous_utc == datetime(2023, 12, 31, 15, 10, 5, 123, tzinfo=tz_local).astimezone(
+            ZoneInfo("UTC")
+        )
         assert smart_dt.previous_morning_utc == datetime(2023, 12, 31, 8, 0, 0, tzinfo=tz_local).astimezone(
             ZoneInfo("UTC")
         )
