@@ -10,7 +10,12 @@ from ninja_extra import NinjaExtraAPI
 from pydantic import ValidationError as PydanticValidationError
 
 from sapphire_backend.estimations.api import DischargeModelsAPIController, EstimationsAPIController
-from sapphire_backend.metrics.api import HydroMetricsAPIController, MeteoMetricsAPIController
+from sapphire_backend.metrics.api import (
+    DischargeNormsAPIController,
+    HydroMetricsAPIController,
+    MeteoMetricsAPIController,
+)
+from sapphire_backend.metrics.exceptions import DischargeNormParserException
 from sapphire_backend.organizations.api import BasinsAPIController, OrganizationsAPIController, RegionsAPIController
 from sapphire_backend.stations.api import (
     HydroStationsAPIController,
@@ -31,6 +36,7 @@ api = NinjaExtraAPI(
 
 api.register_controllers(AuthController)
 api.register_controllers(BasinsAPIController)
+api.register_controllers(DischargeNormsAPIController)
 api.register_controllers(HydroMetricsAPIController)
 api.register_controllers(MeteoMetricsAPIController)
 api.register_controllers(OrganizationsAPIController)
@@ -76,3 +82,9 @@ def not_found_error(request, exc):
 def telegram_parse_error(request, exc):
     logging.error(str(exc))
     return api.create_response(request, {"detail": str(exc), "code": "invalid_telegram"}, status=400)
+
+
+@api.exception_handler(DischargeNormParserException)
+def discharge_norm_parse_error(request, exc):
+    logging.error(str(exc))
+    return api.create_response(request, {"detail": str(exc), "code": "invalid_norm_file"}, status=400)

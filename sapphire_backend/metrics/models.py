@@ -12,8 +12,9 @@ from .choices import (
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
     MetricUnit,
+    NormType,
 )
-from .managers import HydrologicalMetricQuerySet, MeteorologicalMetricQuerySet
+from .managers import DischargeNormQuerySet, HydrologicalMetricQuerySet, MeteorologicalMetricQuerySet
 
 ESTIMATIONS_TABLE_MAP = {
     HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: "estimations_water_level_daily_average",
@@ -91,24 +92,13 @@ class HydrologicalMetric(models.Model):
         if self.avg_value is None:
             avg_value = "NULL"
 
-        sql_query_insert = """
+        sql_query_insert = f"""
             INSERT INTO metrics_hydrologicalmetric
             (timestamp, station_id, metric_name, value_type, sensor_identifier, min_value, avg_value, max_value,
             unit, sensor_type)
-            VALUES ('{timestamp}', {station_id}, '{metric_name}', '{value_type}', '{sensor_identifier}', {min_value},
-            {avg_value}, {max_value}, '{unit}', '{sensor_type}');
-            """.format(
-            timestamp=self.timestamp,
-            station_id=self.station_id,
-            metric_name=self.metric_name,
-            value_type=self.value_type,
-            sensor_identifier=self.sensor_identifier,
-            min_value=min_value,
-            avg_value=avg_value,
-            max_value=max_value,
-            unit=self.unit,
-            sensor_type=self.sensor_type,
-        )
+            VALUES ('{self.timestamp}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}', {min_value},
+            {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}');
+            """
 
         sql_query_upsert = f"""
             INSERT INTO metrics_hydrologicalmetric (timestamp, station_id, metric_name, value_type, sensor_identifier, min_value, avg_value, max_value, unit, sensor_type)
@@ -246,37 +236,51 @@ class MeteorologicalMetric(models.Model):
             cursor.execute(sql_query_delete)
 
     def save(self, upsert=True, **kwargs) -> None:
-        sql_query_insert = """
+        sql_query_insert = f"""
         INSERT INTO metrics_meteorologicalmetric (timestamp, station_id, metric_name, value, value_type, unit )
-        VALUES ('{timestamp}'::timestamp, {station_id}, '{metric_name}', {value}, '{value_type}', '{unit}');
-        """.format(
-            timestamp=self.timestamp,
-            station_id=self.station_id,
-            metric_name=self.metric_name,
-            value=self.value,
-            value_type=self.value_type,
-            unit=self.unit,
-        )
+        VALUES ('{self.timestamp}'::timestamp, {self.station_id}, '{self.metric_name}', {self.value}, '{self.value_type}', '{self.unit}');
+        """
 
-        sql_query_upsert = """
+        sql_query_upsert = f"""
     INSERT INTO metrics_meteorologicalmetric (timestamp, station_id, metric_name, value, value_type, unit)
-    VALUES ('{timestamp}'::timestamp, {station_id}, '{metric_name}', {value}, '{value_type}', '{unit}')
+    VALUES ('{self.timestamp}'::timestamp, {self.station_id}, '{self.metric_name}', {self.value}, '{self.value_type}', '{self.unit}')
     ON CONFLICT (timestamp, station_id, metric_name)
     DO UPDATE
     SET value = EXCLUDED.value,
         value_type = EXCLUDED.value_type,
         unit = EXCLUDED.unit;
-        """.format(
-            timestamp=self.timestamp,
-            station_id=self.station_id,
-            metric_name=self.metric_name,
-            value=self.value,
-            value_type=self.value_type,
-            unit=self.unit,
-        )
+        """
 
         with connection.cursor() as cursor:
             if upsert:
                 cursor.execute(sql_query_upsert)
             else:
                 cursor.execute(sql_query_insert)
+
+
+class DischargeNorm(models.Model):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation",
+        to_field="uuid",
+        verbose_name=_("Hydrological station"),
+        on_delete=models.CASCADE,
+    )
+    ordinal_number = models.PositiveIntegerField(verbose_name=_("Ordinal number"))
+    value = models.DecimalField(verbose_name=_("Value"), max_digits=10, decimal_places=5)
+    norm_type = models.CharField(
+        verbose_name=_("Norm type"), choices=NormType, default=NormType.DECADAL, max_length=20
+    )
+
+    objects = DischargeNormQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = _("Discharge norm")
+        verbose_name_plural = _("Discharge norms")
+        ordering = ["ordinal_number"]
+        constraints = [
+            models.UniqueConstraint("station", "ordinal_number", "norm_type", name="discharge_norm_unique_cn")
+        ]
+        indexes = [models.Index("norm_type", name="norm_type_idx")]
+
+    def __str__(self):
+        return f"{self.station.name} {self.norm_type} #{self.ordinal_number} - {self.value}"

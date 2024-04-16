@@ -10,7 +10,7 @@ from ..choices import (
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
 )
-from ..models import HydrologicalMetric, MeteorologicalMetric
+from ..models import DischargeNorm, HydrologicalMetric, MeteorologicalMetric
 
 fake = Faker()
 
@@ -43,3 +43,9 @@ class MeteorologicalMetricFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MeteorologicalMetric
         django_get_or_create = ("timestamp", "station", "metric_name")
+
+
+class DischargeNormFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DischargeNorm
+        django_get_or_create = ("station", "norm_type", "ordinal_number")

@@ -49,3 +49,8 @@ class MetricUnit(models.TextChoices):
     ICE_PHENOMENA_OBSERVATION = "dimensionless", _("dimensionless")  # '0011'
     AREA = "m^2", _("square meter")  # '0006'
     PRECIPITATION = "mm/day", _("millimeters per day")  # 0018
+
+
+class NormType(models.TextChoices):
+    MONTHLY = "m", _("Monthly")
+    DECADAL = "d", _("Decadal")

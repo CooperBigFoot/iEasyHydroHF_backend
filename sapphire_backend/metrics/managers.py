@@ -1,6 +1,6 @@
 from django.db.models import QuerySet
 
-from .choices import HydrologicalMeasurementType
+from .choices import HydrologicalMeasurementType, NormType
 
 
 class TimeSeriesQuerySet(QuerySet):
@@ -27,3 +27,14 @@ class HydrologicalMetricQuerySet(TimeSeriesQuerySet):
 
 class MeteorologicalMetricQuerySet(TimeSeriesQuerySet):
     pass
+
+
+class DischargeNormQuerySet(QuerySet):
+    def for_station(self, station_uuid: str):
+        return self.filter(station=station_uuid)
+
+    def decadal(self):
+        return self.filter(norm_type=NormType.DECADAL)
+
+    def monthly(self):
+        return self.filter(norm_type=NormType.MONTHLY)

@@ -67,7 +67,8 @@ COPY  . ${APP_HOME}
 RUN touch /app/cron-ingestion.log
 
 RUN DATABASE_URL="" \
-  DJANGO_SETTINGS_MODULE="config.settings.test" \
+  DJANGO_SETTINGS_MODULE="config.settings.production" \
+  python manage.py collectstatic \
   python manage.py compilemessages
 
 ENTRYPOINT ["/entrypoint"]

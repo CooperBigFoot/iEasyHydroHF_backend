@@ -53,8 +53,6 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
     historical_discharge_maximum = models.FloatField(
         verbose_name=_("Historical maximal value of discharge"), blank=True, null=True
     )
-    decadal_discharge_norm = models.FloatField(verbose_name=_("Decadal discharge norm"), blank=True, null=True)
-    monthly_discharge_norm = models.JSONField(verbose_name=_("Monthly discharge norm"), blank=True, null=True)
     is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
     bulletin_order = models.PositiveIntegerField(verbose_name=_("Bulletin order"), default=0)
 
