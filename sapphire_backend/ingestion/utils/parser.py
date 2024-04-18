@@ -1,4 +1,5 @@
 import datetime
+import gzip
 import logging
 import os
 import xml.etree.ElementTree as ET
@@ -9,6 +10,7 @@ from typing import TypedDict
 import zoneinfo
 from django.utils import timezone
 
+from sapphire_backend.ingestion.utils.helper import get_or_create_auto_station_by_code
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, MetricUnit
 from sapphire_backend.metrics.models import HydrologicalMetric
 from sapphire_backend.stations.models import HydrologicalStation
@@ -125,9 +127,9 @@ class XMLParser(BaseParser):
         datetime_object = self.convert_str_to_datetime(record_raw["timestamp"])
         # in case of a 6-digit station id, take only the first five digits
         station_id_5digit = record_raw["station_id"][:5]
-        try:
-            hydro_station_obj = HydrologicalStation.objects.get(station_code=station_id_5digit)
-        except HydrologicalStation.DoesNotExist:
+
+        hydro_station_obj = get_or_create_auto_station_by_code(station_code=station_id_5digit)
+        if hydro_station_obj is None:
             self.log_unknown_stations.add(station_id_5digit)
             return
 
@@ -170,9 +172,21 @@ class XMLParser(BaseParser):
                 new_hydro_metric = self.create_metric_object(record_transformed)
                 self.output_metric_objects.append(new_hydro_metric)
 
-    def extract(self):
-        tree = ET.parse(self.file_path)
-        root = tree.getroot()
+    def _read_xml_data(self) -> str:
+        """
+        Read a file either raw or gzipped and return data as string
+        """
+        filename, ext = os.path.splitext(self.file_path)
+        if ext == ".gz":
+            with gzip.open(self.file_path, "rb") as f_gzipped:
+                xml_data = f_gzipped.read().decode("utf-8")
+        else:
+            with open(self.file_path) as f_raw:
+                xml_data = f_raw.read()
+        return xml_data
+
+    def extract(self, xml_data: str):
+        root = ET.fromstring(xml_data)
         for report in root:
             timestamp = report.attrib["TIME"]
             for child in report:
@@ -209,7 +223,8 @@ class XMLParser(BaseParser):
 
     def run(self):
         logging.info(f"Begin parsing {self.file_name}")
-        self.extract()
+        xml_data = self._read_xml_data()
+        self.extract(xml_data)
         self.transform()
         self.save()
         self.post_run()
