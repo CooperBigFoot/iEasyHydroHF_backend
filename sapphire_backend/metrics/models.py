@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 import psycopg
 from django import db
@@ -15,6 +16,7 @@ from .choices import (
     NormType,
 )
 from .managers import DischargeNormQuerySet, HydrologicalMetricQuerySet, MeteorologicalMetricQuerySet
+from ..utils.datetime_helper import SmartDatetime
 
 ESTIMATIONS_TABLE_MAP = {
     HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: "estimations_water_level_daily_average",
@@ -26,7 +28,8 @@ ESTIMATIONS_TABLE_MAP = {
 
 
 class HydrologicalMetric(models.Model):
-    timestamp = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp"))
+    timestamp_local = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp local"))
+    timestamp = models.DateTimeField(verbose_name=_("Timestamp UTC"))
     min_value = models.DecimalField(
         verbose_name=_("Minimum value"), max_digits=15, decimal_places=5, null=True, blank=True
     )
@@ -81,6 +84,11 @@ class HydrologicalMetric(models.Model):
                 raise Exception(f"Delete statement {sql_query_delete} failed. {e}")
 
     def save(self, upsert=True, refresh_view=True, **kwargs) -> None:
+        if self.timestamp_local is None and self.timestamp is not None:
+            self.timestamp_local = SmartDatetime(self.timestamp, self.station, local=False).local.replace(tzinfo=ZoneInfo('UTC'))
+        if self.timestamp_local is not None and self.timestamp is None:
+            self.timestamp = SmartDatetime(self.timestamp_local, self.station, local=True).utc
+            self.timestamp_local = self.timestamp_local.replace(tzinfo=ZoneInfo('UTC'))
         min_value = self.min_value
         max_value = self.max_value
         avg_value = self.avg_value
@@ -94,17 +102,17 @@ class HydrologicalMetric(models.Model):
 
         sql_query_insert = f"""
             INSERT INTO metrics_hydrologicalmetric
-            (timestamp, station_id, metric_name, value_type, sensor_identifier, min_value, avg_value, max_value,
+            (timestamp_local, station_id, metric_name, value_type, sensor_identifier, timestamp, min_value, avg_value, max_value,
             unit, sensor_type)
-            VALUES ('{self.timestamp}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}', {min_value},
+            VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}', '{self.timestamp}', {min_value},
             {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}');
             """
 
         sql_query_upsert = f"""
-            INSERT INTO metrics_hydrologicalmetric (timestamp, station_id, metric_name, value_type, sensor_identifier, min_value, avg_value, max_value, unit, sensor_type)
-            VALUES ('{self.timestamp}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}', {min_value},
+            INSERT INTO metrics_hydrologicalmetric (timestamp_local, station_id, metric_name, value_type, sensor_identifier, timestamp, min_value, avg_value, max_value, unit, sensor_type)
+            VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}', '{self.timestamp}', {min_value},
             {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}')
-            ON CONFLICT (timestamp, station_id, metric_name, value_type, sensor_identifier)
+            ON CONFLICT (timestamp_local, station_id, metric_name, value_type, sensor_identifier)
             DO UPDATE
             SET min_value = EXCLUDED.min_value,
                 avg_value = EXCLUDED.avg_value,

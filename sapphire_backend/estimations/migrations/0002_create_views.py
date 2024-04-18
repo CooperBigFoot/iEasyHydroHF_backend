@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
                 CREATE MATERIALIZED VIEW estimations_water_level_daily_average WITH (timescaledb.continuous)
                 AS
                 SELECT
-                    time_bucket('1 day', hm.timestamp) at time zone 'UTC' + '6 hours' as timestamp,
+                    time_bucket('1 day',  hm.timestamp_local) at time zone 'UTC' + '12 hours' as timestamp,
                                     CAST(NULL AS NUMERIC) as min_value,
                                     CEIL(AVG(hm.avg_value)) AS avg_value,
                                     CAST(NULL AS NUMERIC) as max_value,
@@ -29,50 +29,22 @@ class Migration(migrations.Migration):
                 FROM
                     public.metrics_hydrologicalmetric hm
                 WHERE
-                     hm.metric_name = 'WLD' and hm.value_type='M'
+                     hm.metric_name = 'WLD'
                 GROUP BY
-                    time_bucket('1 day', hm.timestamp),
+                    time_bucket('1 day', hm.timestamp_local),
                     hm.station_id
                 WITH NO DATA;
               """
             )],
             reverse_sql=[("DROP MATERIALIZED VIEW IF EXISTS estimations_water_level_daily_average CASCADE;")],
         ),
-        # migrations.RunSQL(
-        #     sql=[(
-        #         """
-        #         CREATE MATERIALIZED VIEW estimations_water_level_daily WITH (timescaledb.continuous)
-        #         AS
-        #         SELECT
-        #             time_bucket('1 hour', hm.timestamp) as timestamp ,
-        #                             CAST(NULL AS NUMERIC) as min_value,
-        #                             MAX(hm.avg_value) AS avg_value,
-        #                             CAST(NULL AS NUMERIC) as max_value,
-        #                             'cm' as unit,
-        #                             'M' as value_type,
-        #                             'WLD'  as metric_name,
-        #                             ''  as sensor_identifier,
-        #                             '' as sensor_type,
-        #                             hm.station_id
-        #         FROM
-        #             public.metrics_hydrologicalmetric hm
-        #         WHERE
-        #              hm.metric_name = 'WLD' and hm.value_type='M'
-        #         GROUP BY
-        #             time_bucket('1 hour', hm.timestamp),
-        #             hm.station_id
-        #         WITH NO DATA;
-        #       """
-        #     )],
-        #     reverse_sql=[("DROP MATERIALIZED VIEW IF EXISTS estimations_water_level_daily CASCADE;")],
-        # ),
 
         migrations.RunSQL(
             sql=[(
                 """
                 create or replace view estimations_water_discharge_daily as
                 SELECT
-                    wld.timestamp ,
+                    wld.timestamp_local ,
                     CAST(NULL AS NUMERIC) as min_value,
                     dm.param_c * POWER((wld.avg_value + dm.param_a), dm.param_b) AS avg_value,
                     CAST(NULL AS NUMERIC) as max_value,

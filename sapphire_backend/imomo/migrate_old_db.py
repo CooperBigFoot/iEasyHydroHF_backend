@@ -259,8 +259,6 @@ def migrate_sites_and_stations(old_session):
                 discharge_level_alarm=None,
                 historical_discharge_minimum=None,
                 historical_discharge_maximum=None,
-                decadal_discharge_norm=None,
-                monthly_discharge_norm=None,
                 is_deleted=False,
             )
             hydro_station.save()
@@ -366,14 +364,18 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
         old_data = old_session.query(OldSite).filter(OldSite.site_code == target_station)
     hydro_stations = [station for station in old_data if station.site_type == "discharge"]
     for old in tqdm(hydro_stations, desc="Hydro stations", position=0):
-        hydro_station = HydrologicalStation.objects.get(station_code=old.site_code_repr)
+        hydro_station = HydrologicalStation.objects.get(station_code=old.site_code_repr,
+                                                        station_type=HydrologicalStation.StationType.MANUAL)
         for data_row in tqdm(
             old.data_values[-limiter:], desc="Hydro metrics", position=1, leave=False
         ):
-            naive_datetime = data_row.date_time_utc
-            aware_datetime_utc = timezone.make_aware(
-                naive_datetime, timezone=zoneinfo.ZoneInfo("UTC")
-            )
+            # naive_datetime = data_row.date_time_utc
+            # aware_datetime_utc = timezone.make_aware(
+            #     naive_datetime, timezone=zoneinfo.ZoneInfo("UTC")
+            # )
+
+            utc_datetime = SmartDatetime(data_row.local_date_time, hydro_station, local=True).utc
+
 
             # exceptionally set the maximum discharge on the hydro station level, exclude from metrics
             data_value = data_row.data_value
@@ -398,7 +400,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                 continue  # TODO skip NaN data value rows
 
             new_hydro_metric = HydrologicalMetric(
-                timestamp=aware_datetime_utc,
+                timestamp=utc_datetime,
                 min_value=None,
                 avg_value=data_value,
                 max_value=None,
@@ -416,7 +418,8 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
 def migrate_discharge_models(old_session):
     old_discharge_models = old_session.query(OldDischargeModel).all()
     for old in tqdm(old_discharge_models, desc="Discharge models", position=0):
-        hydro_station = HydrologicalStation.objects.get(station_code=old.site.site_code_repr)
+        hydro_station = HydrologicalStation.objects.get(station_code=old.site.site_code_repr,
+                                                        station_type=HydrologicalStation.StationType.MANUAL)
         if old.valid_from is None:
             # when valid_from is None then it is initial discharge model
             # 2000-01-01 is sufficient as the beginning date of the initial model
@@ -492,7 +495,7 @@ def migrate(skip_cleanup: bool, skip_structure: bool, target_station: str, limit
     if target_station != "":
         logging.info(f"Will migrate only station {target_station} (--station)")
 
-    migrate_discharge_models(old_session)
+    # migrate_discharge_models(old_session)
     migrate_hydro_metrics(old_session, limiter, target_station)
     migrate_meteo_metrics(old_session, limiter, target_station)
     old_session.close()
