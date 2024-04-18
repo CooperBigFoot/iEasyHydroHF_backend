@@ -77,7 +77,7 @@ class Migration(migrations.Migration):
                 """
                 create or replace view estimations_water_discharge_daily_average as
                 SELECT
-                    wlda.timestamp ,
+                    wlda.timestamp,
                     CAST(NULL AS NUMERIC) as min_value,
                     dm.param_c * POWER((wlda.avg_value + dm.param_a), dm.param_b) AS avg_value,
                     CAST(NULL AS NUMERIC) as max_value,
