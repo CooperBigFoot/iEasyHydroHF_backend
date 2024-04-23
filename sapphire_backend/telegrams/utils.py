@@ -136,20 +136,20 @@ def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStati
             sensor_type="",
         )
         cross_section_area_metric.save()
-
-        maximum_depth_metric = HydrologicalMetric(
-            timestamp=timestamp,
-            min_value=None,
-            avg_value=input["maximum_depth"],
-            max_value=None,
-            unit=MetricUnit.WATER_LEVEL,
-            value_type=HydrologicalMeasurementType.MANUAL,
-            metric_name=HydrologicalMetricName.MAXIMUM_DEPTH,
-            station=hydro_station,
-            sensor_identifier="",
-            sensor_type="",
-        )
-        maximum_depth_metric.save()
+        if input["maximum_depth"] is not None:
+            maximum_depth_metric = HydrologicalMetric(
+                timestamp=timestamp,
+                min_value=None,
+                avg_value=input["maximum_depth"],
+                max_value=None,
+                unit=MetricUnit.WATER_LEVEL,
+                value_type=HydrologicalMeasurementType.MANUAL,
+                metric_name=HydrologicalMetricName.MAXIMUM_DEPTH,
+                station=hydro_station,
+                sensor_identifier="",
+                sensor_type="",
+            )
+            maximum_depth_metric.save()
 
 
 def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict:
