@@ -20,7 +20,7 @@ class TelegramSectionOneSchema(Schema):
     morning_water_level: int
     water_level_trend: int
     water_level_20h_period: int
-    water_temperature: int | None = None
+    water_temperature: float | None = None
     air_temperature: int | None = None
     ice_phenomena: list[dict[str, int]]
 
@@ -31,9 +31,9 @@ class TelegramSectionThreeSchema(Schema):
 
 class TelegramSectionSixSingleSchema(Schema):
     water_level: int
-    discharge: int
+    discharge: float
     cross_section_area: float = None
-    maximum_depth: int = None
+    maximum_depth: float | None = None
     date: str
 
 

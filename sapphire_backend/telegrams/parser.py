@@ -437,7 +437,7 @@ class KN15TelegramParser(BaseTelegramParser):
         def extract_discharge_or_free_river_area(token: str) -> float:
             significand = int(token[2:])
             exponent = int(token[1])
-            return significand * (10 ** (exponent - 3))
+            return round(significand * (10 ** (exponent - 3)), 4)
 
         # group 966MM
         input_token = self.get_next_token()
