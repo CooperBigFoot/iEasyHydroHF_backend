@@ -2,16 +2,10 @@ from django.utils.translation import gettext as _
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
-from sapphire_backend.metrics.choices import (
-    HydrologicalMeasurementType,
-    HydrologicalMetricName,
-    MetricUnit,
-)
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from ..metrics.models import HydrologicalMetric
 from ..utils.mixins.schemas import Message
 from .schema import (
     TelegramBulkWithDatesInputSchema,
@@ -23,6 +17,7 @@ from .utils import (
     generate_save_data_overview,
     get_parsed_telegrams_data,
     save_reported_discharge,
+    save_section_one_metrics,
     simulate_telegram_insertion,
 )
 
@@ -65,33 +60,10 @@ class TelegramsAPIController:
             # meteo_station = station_data["meteo_station_obj"]  # TODO when meteo parsing gets implemented
             for telegram_data in station_data["telegrams"]:
                 telegram_day_smart = telegram_data["telegram_day_smart"]
-                yesterday_evening_wl_metric = HydrologicalMetric(
-                    timestamp=telegram_day_smart.previous_evening_utc,
-                    min_value=None,
-                    avg_value=telegram_data["section_one"]["water_level_20h_period"],
-                    max_value=None,
-                    unit=MetricUnit.WATER_LEVEL,
-                    value_type=HydrologicalMeasurementType.MANUAL,
-                    metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
-                    station=hydro_station,
-                    sensor_identifier="",
-                    sensor_type="",
+                save_section_one_metrics(
+                    telegram_day_smart, section_one=telegram_data["section_one"], hydro_station=hydro_station
                 )
-                yesterday_evening_wl_metric.save(refresh_view=True)
 
-                morning_wl_metric = HydrologicalMetric(
-                    timestamp=telegram_day_smart.morning_utc,
-                    min_value=None,
-                    avg_value=telegram_data["section_one"]["morning_water_level"],
-                    max_value=None,
-                    unit=MetricUnit.WATER_LEVEL,
-                    value_type=HydrologicalMeasurementType.MANUAL,
-                    metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
-                    station=hydro_station,
-                    sensor_identifier="",
-                    sensor_type="",
-                )
-                morning_wl_metric.save(refresh_view=True)
                 reported_discharge = telegram_data.get("section_six")
                 if reported_discharge is not None:
                     save_reported_discharge(reported_discharge, hydro_station)
