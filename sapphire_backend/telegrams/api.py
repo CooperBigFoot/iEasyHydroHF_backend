@@ -2,16 +2,10 @@ from django.utils.translation import gettext as _
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
-from sapphire_backend.metrics.choices import (
-    HydrologicalMeasurementType,
-    HydrologicalMetricName,
-    MetricUnit,
-)
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from ..metrics.models import HydrologicalMetric
 from ..utils.mixins.schemas import Message
 from .schema import (
     TelegramBulkWithDatesInputSchema,
@@ -23,7 +17,8 @@ from .utils import (
     generate_save_data_overview,
     get_parsed_telegrams_data,
     save_reported_discharge,
-    simulate_telegram_insertion, save_section_one_metrics,
+    save_section_one_metrics,
+    simulate_telegram_insertion,
 )
 
 
@@ -65,8 +60,9 @@ class TelegramsAPIController:
             # meteo_station = station_data["meteo_station_obj"]  # TODO when meteo parsing gets implemented
             for telegram_data in station_data["telegrams"]:
                 telegram_day_smart = telegram_data["telegram_day_smart"]
-                save_section_one_metrics(telegram_day_smart, section_one=telegram_data["section_one"],
-                                         hydro_station=hydro_station)
+                save_section_one_metrics(
+                    telegram_day_smart, section_one=telegram_data["section_one"], hydro_station=hydro_station
+                )
 
                 reported_discharge = telegram_data.get("section_six")
                 if reported_discharge is not None:

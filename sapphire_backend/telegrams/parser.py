@@ -411,7 +411,7 @@ class KN15TelegramParser(BaseTelegramParser):
             "water_temperature": water_temperature,
             "air_temperature": air_temperature,
             "ice_phenomena": ice_phenomena,
-            "daily_precipitation": daily_precipitation
+            "daily_precipitation": daily_precipitation,
         }
 
     def parse_section_three(self) -> int:
