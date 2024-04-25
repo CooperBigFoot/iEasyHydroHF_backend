@@ -92,6 +92,66 @@ def get_parsed_telegrams_data(
     return parsed_data
 
 
+def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dict, hydro_station: HydrologicalStation):
+    yesterday_evening_wl_metric = HydrologicalMetric(
+        timestamp=telegram_day_smart.previous_evening_utc,
+        min_value=None,
+        avg_value=section_one["water_level_20h_period"],
+        max_value=None,
+        unit=MetricUnit.WATER_LEVEL,
+        value_type=HydrologicalMeasurementType.MANUAL,
+        metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+        station=hydro_station,
+        sensor_identifier="",
+        sensor_type="",
+    )
+    yesterday_evening_wl_metric.save(refresh_view=True)
+
+    morning_wl_metric = HydrologicalMetric(
+        timestamp=telegram_day_smart.morning_utc,
+        min_value=None,
+        avg_value=section_one["morning_water_level"],
+        max_value=None,
+        unit=MetricUnit.WATER_LEVEL,
+        value_type=HydrologicalMeasurementType.MANUAL,
+        metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+        station=hydro_station,
+        sensor_identifier="",
+        sensor_type="",
+    )
+    morning_wl_metric.save(refresh_view=True)
+
+    if section_one.get("air_temperature", False):
+        air_temp_metric = HydrologicalMetric(
+            timestamp=telegram_day_smart.morning_utc,
+            min_value=None,
+            avg_value=section_one["air_temperature"],
+            max_value=None,
+            unit=MetricUnit.TEMPERATURE,
+            value_type=HydrologicalMeasurementType.MANUAL,
+            metric_name=HydrologicalMetricName.AIR_TEMPERATURE,
+            station=hydro_station,
+            sensor_identifier="",
+            sensor_type="",
+        )
+        air_temp_metric.save(refresh_view=False)
+
+    if section_one.get("water_temperature", False):
+        water_temp_metric = HydrologicalMetric(
+            timestamp=telegram_day_smart.morning_utc,
+            min_value=None,
+            avg_value=section_one["water_temperature"],
+            max_value=None,
+            unit=MetricUnit.TEMPERATURE,
+            value_type=HydrologicalMeasurementType.MANUAL,
+            metric_name=HydrologicalMetricName.WATER_TEMPERATURE,
+            station=hydro_station,
+            sensor_identifier="",
+            sensor_type="",
+        )
+        water_temp_metric.save(refresh_view=False)
+
+
 def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStation):
     for input in measurements:
         timestamp = SmartDatetime(input["date"], hydro_station, local=True).utc
