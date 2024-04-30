@@ -215,3 +215,18 @@ class TestKN15TelegramParserSectionOne:
         parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 14081 10417 20021 46510=", organization.uuid)
         with pytest.raises(InvalidTokenException, match="Expected token starting with '3', got: 46510"):
             parser.parse()
+
+    def test_parse_with_only_basic_data(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 14081 10417 20021 30410=", organization.uuid)
+
+        decoded_data = parser.parse()
+
+        assert decoded_data["section_one"] == {
+            "morning_water_level": 417,
+            "water_level_trend": 2,
+            "water_level_20h_period": 410,
+            "water_temperature": None,
+            "air_temperature": None,
+            "ice_phenomena": [],
+            "daily_precipitation": None,
+        }
