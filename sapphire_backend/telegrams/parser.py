@@ -83,11 +83,11 @@ class BaseTelegramParser(ABC):
         """
         if self.tokens:
             return self.tokens.pop(0)
-        raise MissingSectionException("Unexpected end of telegram")
+        raise MissingSectionException(self.telegram, "Unexpected end of telegram")
 
     def validate_station(self, station_code: str) -> None:
         if not station_code.isdigit() or len(station_code) != 5:
-            raise InvalidTokenException(f"Invalid station code: {station_code}")
+            raise InvalidTokenException(station_code, "Invalid station code")
 
         self.hydro_station = HydrologicalStation.objects.filter(
             site__organization_id=self.organization_uuid,
@@ -99,7 +99,7 @@ class BaseTelegramParser(ABC):
         ).first()
         if self.hydro_station is None and self.meteo_station is None:
             # except HydrologicalStation.DoesNotExist:
-            raise InvalidTokenException(f"Station with code {station_code} does not exist")
+            raise InvalidTokenException(station_code, "No manual hydro or meteo station with the following code")
 
     @classmethod
     def parse_bulk(cls, telegrams: list[str], store_in_db: bool = False, automatic: bool = False) -> list:
@@ -149,6 +149,7 @@ class KN15TelegramParser(BaseTelegramParser):
         decoded_values["section_zero"] = section_zero
         decoded_values["section_three"] = []
         decoded_values["section_six"] = []
+        decoded_values["section_eight"] = {}
 
         if section_zero["section_code"] == 1:
             section_one = self.parse_section_one()
@@ -167,6 +168,9 @@ class KN15TelegramParser(BaseTelegramParser):
                 elif section_number == "966":
                     section_six = self.parse_section_six()
                     decoded_values["section_six"].append(section_six)
+                elif section_number == "988":
+                    section_eight = self.parse_section_eight()
+                    decoded_values["section_eight"] = section_eight
                 else:
                     raise UnsupportedSectionException(section_number, "Unsupported section number inside section 1")
 
@@ -180,6 +184,8 @@ class KN15TelegramParser(BaseTelegramParser):
             decoded_values.pop("section_three")
         if not decoded_values["section_six"]:
             decoded_values.pop("section_six")
+        if not decoded_values["section_eight"]:
+            decoded_values.pop("section_eight")
 
         if self.store_in_db:
             self.save_telegram(decoded_values)
@@ -193,6 +199,7 @@ class KN15TelegramParser(BaseTelegramParser):
         section_one = decoded_values.get("section_one")
         section_three_list = decoded_values.get("section_three")
         section_six_list = decoded_values.get("section_six")
+        section_eight_data = decoded_values.get("section_eight")
         section_zero_date = dt.fromisoformat(decoded_values["section_zero"]["date"])
         previous_day = section_zero_date - timedelta(days=1)
         morning_water_level = None
@@ -245,6 +252,13 @@ class KN15TelegramParser(BaseTelegramParser):
                 print(f"\nDischarge\n{discharge} m3/s" if discharge else "--- m3/s")
                 print(f"\nMaximum depth\n{maximum_depth} cm" if maximum_depth else "--- cm")
 
+        if section_eight_data:
+            print("\nDecadal / monthly precipitation and temperature (988)")
+            print(f"\nDecade: {section_eight_data.get('decade')}")
+            print(f"\nTimestamp for the given decade: {section_eight_data.get('timestamp')}")
+            print(f"\nPrecipitation: {section_eight_data.get('precipitation')} mm")
+            print(f"\nTemperature: {section_eight_data.get('temperature')} °C")
+
     @staticmethod
     def adjust_water_level_value_for_negative(value: int) -> int:
         """
@@ -264,9 +278,9 @@ class KN15TelegramParser(BaseTelegramParser):
             try:
                 day_in_month = int(date_token[:2])
                 if not (1 <= day_in_month <= 31):
-                    raise InvalidTokenException(f"Invalid day: {day_in_month}")
+                    raise InvalidTokenException(day_in_month, f"Invalid day in month for token {date_token}")
             except ValueError:
-                raise InvalidTokenException(f"Invalid day: {date_token[:2]}")
+                raise InvalidTokenException(date_token[:2], f"Invalid day in month for token {date_token}")
 
             return day_in_month
 
@@ -274,9 +288,9 @@ class KN15TelegramParser(BaseTelegramParser):
             try:
                 hour = int(date_token[2:4])
                 if not (0 <= hour <= 24):
-                    raise InvalidTokenException(f"Invalid hour: {hour}")
+                    raise InvalidTokenException(hour, f"Invalid hour for token {date_token}")
             except ValueError:
-                raise InvalidTokenException(f"Invalid hour: {date_token[2:4]}")
+                raise InvalidTokenException(date_token[2:4], f"Invalid hour for token {date_token}")
 
             return hour
 
@@ -303,7 +317,11 @@ class KN15TelegramParser(BaseTelegramParser):
                 if parsed_date.month == 1:  # if January, move to December of the previous year
                     parsed_date = parsed_date.replace(year=parsed_date.year - 1, month=12)
                 else:
-                    parsed_date = parsed_date.replace(month=parsed_date.month - 1)
+                    try:
+                        parsed_date = parsed_date.replace(month=parsed_date.month - 1)
+                    except ValueError:  # could fall into 31st which might not exist for the previous month
+                        last_day_prev_month = (dt(parsed_date.year, parsed_date.month, 1) - timedelta(days=1)).day
+                        parsed_date = parsed_date.replace(month=parsed_date.month - 1, day=last_day_prev_month)
 
             # set the time to the given hour and zero out minutes, seconds and microseconds
             parsed_date = parsed_date.replace(minute=0, second=0, microsecond=0)
@@ -334,7 +352,7 @@ class KN15TelegramParser(BaseTelegramParser):
 
         def extract_water_level(token: str, starting_character: str) -> int:
             if not token.startswith(starting_character):
-                raise InvalidTokenException(f"Expected token starting with '{starting_character}', got: {token}")
+                raise InvalidTokenException(token, f"Expected token starting with '{starting_character}', got")
             water_level = self.adjust_water_level_value_for_negative(int(token[1:]))
 
             return water_level
@@ -497,4 +515,80 @@ class KN15TelegramParser(BaseTelegramParser):
             "cross_section_area": cross_section_area,
             "maximum_depth": maximum_depth,
             "date": date.isoformat(),
+        }
+
+    def parse_section_eight(self) -> dict:
+        def extract_decade_number(token: str) -> int:
+            match token[1:3]:
+                case "11":
+                    return 1
+                case "22":
+                    return 2
+                case "33":
+                    return 3
+                case "30":
+                    return 4  # special case, means full month, not a decade
+                case _:
+                    raise InvalidTokenException(
+                        token, "Invalid decade identifier, supported identifiers are '11', '22', '33' and '30'"
+                    )
+
+        def extract_precipitation(token: str) -> int:
+            precipitation_value = int(token[1:4])
+            check_digit = token[-1]
+            digit_sum = sum(int(char) for char in token[:4])
+
+            if digit_sum != int(check_digit):
+                raise InvalidTokenException(token, "Check digit sum does not match")
+
+            return precipitation_value
+
+        def extract_temperature(token: str) -> float:
+            match token[1]:
+                case "0":
+                    sign = 1
+                case "1":
+                    sign = -1
+                case _:
+                    raise InvalidTokenException(token, "Invalid second digit, expected '0' or '1'")
+
+            temperature_value = round(int(token[2:]) * 0.1, 1)
+            return temperature_value * sign
+
+        def get_day_in_month_for_decade(decade_num: int) -> int:
+            match decade_num:
+                case 1:
+                    return 5
+                case 2:
+                    return 15
+                case 3:
+                    return 25
+                case _:
+                    # monthly data, not decadal
+                    return 15
+
+        # group 988mm
+        input_token = self.get_next_token()
+        month = int(input_token[3:])
+
+        # subgroup 1dd//
+        input_token = self.get_next_token()
+        decade = extract_decade_number(input_token)
+
+        # subgroup 2pppc
+        input_token = self.get_next_token()
+        precipitation = extract_precipitation(input_token)
+
+        # subgroup 3sttt
+        input_token = self.get_next_token()
+        temperature = extract_temperature(input_token)
+
+        day_in_month = get_day_in_month_for_decade(decade)
+        timestamp = dt(year=dt.now().year, month=month, day=day_in_month, hour=12, tzinfo=ZoneInfo("UTC"))
+
+        return {
+            "decade": decade,
+            "timestamp": timestamp.isoformat(),
+            "precipitation": precipitation,
+            "temperature": temperature,
         }

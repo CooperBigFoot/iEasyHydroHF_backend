@@ -16,7 +16,7 @@ class InvalidTokenException(TelegramParserException):
     Raised when an invalid token is encountered during parsing.
     """
 
-    def __init__(self, token: str, message: str = "Invalid token encountered"):
+    def __init__(self, token: str | int, message: str = "Invalid token encountered"):
         self.token = token
         logger.error(f"{message}: {token}")
         super().__init__(f"{message}: {token}")
