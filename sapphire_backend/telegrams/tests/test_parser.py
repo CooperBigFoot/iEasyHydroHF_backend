@@ -1,4 +1,5 @@
 import datetime
+import re
 from unittest.mock import patch
 
 import pytest
@@ -71,10 +72,12 @@ class TestKN15TelegramParserSectionZero:
         with pytest.raises(InvalidTokenException, match="Invalid station code: abcde"):
             parser.parse()
 
-        parser = KN15TelegramParser("123456 29081 10417 20021 30410=", organization.uuid)
+        with pytest.raises(InvalidTokenException, match="Group must have 5 characters: 123456"):
+            parser = KN15TelegramParser("123456 29081 10417 20021 30410=", organization.uuid)
 
-        with pytest.raises(InvalidTokenException, match="Invalid station code: 123456"):
-            parser.parse()
+    def test_parse_with_invalid_last_digit_in_the_second_group(self, organization, manual_hydro_station):
+        with pytest.raises(InvalidTokenException, match="Group must end with either 1 or 2: 29083"):
+            _ = KN15TelegramParser(f"{manual_hydro_station.station_code} 29083 10417 20021 30410=", organization.uuid)
 
     def test_parse_for_non_existing_station(self, organization):
         parser = KN15TelegramParser("12345 29081 10417 20021 30410=", organization.uuid)
@@ -229,4 +232,350 @@ class TestKN15TelegramParserSectionOne:
             "air_temperature": None,
             "ice_phenomena": [],
             "daily_precipitation": None,
+        }
+
+    def test_parse_full_output(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 14081 10417 20021 30410=", organization.uuid)
+
+        decoded_data = parser.parse()
+
+        assert decoded_data == {
+            "section_zero": {
+                "station_code": manual_hydro_station.station_code,
+                "station_name": manual_hydro_station.name,
+                "date": "2024-04-14T08:00:00+00:00",
+                "section_code": 1,
+            },
+            "section_one": {
+                "morning_water_level": 417,
+                "water_level_trend": 2,
+                "water_level_20h_period": 410,
+                "water_temperature": None,
+                "air_temperature": None,
+                "ice_phenomena": [],
+                "daily_precipitation": None,
+            },
+            # there are no empty objects for sections 933, 966 or 988 if they are not present
+        }
+
+    def test_parse_with_water_and_air_temperature(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 46510=", organization.uuid
+        )
+        decoded_data = parser.parse()
+
+        assert decoded_data["section_one"]["water_temperature"] == 6.5
+        assert decoded_data["section_one"]["air_temperature"] == 10
+
+    def test_parse_with_water_and_air_temperature_for_negative_air_temperature(
+        self, datetime_mock, organization, manual_hydro_station
+    ):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 46560=", organization.uuid
+        )
+        decoded_data = parser.parse()
+
+        assert decoded_data["section_one"]["water_temperature"] == 6.5
+        assert decoded_data["section_one"]["air_temperature"] == -10
+
+    def test_parse_with_ice_phenomena(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 52302=", organization.uuid
+        )
+        decoded_data = parser.parse()
+        assert decoded_data["section_one"]["ice_phenomena"][0]["code"] == 23
+        assert decoded_data["section_one"]["ice_phenomena"][0]["intensity"] == 2
+
+    def test_parse_with_daily_precipitation(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 00010=", organization.uuid
+        )
+        decoded_data = parser.parse()
+        assert decoded_data["section_one"]["daily_precipitation"]["precipitation"] == 1
+        assert decoded_data["section_one"]["daily_precipitation"]["duration_code"] == 0
+
+    def test_parse_with_daily_precipitation_with_decimal(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 09912=", organization.uuid
+        )
+        decoded_data = parser.parse()
+        assert decoded_data["section_one"]["daily_precipitation"]["precipitation"] == 0.1
+        assert decoded_data["section_one"]["daily_precipitation"]["duration_code"] == 2
+
+    def test_parse_with_daily_precipitation_with_zero_sum(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 00000=", organization.uuid
+        )
+
+        decoded_data = parser.parse()
+        assert decoded_data["section_one"]["daily_precipitation"]["precipitation"] == 0
+        assert decoded_data["section_one"]["daily_precipitation"]["duration_code"] == 0
+
+    def test_parse_with_unexpected_group(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 65432 00000=", organization.uuid
+        )
+
+        decoded_data = parser.parse()
+
+        # unexpected group before an optional one will cause the optional group to be skipped,
+        # in this case, the daily precipitation will be skipped
+
+        assert decoded_data["section_one"] == {
+            "morning_water_level": 417,
+            "water_level_trend": 2,
+            "water_level_20h_period": 410,
+            "water_temperature": None,
+            "air_temperature": None,
+            "ice_phenomena": [],
+            "daily_precipitation": None,
+        }
+
+
+class TestKN15TelegramParserSectionThree:
+    def test_parse(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 93301 10212=", organization.uuid
+        )
+
+        decoded_data = parser.parse()
+
+        assert decoded_data["section_three"] == {"water_level": 212}
+
+    def test_parse_with_unsupported_group(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 93302 10212=", organization.uuid
+        )
+        with pytest.raises(
+            InvalidTokenException,
+            match=re.escape("Expected data from previous day (code 93301), got: 93302"),
+        ):
+            parser.parse()
+
+    def test_parse_with_additional_groups(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 93301 10212 42126=", organization.uuid
+        )
+
+        decoded_data = parser.parse()
+
+        assert decoded_data["section_three"] == {"water_level": 212}
+
+
+class TestKN15TelegramParserSectionSix:
+    def test_parse_with_wrong_last_digit_in_section_one_group_two(
+        self, datetime_mock, organization, manual_hydro_station
+    ):
+        with pytest.raises(
+            InvalidTokenException,
+            match="Found the following token, but group 14081 doesn't end with 2: 96605",
+        ):
+            _ = KN15TelegramParser(
+                f"{manual_hydro_station.station_code} 14081 10417 20021 30410 00000 96605 10212 22126=",
+                organization.uuid,
+            )
+
+    def test_parse_with_only_mandatory_data(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 96604 10212 22126 51310=",
+            organization.uuid,
+        )
+
+        decoded_data = parser.parse()
+        assert decoded_data["section_six"] == [
+            {
+                "water_level": 212,
+                "discharge": 12.6,
+                "cross_section_area": None,
+                "maximum_depth": None,
+                "date": "2024-04-13T10:00:00+00:00",
+            }
+        ]
+
+    def test_parse_with_optional_data(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 96604 15212 21126 32133 40020 51310=",
+            organization.uuid,
+        )
+
+        decoded_data = parser.parse()
+        assert decoded_data["section_six"] == [
+            {
+                "water_level": -212,
+                "discharge": 1.26,
+                "cross_section_area": 13.3,
+                "maximum_depth": 20,
+                "date": "2024-04-13T10:00:00+00:00",
+            }
+        ]
+
+    def test_parse_with_multiple_966_sections(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 "
+            f"96604 10212 22126 51310 96604 10250 22130 32133 40040 51410=",
+            organization.uuid,
+        )
+
+        decoded_data = parser.parse()
+        assert decoded_data["section_six"] == [
+            {
+                "water_level": 212,
+                "discharge": 12.6,
+                "cross_section_area": None,
+                "maximum_depth": None,
+                "date": "2024-04-13T10:00:00+00:00",
+            },
+            {
+                "water_level": 250,
+                "discharge": 13.0,
+                "cross_section_area": 13.3,
+                "maximum_depth": 40,
+                "date": "2024-04-14T10:00:00+00:00",
+            },
+        ]
+
+    def test_parse_with_previous_year_data(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 96604 10212 22126 51610=",
+            organization.uuid,
+        )
+
+        decoded_data = parser.parse()
+        assert decoded_data["section_six"] == [
+            {
+                "water_level": 212,
+                "discharge": 12.6,
+                "cross_section_area": None,
+                "maximum_depth": None,
+                "date": "2023-04-16T10:00:00+00:00",
+            }
+        ]
+
+    def test_parse_with_additional_sections(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 96604 10212 22126 51410 61000=",
+            organization.uuid,
+        )
+
+        decoded_data = parser.parse()
+        assert decoded_data["section_six"] == [
+            {
+                "water_level": 212,
+                "discharge": 12.6,
+                "cross_section_area": None,
+                "maximum_depth": None,
+                "date": "2024-04-14T10:00:00+00:00",
+            }
+        ]
+
+
+class TestKN15TelegramParserSectionEight:
+    def test_parse(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 111// 21238 30123=",
+            organization.uuid,
+        )
+
+        decoded_data = parser.parse()
+        assert decoded_data["section_eight"] == {
+            "decade": 1,
+            "timestamp": "2024-03-05T12:00:00+00:00",
+            "precipitation": 123,
+            "temperature": 12.3,
+        }
+
+    def test_parse_for_entire_month(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 130// 21238 30123=",
+            organization.uuid,
+        )
+
+        decoded_data = parser.parse()
+        assert decoded_data["section_eight"] == {
+            "decade": 4,
+            "timestamp": "2024-03-15T12:00:00+00:00",
+            "precipitation": 123,
+            "temperature": 12.3,
+        }
+
+    def test_parse_for_invalid_decade_identifier(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 140// 21238 30123=",
+            organization.uuid,
+        )
+        with pytest.raises(
+            InvalidTokenException,
+            match="Invalid decade identifier, supported identifiers are '11', '22', '33' and '30': 140//",
+        ):
+            parser.parse()
+
+    def test_parse_for_invalid_precipitation_checksum(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 111// 21230 30123=",
+            organization.uuid,
+        )
+        with pytest.raises(
+            InvalidTokenException,
+            match="Check digit sum does not match: 21230",
+        ):
+            parser.parse()
+
+    def test_parse_for_invalid_temperature_sign(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 111// 21238 32123=",
+            organization.uuid,
+        )
+        with pytest.raises(
+            InvalidTokenException,
+            match="Invalid second digit, expected '0' or '1': 32123",
+        ):
+            parser.parse()
+
+    def test_parse_for_negative_temperature(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 133// 21238 31023=",
+            organization.uuid,
+        )
+        decoded_data = parser.parse()
+        assert decoded_data["section_eight"] == {
+            "decade": 3,
+            "timestamp": "2024-03-25T12:00:00+00:00",
+            "precipitation": 123,
+            "temperature": -2.3,
+        }
+
+    def test_parse_for_wrong_section_order(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 21238 133// 31023=",
+            organization.uuid,
+        )
+        with pytest.raises(
+            MissingSectionException,
+            match="Expected decade section starting with '1', got: 21238",
+        ):
+            parser.parse()
+
+    def test_parse_for_missing_section(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 133// 31023=", organization.uuid
+        )
+        with pytest.raises(
+            MissingSectionException,
+            match="Expected precipitation section starting with '2', got: 31023",
+        ):
+            parser.parse()
+
+    def test_parse_with_additional_groups(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 122// 21238 31023 41126=",
+            organization.uuid,
+        )
+
+        decoded_data = parser.parse()
+
+        assert decoded_data["section_eight"] == {
+            "decade": 2,
+            "timestamp": "2024-03-15T12:00:00+00:00",
+            "precipitation": 123,
+            "temperature": -2.3,
         }

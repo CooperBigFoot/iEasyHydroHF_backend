@@ -28,6 +28,7 @@ class BaseTelegramParser(ABC):
         self.organization_uuid = organization_uuid
         self.hydro_station = None
         self.meteo_station = None
+        self.validate_format()
 
     @property
     def exists_hydro_station(self):
@@ -43,6 +44,12 @@ class BaseTelegramParser(ABC):
             if self.original_telegram.endswith(termination_character)
             else self.original_telegram
         )
+
+    def validate_format(self):
+        """
+        Used to validate the format of the telegram if necessary
+        """
+        return True
 
     def telegram_already_parsed(self):
         return Telegram.objects.filter(telegram=self.original_telegram, successfully_parsed=True).exists()
@@ -138,6 +145,20 @@ class KN15TelegramParser(BaseTelegramParser):
     ):
         super().__init__(telegram, organization_uuid, store_parsed_telegram, automatic_ingestion)
 
+    def validate_format(self):
+        if self.tokens[1][-1] not in ["1", "2"]:
+            raise InvalidTokenException(self.tokens[1], "Group must end with either 1 or 2")
+
+        for token in self.tokens:
+            if len(token) != 5:
+                raise InvalidTokenException(token, "Group must have 5 characters")
+
+            if token[:3] in ["933", "966", "988"]:
+                if self.tokens[1][-1] != "2":
+                    raise InvalidTokenException(
+                        token, message=f"Found the following token, but group {self.tokens[1]} doesn't end with 2"
+                    )
+
     def parse(self):
         """
         Implements the parsing logic for KN15 telegrams.
@@ -147,7 +168,7 @@ class KN15TelegramParser(BaseTelegramParser):
         # start by parsing section zero
         section_zero = self.parse_section_zero()
         decoded_values["section_zero"] = section_zero
-        decoded_values["section_three"] = []
+        decoded_values["section_three"] = {}
         decoded_values["section_six"] = []
         decoded_values["section_eight"] = {}
 
@@ -164,7 +185,7 @@ class KN15TelegramParser(BaseTelegramParser):
 
                 if section_number == "933":
                     section_three = self.parse_section_three()
-                    decoded_values["section_three"].append(section_three)
+                    decoded_values["section_three"] = section_three
                 elif section_number == "966":
                     section_six = self.parse_section_six()
                     decoded_values["section_six"].append(section_six)
@@ -418,7 +439,7 @@ class KN15TelegramParser(BaseTelegramParser):
             ice_phenomena.append(extract_ice_phenomena(input_token))
 
         daily_precipitation = None
-        while self.tokens and self.tokens[0].startswith("0"):
+        if self.tokens and self.tokens[0].startswith("0"):
             input_token = self.get_next_token()
             daily_precipitation = extract_daily_precipitation(input_token)
 
@@ -432,7 +453,7 @@ class KN15TelegramParser(BaseTelegramParser):
             "daily_precipitation": daily_precipitation,
         }
 
-    def parse_section_three(self) -> int:
+    def parse_section_three(self) -> dict[str, int | float]:
         """
         Parses section 3 of the KN15 telegram.
         """
@@ -448,17 +469,16 @@ class KN15TelegramParser(BaseTelegramParser):
         # check if the information refers to the previous day which is currently supported
         input_token = self.get_next_token()
         if not input_token.endswith("01"):
-            raise InvalidTokenException(f"Expected data from previous day (code 93301), got: {input_token}")
+            raise InvalidTokenException(input_token, "Expected data from previous day (code 93301), got")
 
         # mean water level for the period 20:00 to 08:00
         input_token = self.get_next_token()
         parsed_mean_water_level = extract_mean_water_level(input_token)
 
-        # skip any additional tokens until we reach the next section or end of telegram
         while self.tokens and not self.tokens[0].startswith("9"):
             self.get_next_token()
 
-        return parsed_mean_water_level
+        return {"water_level": parsed_mean_water_level}
 
     def parse_section_six(self) -> dict:
         """
@@ -519,6 +539,8 @@ class KN15TelegramParser(BaseTelegramParser):
 
     def parse_section_eight(self) -> dict:
         def extract_decade_number(token: str) -> int:
+            if not token.startswith("1"):
+                raise MissingSectionException(token, "Expected decade section starting with '1', got")
             match token[1:3]:
                 case "11":
                     return 1
@@ -534,6 +556,8 @@ class KN15TelegramParser(BaseTelegramParser):
                     )
 
         def extract_precipitation(token: str) -> int:
+            if not token.startswith("2"):
+                raise MissingSectionException(token, "Expected precipitation section starting with '2', got")
             precipitation_value = int(token[1:4])
             check_digit = token[-1]
             digit_sum = sum(int(char) for char in token[:4])
@@ -544,6 +568,8 @@ class KN15TelegramParser(BaseTelegramParser):
             return precipitation_value
 
         def extract_temperature(token: str) -> float:
+            if not token.startswith("3"):
+                raise MissingSectionException(token, "Expected temperature section starting with '3', got")
             match token[1]:
                 case "0":
                     sign = 1
@@ -585,6 +611,10 @@ class KN15TelegramParser(BaseTelegramParser):
 
         day_in_month = get_day_in_month_for_decade(decade)
         timestamp = dt(year=dt.now().year, month=month, day=day_in_month, hour=12, tzinfo=ZoneInfo("UTC"))
+
+        # Skip additional tokens until section end
+        while self.tokens and not self.tokens[0].startswith("9"):
+            self.get_next_token()
 
         return {
             "decade": decade,
