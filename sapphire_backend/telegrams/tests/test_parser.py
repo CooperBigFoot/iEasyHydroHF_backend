@@ -5,7 +5,11 @@ from unittest.mock import patch
 import pytest
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.telegrams.exceptions import InvalidTokenException, MissingSectionException
+from sapphire_backend.telegrams.exceptions import (
+    InvalidTokenException,
+    MissingMeteoStationException,
+    MissingSectionException,
+)
 from sapphire_backend.telegrams.models import Telegram
 from sapphire_backend.telegrams.parser import KN15TelegramParser
 
@@ -65,6 +69,19 @@ class TestKN15TelegramParserInitialization:
         assert parser.exists_hydro_station
         assert parser.exists_meteo_station
 
+    def test_parse_error_stores_telegram_to_database(self, organization, manual_hydro_station):
+        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 29081 10417 30410=", organization.uuid)
+
+        assert Telegram.objects.exists() is False
+
+        expected_exception = "Expected token starting with '2', got: 30410"
+
+        with pytest.raises(InvalidTokenException, match=expected_exception):
+            parser.parse()
+            db_telegram = Telegram.objects.first()
+            assert db_telegram.errors == expected_exception
+            assert db_telegram.was_parsed_successfully is False
+
 
 class TestKN15TelegramParserSectionZero:
     def test_parse_with_invalid_station_code(self, organization):
@@ -74,7 +91,7 @@ class TestKN15TelegramParserSectionZero:
             parser.parse()
 
         with pytest.raises(InvalidTokenException, match="Group must have 5 characters: 123456"):
-            parser = KN15TelegramParser("123456 29081 10417 20021 30410=", organization.uuid)
+            _ = KN15TelegramParser("123456 29081 10417 20021 30410=", organization.uuid)
 
     def test_parse_with_invalid_last_digit_in_the_second_group(self, organization, manual_hydro_station):
         with pytest.raises(InvalidTokenException, match="Group must end with either 1 or 2: 29083"):
@@ -222,6 +239,15 @@ class TestKN15TelegramParserSectionZero:
 
 
 class TestKN15TelegramParserSectionOne:
+    def test_parse_for_non_existing_manual_hydro_station(self, datetime_mock, organization, manual_meteo_station):
+        parser = KN15TelegramParser(f"{manual_meteo_station.station_code} 14081 10417 20021 30410=", organization.uuid)
+
+        with pytest.raises(
+            InvalidTokenException,
+            match=f"No hydro station with code {manual_meteo_station.station_code}, but found token: 10417",
+        ):
+            parser.parse()
+
     def test_parse_with_missing_morning_water_level(self, datetime_mock, organization, manual_hydro_station):
         parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 14081 20021 30410=", organization.uuid)
         with pytest.raises(InvalidTokenException, match="Expected token starting with '1', got: 20021"):
@@ -498,7 +524,7 @@ class TestKN15TelegramParserSectionSix:
 
 
 class TestKN15TelegramParserSectionEight:
-    def test_parse(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse(self, datetime_mock, organization, manual_hydro_station, manual_meteo_station):
         parser = KN15TelegramParser(
             f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 111// 21238 30123=",
             organization.uuid,
@@ -512,7 +538,18 @@ class TestKN15TelegramParserSectionEight:
             "temperature": 12.3,
         }
 
-    def test_parse_for_entire_month(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_when_meteo_station_doesnt_exist(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 111// 21238 30123=",
+            organization.uuid,
+        )
+
+        with pytest.raises(
+            MissingMeteoStationException, match="No meteo station with code 12345, but found token: 98803"
+        ):
+            parser.parse()
+
+    def test_parse_for_entire_month(self, datetime_mock, organization, manual_hydro_station, manual_meteo_station):
         parser = KN15TelegramParser(
             f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 130// 21238 30123=",
             organization.uuid,
@@ -526,7 +563,9 @@ class TestKN15TelegramParserSectionEight:
             "temperature": 12.3,
         }
 
-    def test_parse_for_invalid_decade_identifier(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_for_invalid_decade_identifier(
+        self, datetime_mock, organization, manual_hydro_station, manual_meteo_station
+    ):
         parser = KN15TelegramParser(
             f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 140// 21238 30123=",
             organization.uuid,
@@ -537,7 +576,9 @@ class TestKN15TelegramParserSectionEight:
         ):
             parser.parse()
 
-    def test_parse_for_invalid_precipitation_checksum(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_for_invalid_precipitation_checksum(
+        self, datetime_mock, organization, manual_hydro_station, manual_meteo_station
+    ):
         parser = KN15TelegramParser(
             f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 111// 21230 30123=",
             organization.uuid,
@@ -548,7 +589,9 @@ class TestKN15TelegramParserSectionEight:
         ):
             parser.parse()
 
-    def test_parse_for_invalid_temperature_sign(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_for_invalid_temperature_sign(
+        self, datetime_mock, organization, manual_hydro_station, manual_meteo_station
+    ):
         parser = KN15TelegramParser(
             f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 111// 21238 32123=",
             organization.uuid,
@@ -559,7 +602,9 @@ class TestKN15TelegramParserSectionEight:
         ):
             parser.parse()
 
-    def test_parse_for_negative_temperature(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_for_negative_temperature(
+        self, datetime_mock, organization, manual_hydro_station, manual_meteo_station
+    ):
         parser = KN15TelegramParser(
             f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 133// 21238 31023=",
             organization.uuid,
@@ -572,7 +617,9 @@ class TestKN15TelegramParserSectionEight:
             "temperature": -2.3,
         }
 
-    def test_parse_for_wrong_section_order(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_for_wrong_section_order(
+        self, datetime_mock, organization, manual_hydro_station, manual_meteo_station
+    ):
         parser = KN15TelegramParser(
             f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 21238 133// 31023=",
             organization.uuid,
@@ -583,7 +630,7 @@ class TestKN15TelegramParserSectionEight:
         ):
             parser.parse()
 
-    def test_parse_for_missing_section(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_for_missing_section(self, datetime_mock, organization, manual_hydro_station, manual_meteo_station):
         parser = KN15TelegramParser(
             f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 133// 31023=", organization.uuid
         )
@@ -593,7 +640,9 @@ class TestKN15TelegramParserSectionEight:
         ):
             parser.parse()
 
-    def test_parse_with_additional_groups(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_with_additional_groups(
+        self, datetime_mock, organization, manual_hydro_station, manual_meteo_station
+    ):
         parser = KN15TelegramParser(
             f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 122// 21238 31023 41126=",
             organization.uuid,
