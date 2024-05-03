@@ -6,6 +6,7 @@ import pytest
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.telegrams.exceptions import InvalidTokenException, MissingSectionException
+from sapphire_backend.telegrams.models import Telegram
 from sapphire_backend.telegrams.parser import KN15TelegramParser
 
 
@@ -191,6 +192,33 @@ class TestKN15TelegramParserSectionZero:
             "date": "2024-04-14T08:00:00+00:00",
             "section_code": 1,
         }
+
+    def test_parsing_saves_telegram_to_database(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 14081 10417 20021 30410=", organization.uuid)
+
+        assert Telegram.objects.all().count() == 0
+
+        decoded_data = parser.parse()
+
+        db_telegrams = Telegram.objects.all()
+
+        assert db_telegrams.count() == 1
+        assert db_telegrams.first().decoded_values == decoded_data
+
+    def test_parsing_doesnt_save_telegram_to_database_if_saving_disabled(
+        self, datetime_mock, organization, manual_hydro_station
+    ):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410=",
+            organization.uuid,
+            store_parsed_telegram=False,
+        )
+
+        assert Telegram.objects.all().count() == 0
+
+        _ = parser.parse()
+
+        assert Telegram.objects.all().count() == 0
 
 
 class TestKN15TelegramParserSectionOne:
