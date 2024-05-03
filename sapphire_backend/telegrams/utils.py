@@ -487,7 +487,12 @@ def generate_save_data_overview(parsed_data: dict, simulation_result: str) -> li
             item["telegram_day_data"] = simulation_result[station_code][telegram_day_date]
             item["section_one"] = telegram_data.get("section_one")
             item["section_six"] = telegram_data.get("section_six", [])
-            item["section_eight"] = telegram_data.get("section_eight")  # TODO
-            item["type"] = "discharge / meteo ???"  # TODO determine if discharge / meteo or both or single
+            item["section_eight"] = telegram_data.get("section_eight")
+            telegram_type = ""
+            if telegram_data.get("section_one"):
+                telegram_type += "discharge"
+            if telegram_data.get("section_eight"):
+                telegram_type += " / meteo" if telegram_type else "meteo"
+            item["type"] = telegram_type  # TODO determine if discharge / meteo or both or single
             save_data_overview.append(item)
     return save_data_overview

@@ -38,6 +38,13 @@ class TelegramSectionSixSingleSchema(Schema):
     date: str
 
 
+class TelegramSectionEightSchema(Schema):
+    decade: int
+    timestamp: str
+    precipitation: int
+    temperature: float
+
+
 class NewOldMetrics(Schema):
     water_level_new: int | None = None
     water_level_old: int | None = None
@@ -58,7 +65,7 @@ class DailyOverviewSingleSchema(Schema):
     previous_day_date: str
     section_one: TelegramSectionOneSchema
     section_six: list[TelegramSectionSixSingleSchema]
-    section_eight: None  # TODO when meteo parsing is implemented
+    section_eight: TelegramSectionEightSchema | None
     calc_trend_ok: bool
     calc_previous_day_water_level_average: int | None = None
     db_previous_day_morning_water_level: int | None = None
@@ -73,7 +80,7 @@ class SaveDataOverviewSingleSchema(Schema):
     telegram_day_data: DataProcessingDayTimes
     section_one: TelegramSectionOneSchema
     section_six: list[TelegramSectionSixSingleSchema]
-    section_eight: None  # TODO when meteo parsing is implemented
+    section_eight: TelegramSectionEightSchema | None
     type: str
 
 
