@@ -1,5 +1,6 @@
 import logging
 import math
+from datetime import timedelta
 
 from sapphire_backend.estimations.utils import get_discharge_model_from_timestamp
 from sapphire_backend.metrics.choices import (
@@ -140,6 +141,23 @@ def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dic
             sensor_type="",
         )
         water_temp_metric.save(refresh_view=False)
+
+    if section_one.get("ice_phenomena"):
+        for idx, record in enumerate(section_one["ice_phenomena"]):
+            ice_phenomena_metric = HydrologicalMetric(
+                timestamp=telegram_day_smart.morning_utc + timedelta(milliseconds=idx),
+                min_value=None,
+                avg_value=record["intensity"] if record["intensity"] else -1,
+                max_value=None,
+                unit=MetricUnit.ICE_PHENOMENA_OBSERVATION,
+                value_type=HydrologicalMeasurementType.MANUAL,
+                metric_name=HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION,
+                station=hydro_station,
+                sensor_identifier="",
+                sensor_type="",
+                value_code=record["code"],
+            )
+            ice_phenomena_metric.save(refresh_view=False)
 
 
 def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStation):

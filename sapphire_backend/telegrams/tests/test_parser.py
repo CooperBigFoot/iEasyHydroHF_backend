@@ -332,13 +332,63 @@ class TestKN15TelegramParserSectionOne:
         assert decoded_data["section_one"]["water_temperature"] == 6.5
         assert decoded_data["section_one"]["air_temperature"] == -10
 
-    def test_parse_with_ice_phenomena(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_with_ice_phenomena_code_outside_of_range(self, datetime_mock, organization, manual_hydro_station):
         parser = KN15TelegramParser(
-            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 52302=", organization.uuid
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 52902=", organization.uuid
         )
-        decoded_data = parser.parse()
-        assert decoded_data["section_one"]["ice_phenomena"][0]["code"] == 23
-        assert decoded_data["section_one"]["ice_phenomena"][0]["intensity"] == 2
+
+        with pytest.raises(
+            InvalidTokenException,
+            match="Invalid ice phenomena code: 29",
+        ):
+            _ = parser.parse()
+
+    def test_parse_with_ice_phenomena_for_code_requiring_intensity(
+        self, datetime_mock, organization, manual_hydro_station
+    ):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 51211=", organization.uuid
+        )
+
+        with pytest.raises(
+            InvalidTokenException,
+            match="Ice phenomena intensity needs to be between 1 and 10, found: 11",
+        ):
+            _ = parser.parse()
+
+    def test_parse_with_ice_phenomena_for_code_not_requiring_intensity(
+        self, datetime_mock, organization, manual_hydro_station
+    ):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 52010=", organization.uuid
+        )
+
+        with pytest.raises(
+            InvalidTokenException,
+            match="Invalid ice phenomena format, 5EEEE expected for the given code: 52010",
+        ):
+            _ = parser.parse()
+
+    def test_parse_with_single_ice_phenomena_value(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 52020=", organization.uuid
+        )
+        decoded_date = parser.parse()
+
+        assert decoded_date["section_one"]["ice_phenomena"] == [{"code": 20, "intensity": None}]
+
+    def test_parse_with_multiple_ice_phenomena_value(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 52020 51210 55008 52121=", organization.uuid
+        )
+        decoded_date = parser.parse()
+
+        assert decoded_date["section_one"]["ice_phenomena"] == [
+            {"code": 20, "intensity": None},
+            {"code": 12, "intensity": 10},
+            {"code": 50, "intensity": 8},
+            {"code": 21, "intensity": None},
+        ]
 
     def test_parse_with_daily_precipitation(self, datetime_mock, organization, manual_hydro_station):
         parser = KN15TelegramParser(

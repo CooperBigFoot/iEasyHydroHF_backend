@@ -33,6 +33,7 @@ class TelegramsAPIController:
     def get_telegram_overview(
         self, request, organization_uuid: str, encoded_telegrams_dates: TelegramBulkWithDatesInputSchema
     ):
+        # TODO need to write tests for the utils methods and the API endpoint
         parsed_data = get_parsed_telegrams_data(encoded_telegrams_dates, organization_uuid)
         telegram_insert_simulation_result = simulate_telegram_insertion(parsed_data)
 

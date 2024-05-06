@@ -22,7 +22,7 @@ class TelegramSectionOneSchema(Schema):
     water_level_20h_period: int
     water_temperature: float | None = None
     air_temperature: int | None = None
-    ice_phenomena: list[dict[str, int]] | None = None
+    ice_phenomena: list[dict[str, int | None]] | None = None
     daily_precipitation: dict[str, int] | None = None
 
 

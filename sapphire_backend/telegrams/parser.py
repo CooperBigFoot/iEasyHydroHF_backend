@@ -221,8 +221,6 @@ class KN15TelegramParser(BaseTelegramParser):
 
         if self.store_in_db:
             self.save_telegram(decoded_values)
-        else:
-            self.print_decoded_telegram(decoded_values)
 
         return decoded_values
 
@@ -411,11 +409,26 @@ class KN15TelegramParser(BaseTelegramParser):
 
             return water_temp, air_temp
 
-        def extract_ice_phenomena(token: str) -> dict[str, int]:
+        def extract_ice_phenomena(token: str) -> dict[str, int | None]:
+            valid_code_ranges = [[11, 26], [30, 54], [63, 77]]
+            codes_with_intensity = [12, 13, 14, 16, 19, 39, 48, 49, 50, 64]
             ice_phenomena_code = int(token[1:3])
+            filtered_range = [range_ for range_ in valid_code_ranges if range_[0] <= ice_phenomena_code <= range_[1]]
+            if not filtered_range:
+                self.save_parsing_error("Invalid ice phenomena code", ice_phenomena_code, InvalidTokenException)
+
             intensity = int(token[3:])
+            if ice_phenomena_code in codes_with_intensity:
+                if not (1 <= intensity <= 10):
+                    self.save_parsing_error(
+                        "Ice phenomena intensity needs to be between 1 and 10, found", intensity, InvalidTokenException
+                    )
+            elif ice_phenomena_code != intensity:
+                self.save_parsing_error(
+                    "Invalid ice phenomena format, 5EEEE expected for the given code", token, InvalidTokenException
+                )
             if ice_phenomena_code == intensity:
-                return {"code": ice_phenomena_code}
+                return {"code": ice_phenomena_code, "intensity": None}
             else:
                 return {"code": ice_phenomena_code, "intensity": intensity}
 
