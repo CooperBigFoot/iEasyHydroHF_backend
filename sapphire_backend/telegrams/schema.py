@@ -1,5 +1,8 @@
 from ninja import Schema
 
+from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitationCodeMapper
+from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
+
 
 class TelegramWithDateInputSchema(Schema):
     raw: str
@@ -16,14 +19,34 @@ class TelegramSectionZeroSchema(Schema):
     station_name: str
 
 
+class IcePhenomenaSchema(Schema):
+    code: int
+    intensity: int | None
+    description: str
+
+    @staticmethod
+    def resolve_description(obj):
+        return IcePhenomenaCodeMapper(obj["code"]).get_description()
+
+
+class DailyPrecipitationSchema(Schema):
+    precipitation: int
+    duration_code: int
+    description: str
+
+    @staticmethod
+    def resolve_description(obj):
+        return DailyPrecipitationCodeMapper(obj["duration_code"]).get_description()
+
+
 class TelegramSectionOneSchema(Schema):
     morning_water_level: int
     water_level_trend: int
     water_level_20h_period: int
     water_temperature: float | None = None
     air_temperature: int | None = None
-    ice_phenomena: list[dict[str, int | None]] | None = None
-    daily_precipitation: dict[str, int] | None = None
+    ice_phenomena: list[IcePhenomenaSchema] | None = None
+    daily_precipitation: DailyPrecipitationSchema | None = None
 
 
 class TelegramSectionThreeSchema(Schema):
