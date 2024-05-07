@@ -6,11 +6,13 @@ from sapphire_backend.estimations.utils import get_discharge_model_from_timestam
 from sapphire_backend.metrics.choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
+    MeteorologicalMeasurementType,
+    MeteorologicalMetricName,
     MetricUnit,
 )
-from sapphire_backend.metrics.models import HydrologicalMetric
+from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
 from sapphire_backend.metrics.timeseries.query import TimeseriesQueryManager
-from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 from sapphire_backend.telegrams.exceptions import TelegramParserException
 from sapphire_backend.telegrams.parser import KN15TelegramParser
 from sapphire_backend.telegrams.schema import NewOldMetrics, TelegramBulkWithDatesInputSchema
@@ -36,7 +38,7 @@ def custom_ceil(value: int | None) -> int | None:
 
 
 def get_parsed_telegrams_data(
-    encoded_telegrams_dates: TelegramBulkWithDatesInputSchema, organization_uuid: str
+    encoded_telegrams_dates: TelegramBulkWithDatesInputSchema, organization_uuid: str, save_telegrams: bool = True
 ) -> dict:
     """
     Parse telegrams and add more context
@@ -49,7 +51,9 @@ def get_parsed_telegrams_data(
     for idx, telegram_input in enumerate(encoded_telegrams_dates.telegrams):
         telegram = telegram_input.raw
         override_date = telegram_input.override_date
-        parser = KN15TelegramParser(telegram, organization_uuid=organization_uuid)
+        parser = KN15TelegramParser(
+            telegram, organization_uuid=organization_uuid, store_parsed_telegram=save_telegrams
+        )
         try:
             decoded = parser.parse()
 
@@ -218,6 +222,34 @@ def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStati
                 sensor_type="",
             )
             maximum_depth_metric.save()
+
+
+def save_section_eight_metrics(meteo_data: dict, meteo_station: MeteorologicalStation) -> None:
+    timestamp = meteo_data["timestamp"]
+    decade = meteo_data["decade"]
+    precipitation_metric = MeteorologicalMetric(
+        timestamp=timestamp,
+        value=meteo_data["precipitation"],
+        value_type=MeteorologicalMeasurementType.MANUAL,
+        metric_name=MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE
+        if decade != 4
+        else MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE,
+        unit=MetricUnit.PRECIPITATION,
+        station=meteo_station,
+    )
+    precipitation_metric.save()
+
+    temperature_metric = MeteorologicalMetric(
+        timestamp=timestamp,
+        value=meteo_data["temperature"],
+        value_type=MeteorologicalMeasurementType.MANUAL,
+        metric_name=MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE
+        if decade != 4
+        else MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE,
+        unit=MetricUnit.TEMPERATURE,
+        station=meteo_station,
+    )
+    temperature_metric.save()
 
 
 def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict:
@@ -447,6 +479,7 @@ def generate_daily_overview(parsed_data: dict):
                 "calc_trend_ok": trend_ok,
                 "calc_previous_day_water_level_average": previous_day_water_level_average,
                 "db_previous_day_morning_water_level": previous_day_morning_water_level,
+                "section_three": decoded.get("section_three", None),
                 "section_six": decoded.get("section_six", []),
                 "section_eight": decoded.get("section_eight", None),
             }

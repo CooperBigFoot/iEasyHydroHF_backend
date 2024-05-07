@@ -119,13 +119,16 @@ class BaseTelegramParser(ABC):
         return [cls(telegram, store_in_db, automatic).parse() for telegram in telegrams]
 
     def save_telegram(self, decoded_values: dict[str, Any]):
-        Telegram.objects.create(
-            telegram=self.original_telegram,
-            decoded_values=decoded_values,
-            automatically_ingested=self.automatic_ingestion,
-            hydro_station=self.hydro_station,
-            meteo_station=self.meteo_station,
-        )
+        if not Telegram.objects.filter(
+            telegram=self.original_telegram, successfully_parsed=True, created_date__date=dt.now(tz=ZoneInfo("UTC"))
+        ).exists():
+            Telegram.objects.create(
+                telegram=self.original_telegram,
+                decoded_values=decoded_values,
+                automatically_ingested=self.automatic_ingestion,
+                hydro_station=self.hydro_station,
+                meteo_station=self.meteo_station,
+            )
 
     def save_parsing_error(
         self, error: str, token: str | int = "", exception_class: TelegramParserException | None = None

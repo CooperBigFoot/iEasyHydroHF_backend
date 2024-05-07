@@ -17,6 +17,7 @@ from .utils import (
     generate_save_data_overview,
     get_parsed_telegrams_data,
     save_reported_discharge,
+    save_section_eight_metrics,
     save_section_one_metrics,
     simulate_telegram_insertion,
 )
@@ -55,15 +56,20 @@ class TelegramsAPIController:
     def save_input_telegrams(
         self, request, organization_uuid: str, encoded_telegrams_dates: TelegramBulkWithDatesInputSchema
     ):
-        parsed_data = get_parsed_telegrams_data(encoded_telegrams_dates, organization_uuid)
+        parsed_data = get_parsed_telegrams_data(encoded_telegrams_dates, organization_uuid, False)
         for station_data in parsed_data["stations"].values():
             hydro_station = station_data["hydro_station_obj"]
-            # meteo_station = station_data["meteo_station_obj"]  # TODO when meteo parsing gets implemented
+
             for telegram_data in station_data["telegrams"]:
                 telegram_day_smart = telegram_data["telegram_day_smart"]
                 save_section_one_metrics(
                     telegram_day_smart, section_one=telegram_data["section_one"], hydro_station=hydro_station
                 )
+
+                meteo_data = telegram_data.get("section_eight")
+                if meteo_data is not None:
+                    meteo_station = station_data["meteo_station_obj"]
+                    save_section_eight_metrics(meteo_data, meteo_station)
 
                 reported_discharge = telegram_data.get("section_six")
                 if reported_discharge is not None:
