@@ -93,6 +93,25 @@ class HydroStationOutputDetailSchema(HydroStationBaseSchema, UUIDSchemaMixin):
     remarks: list[RemarkOutputSchema] = None
 
 
+class ForecastStatusSchema(Schema):
+    daily_forecast: bool
+    pentad_forecast: bool
+    decadal_forecast: bool
+    monthly_forecast: bool
+    seasonal_forecast: bool
+
+
+class HydroStationForecastStatusInputSchema(ForecastStatusSchema):
+    pass
+
+
+class HydroStationForecastStatusOutputSchema(UUIDSchemaMixin, ForecastStatusSchema):
+    station_code: str
+    id: int
+    name: str
+    station_type: HydrologicalStation.StationType
+
+
 class HydrologicalStationFilterSchema(FilterSchema):
     site__uuid: str | None = None
     station_type: HydrologicalStation.StationType | None = None
