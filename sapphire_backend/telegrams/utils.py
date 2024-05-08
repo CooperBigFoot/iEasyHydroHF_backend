@@ -468,6 +468,30 @@ def simulate_telegram_insertion(parsed_data: dict) -> dict:
     return template_filled_averages
 
 
+def generate_reported_discharge_points(parsed_data: dict) -> dict:
+    """
+    Gather all the water level/discharge from telegrams and group them based on the station code.
+    :param parsed_data:
+    :return:
+    """
+    reported_discharge_points = {}
+    index = 0
+    for station_code, station_data in parsed_data["stations"].items():
+        reported_discharge_points[station_code] = []
+        for decoded in station_data["telegrams"]:
+            for entry in decoded.get("section_six", []):
+                reported_discharge_points[station_code].append(
+                    {
+                        "id": index,
+                        "date": entry["date"],
+                        "h": entry["water_level"],
+                        "q": entry["discharge"],
+                    }
+                )
+                index = index + 1
+    return reported_discharge_points
+
+
 def generate_data_processing_overview(simulation_result: dict) -> dict:
     # make station codes as keys and list of sorted date entries as their values
     result_sorted_by_date = {}
