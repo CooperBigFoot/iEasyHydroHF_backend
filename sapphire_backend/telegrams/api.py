@@ -14,6 +14,7 @@ from .schema import (
 from .utils import (
     generate_daily_overview,
     generate_data_processing_overview,
+    generate_reported_discharge_points,
     generate_save_data_overview,
     get_parsed_telegrams_data,
     save_reported_discharge,
@@ -37,12 +38,14 @@ class TelegramsAPIController:
         telegram_insert_simulation_result = simulate_telegram_insertion(parsed_data)
 
         daily_overview = generate_daily_overview(parsed_data)
+        reported_discharge_points = generate_reported_discharge_points(parsed_data)
         data_processing_overview = generate_data_processing_overview(telegram_insert_simulation_result)
         save_data_overview = generate_save_data_overview(parsed_data, telegram_insert_simulation_result)
 
         telegram_overview = {
             "daily_overview": daily_overview,
             "data_processing_overview": data_processing_overview,
+            "reported_discharge_points": reported_discharge_points,
             "save_data_overview": save_data_overview,
             "discharge_codes": parsed_data["hydro_station_codes"],
             "meteo_codes": parsed_data["meteo_station_codes"],
