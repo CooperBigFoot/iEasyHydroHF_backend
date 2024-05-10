@@ -163,6 +163,22 @@ def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dic
             )
             ice_phenomena_metric.save(refresh_view=False)
 
+    if section_one.get("daily_precipitation"):
+        daily_precipitation_metric = HydrologicalMetric(
+            timestamp=telegram_day_smart.previous_evening_utc,
+            min_value=None,
+            avg_value=section_one["daily_precipitation"]["precipitation"],
+            max_value=None,
+            unit=MetricUnit.PRECIPITATION,
+            value_type=HydrologicalMeasurementType.MANUAL,
+            metric_name=HydrologicalMetricName.DAILY_PRECIPITATION,
+            station=hydro_station,
+            sensor_identifier="",
+            sensor_type="",
+            value_code=section_one["daily_precipitation"]["duration_code"],
+        )
+        daily_precipitation_metric.save(refresh_view=False)
+
 
 def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStation):
     for input in measurements:

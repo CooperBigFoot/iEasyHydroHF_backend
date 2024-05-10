@@ -415,6 +415,12 @@ class TestKN15TelegramParserSectionOne:
         assert decoded_data["section_one"]["daily_precipitation"]["precipitation"] == 0
         assert decoded_data["section_one"]["daily_precipitation"]["duration_code"] == 0
 
+    def test_parse_without_daily_precipitation(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 14081 10417 20021 30410=", organization.uuid)
+
+        decoded_data = parser.parse()
+        assert decoded_data["section_one"]["daily_precipitation"] is None
+
     def test_parse_with_unexpected_group(self, datetime_mock, organization, manual_hydro_station):
         parser = KN15TelegramParser(
             f"{manual_hydro_station.station_code} 14081 10417 20021 30410 65432 00000=", organization.uuid
