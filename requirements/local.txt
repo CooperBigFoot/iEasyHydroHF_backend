@@ -17,13 +17,13 @@ tqdm==4.66.2  # https://tqdm.github.io/
 
 # Documentation
 # ------------------------------------------------------------------------------
-sphinx==7.2.6  # https://github.com/sphinx-doc/sphinx
-sphinx-autobuild==2024.2.4 # https://github.com/GaretJax/sphinx-autobuild
+sphinx==7.3.7  # https://github.com/sphinx-doc/sphinx
+sphinx-autobuild==2024.4.16 # https://github.com/GaretJax/sphinx-autobuild
 
 # Code quality
 # ------------------------------------------------------------------------------
-ruff==0.3.7  # https://github.com/astral-sh/ruff
-coverage==7.4.4  # https://github.com/nedbat/coveragepy
+ruff==0.4.3  # https://github.com/astral-sh/ruff
+coverage==7.5.1  # https://github.com/nedbat/coveragepy
 black==24.4.0  # https://github.com/psf/black
 pylint-django==2.5.5  # https://github.com/PyCQA/pylint-django
 pre-commit==3.7.0  # https://github.com/pre-commit/pre-commit
