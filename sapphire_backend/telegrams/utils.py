@@ -532,20 +532,17 @@ def generate_reported_discharge_points(parsed_data: dict) -> dict:
     :return:
     """
     reported_discharge_points = {}
-    index = 0
     for station_code, station_data in parsed_data["stations"].items():
         reported_discharge_points[station_code] = []
         for decoded in station_data["telegrams"]:
             for entry in decoded.get("section_six", []):
                 reported_discharge_points[station_code].append(
                     {
-                        "id": index,
                         "date": entry["date"],
                         "h": entry["water_level"],
                         "q": entry["discharge"],
                     }
                 )
-                index = index + 1
     return reported_discharge_points
 
 
