@@ -78,7 +78,6 @@ class SaveDataOverviewSingleSchema(Schema):
 
 
 class ReportedDischargePointsOutputSchema(Schema):
-    id: int
     date: str
     h: int
     q: float
