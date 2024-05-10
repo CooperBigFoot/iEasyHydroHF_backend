@@ -107,9 +107,17 @@ class SaveDataOverviewSingleSchema(Schema):
     type: str
 
 
+class ReportedDischargePointsOutputSchema(Schema):
+    id: int
+    date: str
+    h: int
+    q: float
+
+
 class TelegramOverviewOutputSchema(Schema):
     daily_overview: list[DailyOverviewSingleSchema]
     data_processing_overview: dict[str, list[tuple[str, DataProcessingDayTimes]]]
+    reported_discharge_points: dict[str, list[ReportedDischargePointsOutputSchema]]
     save_data_overview: list[SaveDataOverviewSingleSchema]
     discharge_codes: list[tuple[str, str]]
     meteo_codes: list[tuple[str, str]]
