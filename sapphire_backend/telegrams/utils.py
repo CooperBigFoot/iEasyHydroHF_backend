@@ -1,15 +1,18 @@
 import logging
 import math
+from datetime import timedelta
 
 from sapphire_backend.estimations.utils import get_discharge_model_from_timestamp
 from sapphire_backend.metrics.choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
+    MeteorologicalMeasurementType,
+    MeteorologicalMetricName,
     MetricUnit,
 )
-from sapphire_backend.metrics.models import HydrologicalMetric
+from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
 from sapphire_backend.metrics.timeseries.query import TimeseriesQueryManager
-from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 from sapphire_backend.telegrams.exceptions import TelegramParserException
 from sapphire_backend.telegrams.parser import KN15TelegramParser
 from sapphire_backend.telegrams.schema import NewOldMetrics, TelegramBulkWithDatesInputSchema
@@ -35,7 +38,7 @@ def custom_ceil(value: int | None) -> int | None:
 
 
 def get_parsed_telegrams_data(
-    encoded_telegrams_dates: TelegramBulkWithDatesInputSchema, organization_uuid: str
+    encoded_telegrams_dates: TelegramBulkWithDatesInputSchema, organization_uuid: str, save_telegrams: bool = True
 ) -> dict:
     """
     Parse telegrams and add more context
@@ -48,7 +51,9 @@ def get_parsed_telegrams_data(
     for idx, telegram_input in enumerate(encoded_telegrams_dates.telegrams):
         telegram = telegram_input.raw
         override_date = telegram_input.override_date
-        parser = KN15TelegramParser(telegram, organization_uuid=organization_uuid)
+        parser = KN15TelegramParser(
+            telegram, organization_uuid=organization_uuid, store_parsed_telegram=save_telegrams
+        )
         try:
             decoded = parser.parse()
 
@@ -68,20 +73,10 @@ def get_parsed_telegrams_data(
                 parsed_data["stations"][station_code]["telegrams"].append(decoded)
 
             if decoded.get("section_one") is not None:
-                if parser.exists_hydro_station:
-                    hydro_station_codes.add((station_code, str(parser.hydro_station.uuid)))
-                else:
-                    error = f"Hydro station with code {station_code} does not exist for this organization {organization_uuid}"
-                    parsed_data["errors"].append({"index": idx, "telegram": telegram, "error": error})
-                    parser.save_parsing_error(error)
+                hydro_station_codes.add((station_code, str(parser.hydro_station.uuid)))
 
             if decoded.get("section_eight") is not None:
-                if parser.exists_meteo_station:
-                    meteo_station_codes.add((station_code, str(parser.meteo_station.uuid)))
-                else:
-                    error = f"Meteo station with code {station_code} does not exist for this organization {organization_uuid}"
-                    parsed_data["errors"].append({"index": idx, "telegram": telegram, "error": error})
-                    parser.save_parsing_error(error)
+                meteo_station_codes.add((station_code, str(parser.meteo_station.uuid)))
 
         except TelegramParserException as e:
             parsed_data["errors"].append({"index": idx, "telegram": telegram, "error": str(e)})
@@ -151,6 +146,39 @@ def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dic
         )
         water_temp_metric.save(refresh_view=False)
 
+    if section_one.get("ice_phenomena"):
+        for idx, record in enumerate(section_one["ice_phenomena"]):
+            ice_phenomena_metric = HydrologicalMetric(
+                timestamp=telegram_day_smart.morning_utc + timedelta(milliseconds=idx),
+                min_value=None,
+                avg_value=record["intensity"] if record["intensity"] else -1,
+                max_value=None,
+                unit=MetricUnit.ICE_PHENOMENA_OBSERVATION,
+                value_type=HydrologicalMeasurementType.MANUAL,
+                metric_name=HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION,
+                station=hydro_station,
+                sensor_identifier="",
+                sensor_type="",
+                value_code=record["code"],
+            )
+            ice_phenomena_metric.save(refresh_view=False)
+
+    if section_one.get("daily_precipitation"):
+        daily_precipitation_metric = HydrologicalMetric(
+            timestamp=telegram_day_smart.previous_evening_utc,
+            min_value=None,
+            avg_value=section_one["daily_precipitation"]["precipitation"],
+            max_value=None,
+            unit=MetricUnit.PRECIPITATION,
+            value_type=HydrologicalMeasurementType.MANUAL,
+            metric_name=HydrologicalMetricName.DAILY_PRECIPITATION,
+            station=hydro_station,
+            sensor_identifier="",
+            sensor_type="",
+            value_code=section_one["daily_precipitation"]["duration_code"],
+        )
+        daily_precipitation_metric.save(refresh_view=False)
+
 
 def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStation):
     for input in measurements:
@@ -210,6 +238,34 @@ def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStati
                 sensor_type="",
             )
             maximum_depth_metric.save()
+
+
+def save_section_eight_metrics(meteo_data: dict, meteo_station: MeteorologicalStation) -> None:
+    timestamp = meteo_data["timestamp"]
+    decade = meteo_data["decade"]
+    precipitation_metric = MeteorologicalMetric(
+        timestamp=timestamp,
+        value=meteo_data["precipitation"],
+        value_type=MeteorologicalMeasurementType.MANUAL,
+        metric_name=MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE
+        if decade != 4
+        else MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE,
+        unit=MetricUnit.PRECIPITATION,
+        station=meteo_station,
+    )
+    precipitation_metric.save()
+
+    temperature_metric = MeteorologicalMetric(
+        timestamp=timestamp,
+        value=meteo_data["temperature"],
+        value_type=MeteorologicalMeasurementType.MANUAL,
+        metric_name=MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE
+        if decade != 4
+        else MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE,
+        unit=MetricUnit.TEMPERATURE,
+        station=meteo_station,
+    )
+    temperature_metric.save()
 
 
 def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict:
@@ -439,6 +495,7 @@ def generate_daily_overview(parsed_data: dict):
                 "calc_trend_ok": trend_ok,
                 "calc_previous_day_water_level_average": previous_day_water_level_average,
                 "db_previous_day_morning_water_level": previous_day_morning_water_level,
+                "section_three": decoded.get("section_three", None),
                 "section_six": decoded.get("section_six", []),
                 "section_eight": decoded.get("section_eight", None),
             }
@@ -518,7 +575,12 @@ def generate_save_data_overview(parsed_data: dict, simulation_result: str) -> li
             item["telegram_day_data"] = simulation_result[station_code][telegram_day_date]
             item["section_one"] = telegram_data.get("section_one")
             item["section_six"] = telegram_data.get("section_six", [])
-            item["section_eight"] = telegram_data.get("section_eight")  # TODO
-            item["type"] = "discharge / meteo ???"  # TODO determine if discharge / meteo or both or single
+            item["section_eight"] = telegram_data.get("section_eight")
+            telegram_type = ""
+            if telegram_data.get("section_one"):
+                telegram_type += "discharge"
+            if telegram_data.get("section_eight"):
+                telegram_type += " / meteo" if telegram_type else "meteo"
+            item["type"] = telegram_type  # TODO determine if discharge / meteo or both or single
             save_data_overview.append(item)
     return save_data_overview

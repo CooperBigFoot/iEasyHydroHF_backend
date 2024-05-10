@@ -80,47 +80,65 @@ def site_uzbek(db, backup_organization):
 @pytest.fixture
 def manual_hydro_station(db, site_one):
     return HydrologicalStationFactory(
-        site=site_one, station_type=HydrologicalStation.StationType.MANUAL, station_code="12345"
+        site=site_one,
+        station_type=HydrologicalStation.StationType.MANUAL,
+        station_code="12345",
+        name="Manual Hydro Station",
     )
 
 
 @pytest.fixture
 def manual_hydro_station_kyrgyz(db, site_kyrgyz):
     return HydrologicalStationFactory(
-        site=site_kyrgyz, station_type=HydrologicalStation.StationType.MANUAL, station_code="12345"
+        site=site_kyrgyz,
+        station_type=HydrologicalStation.StationType.MANUAL,
+        station_code="12345",
+        name="Manual Kyrgyz Hydro Station",
     )
 
 
 @pytest.fixture
 def manual_hydro_station_uzbek(db, site_uzbek):
     return HydrologicalStationFactory(
-        site=site_uzbek, station_type=HydrologicalStation.StationType.MANUAL, station_code="22345"
+        site=site_uzbek,
+        station_type=HydrologicalStation.StationType.MANUAL,
+        station_code="22345",
+        name="Manual Uzbek Hydro Station",
     )
 
 
 @pytest.fixture
 def manual_meteo_station(db, site_one):
-    return MeteorologicalStationFactory(site=site_one, station_code="12345")
+    return MeteorologicalStationFactory(site=site_one, station_code="12345", name="Manual Meteological Station")
 
 
 @pytest.fixture
 def manual_hydro_station_other_organization(db, site_two):
     return HydrologicalStationFactory(
-        site=site_two, station_type=HydrologicalStation.StationType.MANUAL, station_code="56789"
+        site=site_two,
+        station_type=HydrologicalStation.StationType.MANUAL,
+        station_code="56789",
+        name="Manual Hydro Station Other Organization",
     )
 
 
 @pytest.fixture
 def automatic_hydro_station(db, site_one):
     return HydrologicalStationFactory(
-        site=site_one, station_type=HydrologicalStation.StationType.AUTOMATIC, station_code="aaaaa"
+        site=site_one,
+        station_type=HydrologicalStation.StationType.AUTOMATIC,
+        station_code="54321",
+        name="Automatic Hydro Station",
     )
 
 
 @pytest.fixture
 def automatic_hydro_station_backup(db, site_one):
     return HydrologicalStationFactory(
-        site=site_one, station_type=HydrologicalStation.StationType.AUTOMATIC, station_code="bbbbb"
+        site=site_one,
+        station_type=HydrologicalStation.StationType.AUTOMATIC,
+        station_code="98765",
+        name="Automatic Hydrological Station Backup",
     )
 
 

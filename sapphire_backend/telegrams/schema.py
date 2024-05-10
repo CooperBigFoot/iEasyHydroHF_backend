@@ -1,5 +1,8 @@
 from ninja import Schema
 
+from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitationCodeMapper
+from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
+
 
 class TelegramWithDateInputSchema(Schema):
     raw: str
@@ -16,14 +19,34 @@ class TelegramSectionZeroSchema(Schema):
     station_name: str
 
 
+class IcePhenomenaSchema(Schema):
+    code: int
+    intensity: int | None
+    description: str
+
+    @staticmethod
+    def resolve_description(obj):
+        return IcePhenomenaCodeMapper(obj["code"]).get_description()
+
+
+class DailyPrecipitationSchema(Schema):
+    precipitation: int
+    duration_code: int
+    description: str
+
+    @staticmethod
+    def resolve_description(obj):
+        return DailyPrecipitationCodeMapper(obj["duration_code"]).get_description()
+
+
 class TelegramSectionOneSchema(Schema):
     morning_water_level: int
     water_level_trend: int
     water_level_20h_period: int
     water_temperature: float | None = None
     air_temperature: int | None = None
-    ice_phenomena: list[dict[str, int]] | None = None
-    daily_precipitation: dict[str, int] | None = None
+    ice_phenomena: list[IcePhenomenaSchema] | None = None
+    daily_precipitation: DailyPrecipitationSchema | None = None
 
 
 class TelegramSectionThreeSchema(Schema):
@@ -36,6 +59,13 @@ class TelegramSectionSixSingleSchema(Schema):
     cross_section_area: float = None
     maximum_depth: float | None = None
     date: str
+
+
+class TelegramSectionEightSchema(Schema):
+    decade: int
+    timestamp: str
+    precipitation: int
+    temperature: float
 
 
 class NewOldMetrics(Schema):
@@ -58,7 +88,7 @@ class DailyOverviewSingleSchema(Schema):
     previous_day_date: str
     section_one: TelegramSectionOneSchema
     section_six: list[TelegramSectionSixSingleSchema]
-    section_eight: None  # TODO when meteo parsing is implemented
+    section_eight: TelegramSectionEightSchema | None
     calc_trend_ok: bool
     calc_previous_day_water_level_average: int | None = None
     db_previous_day_morning_water_level: int | None = None
@@ -73,7 +103,7 @@ class SaveDataOverviewSingleSchema(Schema):
     telegram_day_data: DataProcessingDayTimes
     section_one: TelegramSectionOneSchema
     section_six: list[TelegramSectionSixSingleSchema]
-    section_eight: None  # TODO when meteo parsing is implemented
+    section_eight: TelegramSectionEightSchema | None
     type: str
 
 

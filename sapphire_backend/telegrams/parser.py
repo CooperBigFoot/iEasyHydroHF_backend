@@ -9,8 +9,9 @@ from zoneinfo import ZoneInfo
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 from sapphire_backend.telegrams.exceptions import (
     InvalidTokenException,
+    MissingMeteoStationException,
     MissingSectionException,
-    # TelegramAlreadyParsedException,
+    TelegramParserException,
     UnsupportedSectionException,
 )
 from sapphire_backend.telegrams.models import Telegram
@@ -28,6 +29,7 @@ class BaseTelegramParser(ABC):
         self.organization_uuid = organization_uuid
         self.hydro_station = None
         self.meteo_station = None
+        self.validate_format()
 
     @property
     def exists_hydro_station(self):
@@ -43,6 +45,12 @@ class BaseTelegramParser(ABC):
             if self.original_telegram.endswith(termination_character)
             else self.original_telegram
         )
+
+    def validate_format(self):
+        """
+        Used to validate the format of the telegram if necessary
+        """
+        return True
 
     def telegram_already_parsed(self):
         return Telegram.objects.filter(telegram=self.original_telegram, successfully_parsed=True).exists()
@@ -83,11 +91,11 @@ class BaseTelegramParser(ABC):
         """
         if self.tokens:
             return self.tokens.pop(0)
-        raise MissingSectionException("Unexpected end of telegram")
+        self.save_parsing_error("Unexpected end of telegram", self.telegram, MissingSectionException)
 
     def validate_station(self, station_code: str) -> None:
         if not station_code.isdigit() or len(station_code) != 5:
-            raise InvalidTokenException(f"Invalid station code: {station_code}")
+            self.save_parsing_error("Invalid station code", station_code, InvalidTokenException)
 
         self.hydro_station = HydrologicalStation.objects.filter(
             site__organization_id=self.organization_uuid,
@@ -99,7 +107,9 @@ class BaseTelegramParser(ABC):
         ).first()
         if self.hydro_station is None and self.meteo_station is None:
             # except HydrologicalStation.DoesNotExist:
-            raise InvalidTokenException(f"Station with code {station_code} does not exist")
+            self.save_parsing_error(
+                "No manual hydro or meteo station with the following code", station_code, InvalidTokenException
+            )
 
     @classmethod
     def parse_bulk(cls, telegrams: list[str], store_in_db: bool = False, automatic: bool = False) -> list:
@@ -109,23 +119,30 @@ class BaseTelegramParser(ABC):
         return [cls(telegram, store_in_db, automatic).parse() for telegram in telegrams]
 
     def save_telegram(self, decoded_values: dict[str, Any]):
-        Telegram.objects.create(
-            telegram=self.original_telegram,
-            decoded_values=decoded_values,
-            automatically_ingested=self.automatic_ingestion,
-            hydro_station=self.hydro_station,
-            meteo_station=self.meteo_station,
-        )
+        if not Telegram.objects.filter(
+            telegram=self.original_telegram, successfully_parsed=True, created_date__date=dt.now(tz=ZoneInfo("UTC"))
+        ).exists():
+            Telegram.objects.create(
+                telegram=self.original_telegram,
+                decoded_values=decoded_values,
+                automatically_ingested=self.automatic_ingestion,
+                hydro_station=self.hydro_station,
+                meteo_station=self.meteo_station,
+            )
 
-    def save_parsing_error(self, error: str):
+    def save_parsing_error(
+        self, error: str, token: str | int = "", exception_class: TelegramParserException | None = None
+    ):
         Telegram.objects.create(
             telegram=self.original_telegram,
             automatically_ingested=self.automatic_ingestion,
             hydro_station=self.hydro_station,
             meteo_station=self.meteo_station,
-            errors=error,
+            errors=f"{error}: {token}",
             successfully_parsed=False,
         )
+        if exception_class:
+            raise exception_class(token, error)
 
 
 class KN15TelegramParser(BaseTelegramParser):
@@ -138,6 +155,22 @@ class KN15TelegramParser(BaseTelegramParser):
     ):
         super().__init__(telegram, organization_uuid, store_parsed_telegram, automatic_ingestion)
 
+    def validate_format(self):
+        if self.tokens[1][-1] not in ["1", "2"]:
+            self.save_parsing_error("Group must end with either 1 or 2", self.tokens[1], InvalidTokenException)
+
+        for token in self.tokens:
+            if len(token) != 5:
+                self.save_parsing_error("Group must have 5 characters", token, InvalidTokenException)
+
+            if token[:3] in ["933", "966", "988"]:
+                if self.tokens[1][-1] != "2":
+                    self.save_parsing_error(
+                        f"Found the following token, but group {self.tokens[1]} doesn't end with 2",
+                        token,
+                        InvalidTokenException,
+                    )
+
     def parse(self):
         """
         Implements the parsing logic for KN15 telegrams.
@@ -147,8 +180,9 @@ class KN15TelegramParser(BaseTelegramParser):
         # start by parsing section zero
         section_zero = self.parse_section_zero()
         decoded_values["section_zero"] = section_zero
-        decoded_values["section_three"] = []
+        decoded_values["section_three"] = {}
         decoded_values["section_six"] = []
+        decoded_values["section_eight"] = {}
 
         if section_zero["section_code"] == 1:
             section_one = self.parse_section_one()
@@ -163,16 +197,21 @@ class KN15TelegramParser(BaseTelegramParser):
 
                 if section_number == "933":
                     section_three = self.parse_section_three()
-                    decoded_values["section_three"].append(section_three)
+                    decoded_values["section_three"] = section_three
                 elif section_number == "966":
                     section_six = self.parse_section_six()
                     decoded_values["section_six"].append(section_six)
+                elif section_number == "988":
+                    section_eight = self.parse_section_eight()
+                    decoded_values["section_eight"] = section_eight
                 else:
                     raise UnsupportedSectionException(section_number, "Unsupported section number inside section 1")
 
         else:
-            raise UnsupportedSectionException(
-                section_zero["section_code"], "Unsupported section code (only 1 and 2 are allowed), got"
+            self.save_parsing_error(
+                "Unsupported section code (only 1 and 2 are allowed), got",
+                section_zero["section_code"],
+                UnsupportedSectionException,
             )
 
         # remove sections three and six if they are still empty
@@ -180,11 +219,11 @@ class KN15TelegramParser(BaseTelegramParser):
             decoded_values.pop("section_three")
         if not decoded_values["section_six"]:
             decoded_values.pop("section_six")
+        if not decoded_values["section_eight"]:
+            decoded_values.pop("section_eight")
 
         if self.store_in_db:
             self.save_telegram(decoded_values)
-        else:
-            self.print_decoded_telegram(decoded_values)
 
         return decoded_values
 
@@ -193,6 +232,7 @@ class KN15TelegramParser(BaseTelegramParser):
         section_one = decoded_values.get("section_one")
         section_three_list = decoded_values.get("section_three")
         section_six_list = decoded_values.get("section_six")
+        section_eight_data = decoded_values.get("section_eight")
         section_zero_date = dt.fromisoformat(decoded_values["section_zero"]["date"])
         previous_day = section_zero_date - timedelta(days=1)
         morning_water_level = None
@@ -245,6 +285,13 @@ class KN15TelegramParser(BaseTelegramParser):
                 print(f"\nDischarge\n{discharge} m3/s" if discharge else "--- m3/s")
                 print(f"\nMaximum depth\n{maximum_depth} cm" if maximum_depth else "--- cm")
 
+        if section_eight_data:
+            print("\nDecadal / monthly precipitation and temperature (988)")
+            print(f"\nDecade: {section_eight_data.get('decade')}")
+            print(f"\nTimestamp for the given decade: {section_eight_data.get('timestamp')}")
+            print(f"\nPrecipitation: {section_eight_data.get('precipitation')} mm")
+            print(f"\nTemperature: {section_eight_data.get('temperature')} °C")
+
     @staticmethod
     def adjust_water_level_value_for_negative(value: int) -> int:
         """
@@ -264,21 +311,23 @@ class KN15TelegramParser(BaseTelegramParser):
             try:
                 day_in_month = int(date_token[:2])
                 if not (1 <= day_in_month <= 31):
-                    raise InvalidTokenException(f"Invalid day: {day_in_month}")
+                    self.save_parsing_error(
+                        f"Invalid day in month for token {date_token}", day_in_month, InvalidTokenException
+                    )
+                return day_in_month
             except ValueError:
-                raise InvalidTokenException(f"Invalid day: {date_token[:2]}")
-
-            return day_in_month
+                self.save_parsing_error(
+                    f"Invalid day in month for token {date_token}", date_token[:2], InvalidTokenException
+                )
 
         def extract_hour_from_token(date_token: str) -> int:
             try:
                 hour = int(date_token[2:4])
                 if not (0 <= hour <= 24):
-                    raise InvalidTokenException(f"Invalid hour: {hour}")
+                    self.save_parsing_error(f"Invalid hour for token {date_token}", hour, InvalidTokenException)
+                return hour
             except ValueError:
-                raise InvalidTokenException(f"Invalid hour: {date_token[2:4]}")
-
-            return hour
+                self.save_parsing_error(f"Invalid hour for token {date_token}", date_token[2:4], InvalidTokenException)
 
         def determine_date(day_in_month: int, hour: int) -> dt:
             today = dt.now(tz=ZoneInfo(settings.TIME_ZONE))
@@ -303,7 +352,11 @@ class KN15TelegramParser(BaseTelegramParser):
                 if parsed_date.month == 1:  # if January, move to December of the previous year
                     parsed_date = parsed_date.replace(year=parsed_date.year - 1, month=12)
                 else:
-                    parsed_date = parsed_date.replace(month=parsed_date.month - 1)
+                    try:
+                        parsed_date = parsed_date.replace(month=parsed_date.month - 1)
+                    except ValueError:  # could fall into 31st which might not exist for the previous month
+                        last_day_prev_month = (dt(parsed_date.year, parsed_date.month, 1) - timedelta(days=1)).day
+                        parsed_date = parsed_date.replace(month=parsed_date.month - 1, day=last_day_prev_month)
 
             # set the time to the given hour and zero out minutes, seconds and microseconds
             parsed_date = parsed_date.replace(minute=0, second=0, microsecond=0)
@@ -315,10 +368,7 @@ class KN15TelegramParser(BaseTelegramParser):
         parsed_hour = extract_hour_from_token(input_token)
         date = determine_date(parsed_day_in_month, parsed_hour)
 
-        try:
-            section_code = int(input_token[4])
-        except ValueError:
-            raise InvalidTokenException(f"Invalid hour: {input_token[4]}")
+        section_code = int(input_token[4])
 
         return {
             "station_code": station_code,
@@ -334,14 +384,16 @@ class KN15TelegramParser(BaseTelegramParser):
 
         def extract_water_level(token: str, starting_character: str) -> int:
             if not token.startswith(starting_character):
-                raise InvalidTokenException(f"Expected token starting with '{starting_character}', got: {token}")
+                self.save_parsing_error(
+                    f"Expected token starting with '{starting_character}', got", token, InvalidTokenException
+                )
             water_level = self.adjust_water_level_value_for_negative(int(token[1:]))
 
             return water_level
 
         def extract_water_level_trend(token: str) -> int:
             if not token.startswith("2"):
-                raise InvalidTokenException(f"Expected token starting with '2', got: {token}")
+                self.save_parsing_error("Expected token starting with '2', got", token, InvalidTokenException)
 
             trend = int(token[1:4])
             trend_sign = int(token[4])
@@ -360,11 +412,26 @@ class KN15TelegramParser(BaseTelegramParser):
 
             return water_temp, air_temp
 
-        def extract_ice_phenomena(token: str) -> dict[str, int]:
+        def extract_ice_phenomena(token: str) -> dict[str, int | None]:
+            valid_code_ranges = [[11, 26], [30, 54], [63, 77]]
+            codes_with_intensity = [12, 13, 14, 16, 19, 39, 48, 49, 50, 64]
             ice_phenomena_code = int(token[1:3])
+            filtered_range = [range_ for range_ in valid_code_ranges if range_[0] <= ice_phenomena_code <= range_[1]]
+            if not filtered_range:
+                self.save_parsing_error("Invalid ice phenomena code", ice_phenomena_code, InvalidTokenException)
+
             intensity = int(token[3:])
+            if ice_phenomena_code in codes_with_intensity:
+                if not (1 <= intensity <= 10):
+                    self.save_parsing_error(
+                        "Ice phenomena intensity needs to be between 1 and 10, found", intensity, InvalidTokenException
+                    )
+            elif ice_phenomena_code != intensity:
+                self.save_parsing_error(
+                    "Invalid ice phenomena format, 5EEEE expected for the given code", token, InvalidTokenException
+                )
             if ice_phenomena_code == intensity:
-                return {"code": ice_phenomena_code}
+                return {"code": ice_phenomena_code, "intensity": None}
             else:
                 return {"code": ice_phenomena_code, "intensity": intensity}
 
@@ -377,6 +444,13 @@ class KN15TelegramParser(BaseTelegramParser):
 
         # water level at 08:00
         input_token = self.get_next_token()
+
+        if not self.exists_hydro_station:
+            self.save_parsing_error(
+                f"No hydro station with code {self.meteo_station.station_code}, but found token",
+                input_token,
+                InvalidTokenException,
+            )
         morning_water_level = extract_water_level(input_token, "1")
 
         # water level trend
@@ -400,7 +474,7 @@ class KN15TelegramParser(BaseTelegramParser):
             ice_phenomena.append(extract_ice_phenomena(input_token))
 
         daily_precipitation = None
-        while self.tokens and self.tokens[0].startswith("0"):
+        if self.tokens and self.tokens[0].startswith("0"):
             input_token = self.get_next_token()
             daily_precipitation = extract_daily_precipitation(input_token)
 
@@ -414,14 +488,14 @@ class KN15TelegramParser(BaseTelegramParser):
             "daily_precipitation": daily_precipitation,
         }
 
-    def parse_section_three(self) -> int:
+    def parse_section_three(self) -> dict[str, int | float]:
         """
         Parses section 3 of the KN15 telegram.
         """
 
         def extract_mean_water_level(token: str) -> int:
             if not token.startswith("1"):
-                raise InvalidTokenException(f"Expected token starting with '1', got: {token}")
+                self.save_parsing_error("Expected token starting with '1', got", token, InvalidTokenException)
 
             mean_water_level = self.adjust_water_level_value_for_negative(int(token[1:]))
 
@@ -430,17 +504,18 @@ class KN15TelegramParser(BaseTelegramParser):
         # check if the information refers to the previous day which is currently supported
         input_token = self.get_next_token()
         if not input_token.endswith("01"):
-            raise InvalidTokenException(f"Expected data from previous day (code 93301), got: {input_token}")
+            self.save_parsing_error(
+                "Expected data from previous day (code 93301), got", input_token, InvalidTokenException
+            )
 
         # mean water level for the period 20:00 to 08:00
         input_token = self.get_next_token()
         parsed_mean_water_level = extract_mean_water_level(input_token)
 
-        # skip any additional tokens until we reach the next section or end of telegram
         while self.tokens and not self.tokens[0].startswith("9"):
             self.get_next_token()
 
-        return parsed_mean_water_level
+        return {"water_level": parsed_mean_water_level}
 
     def parse_section_six(self) -> dict:
         """
@@ -497,4 +572,105 @@ class KN15TelegramParser(BaseTelegramParser):
             "cross_section_area": cross_section_area,
             "maximum_depth": maximum_depth,
             "date": date.isoformat(),
+        }
+
+    def parse_section_eight(self) -> dict:
+        def extract_decade_number(token: str) -> int:
+            if not token.startswith("1"):
+                self.save_parsing_error(
+                    "Expected decade section starting with '1', got", token, MissingSectionException
+                )
+            match token[1:3]:
+                case "11":
+                    return 1
+                case "22":
+                    return 2
+                case "33":
+                    return 3
+                case "30":
+                    return 4  # special case, means full month, not a decade
+                case _:
+                    self.save_parsing_error(
+                        "Invalid decade identifier, supported identifiers are '11', '22', '33' and '30'",
+                        token,
+                        InvalidTokenException,
+                    )
+
+        def extract_precipitation(token: str) -> int:
+            if not token.startswith("2"):
+                self.save_parsing_error(
+                    "Expected precipitation section starting with '2', got", token, MissingSectionException
+                )
+            precipitation_value = int(token[1:4])
+            check_digit = token[-1]
+            digit_sum = sum(int(char) for char in token[:4])
+
+            if digit_sum != int(check_digit):
+                self.save_parsing_error("Check digit sum does not match", token, InvalidTokenException)
+
+            return precipitation_value
+
+        def extract_temperature(token: str) -> float:
+            if not token.startswith("3"):
+                self.save_parsing_error(
+                    "Expected temperature section starting with '3', got", token, MissingSectionException
+                )
+            match token[1]:
+                case "0":
+                    sign = 1
+                case "1":
+                    sign = -1
+                case _:
+                    self.save_parsing_error("Invalid second digit, expected '0' or '1'", token, InvalidTokenException)
+
+            temperature_value = round(int(token[2:]) * 0.1, 1)
+            return temperature_value * sign
+
+        def get_day_in_month_for_decade(decade_num: int) -> int:
+            match decade_num:
+                case 1:
+                    return 5
+                case 2:
+                    return 15
+                case 3:
+                    return 25
+                case _:
+                    # monthly data, not decadal
+                    return 15
+
+        # group 988mm
+        input_token = self.get_next_token()
+        month = int(input_token[3:])
+
+        if not self.exists_meteo_station:
+            self.save_parsing_error(
+                f"No meteo station with code {self.hydro_station.station_code}, but found token",
+                input_token,
+                MissingMeteoStationException,
+            )
+
+        # subgroup 1dd//
+        input_token = self.get_next_token()
+        decade = extract_decade_number(input_token)
+
+        # subgroup 2pppc
+        input_token = self.get_next_token()
+        precipitation = extract_precipitation(input_token)
+
+        # subgroup 3sttt
+        input_token = self.get_next_token()
+        temperature = extract_temperature(input_token)
+
+        day_in_month = get_day_in_month_for_decade(decade)
+        timestamp = dt(year=dt.now().year, month=month, day=day_in_month, hour=12, tzinfo=ZoneInfo("UTC"))
+
+        # Skip additional tokens until section end
+        while self.tokens and not self.tokens[0].startswith("9"):
+            self.get_next_token()
+
+        return {
+            "decade": decade,
+            "timestamp": timestamp.isoformat(),
+            "precipitation": precipitation,
+            "temperature": temperature,
         }
