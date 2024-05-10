@@ -368,6 +368,13 @@ class KN15TelegramParser(BaseTelegramParser):
             else:
                 return {"code": ice_phenomena_code, "intensity": intensity}
 
+        def extract_daily_precipitation(token: str) -> dict[str, int]:
+            precipitation_mm = int(token[1:4])
+            if precipitation_mm > 989:
+                precipitation_mm = (precipitation_mm - 990) / 10
+            duration_code = int(token[4])
+            return {"precipitation": precipitation_mm, "duration_code": duration_code}
+
         # water level at 08:00
         input_token = self.get_next_token()
         morning_water_level = extract_water_level(input_token, "1")
@@ -392,6 +399,11 @@ class KN15TelegramParser(BaseTelegramParser):
             input_token = self.get_next_token()
             ice_phenomena.append(extract_ice_phenomena(input_token))
 
+        daily_precipitation = None
+        while self.tokens and self.tokens[0].startswith("0"):
+            input_token = self.get_next_token()
+            daily_precipitation = extract_daily_precipitation(input_token)
+
         return {
             "morning_water_level": morning_water_level,
             "water_level_trend": water_level_trend,
@@ -399,6 +411,7 @@ class KN15TelegramParser(BaseTelegramParser):
             "water_temperature": water_temperature,
             "air_temperature": air_temperature,
             "ice_phenomena": ice_phenomena,
+            "daily_precipitation": daily_precipitation,
         }
 
     def parse_section_three(self) -> int:
@@ -437,7 +450,7 @@ class KN15TelegramParser(BaseTelegramParser):
         def extract_discharge_or_free_river_area(token: str) -> float:
             significand = int(token[2:])
             exponent = int(token[1])
-            return significand * (10 ** (exponent - 3))
+            return round(significand * (10 ** (exponent - 3)), 4)
 
         # group 966MM
         input_token = self.get_next_token()

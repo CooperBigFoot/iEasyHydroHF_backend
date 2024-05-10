@@ -257,8 +257,6 @@ def migrate_sites_and_stations(old_session):
                 description=old.comments or "",
                 measurement_time_step=None,  # TODO figure out for manual stations
                 discharge_level_alarm=None,
-                historical_discharge_minimum=None,
-                historical_discharge_maximum=None,
                 is_deleted=False,
             )
             hydro_station.save()

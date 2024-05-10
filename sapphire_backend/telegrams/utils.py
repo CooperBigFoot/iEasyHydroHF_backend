@@ -92,6 +92,66 @@ def get_parsed_telegrams_data(
     return parsed_data
 
 
+def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dict, hydro_station: HydrologicalStation):
+    yesterday_evening_wl_metric = HydrologicalMetric(
+        timestamp=telegram_day_smart.previous_evening_utc,
+        min_value=None,
+        avg_value=section_one["water_level_20h_period"],
+        max_value=None,
+        unit=MetricUnit.WATER_LEVEL,
+        value_type=HydrologicalMeasurementType.MANUAL,
+        metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+        station=hydro_station,
+        sensor_identifier="",
+        sensor_type="",
+    )
+    yesterday_evening_wl_metric.save(refresh_view=True)
+
+    morning_wl_metric = HydrologicalMetric(
+        timestamp=telegram_day_smart.morning_utc,
+        min_value=None,
+        avg_value=section_one["morning_water_level"],
+        max_value=None,
+        unit=MetricUnit.WATER_LEVEL,
+        value_type=HydrologicalMeasurementType.MANUAL,
+        metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+        station=hydro_station,
+        sensor_identifier="",
+        sensor_type="",
+    )
+    morning_wl_metric.save(refresh_view=True)
+
+    if section_one.get("air_temperature", False):
+        air_temp_metric = HydrologicalMetric(
+            timestamp=telegram_day_smart.morning_utc,
+            min_value=None,
+            avg_value=section_one["air_temperature"],
+            max_value=None,
+            unit=MetricUnit.TEMPERATURE,
+            value_type=HydrologicalMeasurementType.MANUAL,
+            metric_name=HydrologicalMetricName.AIR_TEMPERATURE,
+            station=hydro_station,
+            sensor_identifier="",
+            sensor_type="",
+        )
+        air_temp_metric.save(refresh_view=False)
+
+    if section_one.get("water_temperature", False):
+        water_temp_metric = HydrologicalMetric(
+            timestamp=telegram_day_smart.morning_utc,
+            min_value=None,
+            avg_value=section_one["water_temperature"],
+            max_value=None,
+            unit=MetricUnit.TEMPERATURE,
+            value_type=HydrologicalMeasurementType.MANUAL,
+            metric_name=HydrologicalMetricName.WATER_TEMPERATURE,
+            station=hydro_station,
+            sensor_identifier="",
+            sensor_type="",
+        )
+        water_temp_metric.save(refresh_view=False)
+
+
 def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStation):
     for input in measurements:
         timestamp = SmartDatetime(input["date"], hydro_station, local=True).utc
@@ -136,20 +196,20 @@ def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStati
             sensor_type="",
         )
         cross_section_area_metric.save()
-
-        maximum_depth_metric = HydrologicalMetric(
-            timestamp=timestamp,
-            min_value=None,
-            avg_value=input["maximum_depth"],
-            max_value=None,
-            unit=MetricUnit.WATER_LEVEL,
-            value_type=HydrologicalMeasurementType.MANUAL,
-            metric_name=HydrologicalMetricName.MAXIMUM_DEPTH,
-            station=hydro_station,
-            sensor_identifier="",
-            sensor_type="",
-        )
-        maximum_depth_metric.save()
+        if input["maximum_depth"] is not None:
+            maximum_depth_metric = HydrologicalMetric(
+                timestamp=timestamp,
+                min_value=None,
+                avg_value=input["maximum_depth"],
+                max_value=None,
+                unit=MetricUnit.WATER_LEVEL,
+                value_type=HydrologicalMeasurementType.MANUAL,
+                metric_name=HydrologicalMetricName.MAXIMUM_DEPTH,
+                station=hydro_station,
+                sensor_identifier="",
+                sensor_type="",
+            )
+            maximum_depth_metric.save()
 
 
 def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict:
@@ -408,6 +468,30 @@ def simulate_telegram_insertion(parsed_data: dict) -> dict:
     return template_filled_averages
 
 
+def generate_reported_discharge_points(parsed_data: dict) -> dict:
+    """
+    Gather all the water level/discharge from telegrams and group them based on the station code.
+    :param parsed_data:
+    :return:
+    """
+    reported_discharge_points = {}
+    index = 0
+    for station_code, station_data in parsed_data["stations"].items():
+        reported_discharge_points[station_code] = []
+        for decoded in station_data["telegrams"]:
+            for entry in decoded.get("section_six", []):
+                reported_discharge_points[station_code].append(
+                    {
+                        "id": index,
+                        "date": entry["date"],
+                        "h": entry["water_level"],
+                        "q": entry["discharge"],
+                    }
+                )
+                index = index + 1
+    return reported_discharge_points
+
+
 def generate_data_processing_overview(simulation_result: dict) -> dict:
     # make station codes as keys and list of sorted date entries as their values
     result_sorted_by_date = {}
@@ -435,6 +519,7 @@ def generate_save_data_overview(parsed_data: dict, simulation_result: str) -> li
             item["previous_day_date"] = previous_day_date
             item["previous_day_data"] = simulation_result[station_code][previous_day_date]
             item["telegram_day_data"] = simulation_result[station_code][telegram_day_date]
+            item["section_one"] = telegram_data.get("section_one")
             item["section_six"] = telegram_data.get("section_six", [])
             item["section_eight"] = telegram_data.get("section_eight")  # TODO
             item["type"] = "discharge / meteo ???"  # TODO determine if discharge / meteo or both or single

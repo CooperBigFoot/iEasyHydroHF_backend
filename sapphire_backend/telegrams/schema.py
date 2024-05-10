@@ -20,9 +20,10 @@ class TelegramSectionOneSchema(Schema):
     morning_water_level: int
     water_level_trend: int
     water_level_20h_period: int
-    water_temperature: int | None = None
+    water_temperature: float | None = None
     air_temperature: int | None = None
-    ice_phenomena: list[dict[str, int]]
+    ice_phenomena: list[dict[str, int]] | None = None
+    daily_precipitation: dict[str, int] | None = None
 
 
 class TelegramSectionThreeSchema(Schema):
@@ -31,9 +32,9 @@ class TelegramSectionThreeSchema(Schema):
 
 class TelegramSectionSixSingleSchema(Schema):
     water_level: int
-    discharge: int
+    discharge: float
     cross_section_area: float = None
-    maximum_depth: int = None
+    maximum_depth: float | None = None
     date: str
 
 
@@ -70,14 +71,23 @@ class SaveDataOverviewSingleSchema(Schema):
     previous_day_date: str
     previous_day_data: DataProcessingDayTimes
     telegram_day_data: DataProcessingDayTimes
+    section_one: TelegramSectionOneSchema
     section_six: list[TelegramSectionSixSingleSchema]
     section_eight: None  # TODO when meteo parsing is implemented
     type: str
 
 
+class ReportedDischargePointsOutputSchema(Schema):
+    id: int
+    date: str
+    h: int
+    q: float
+
+
 class TelegramOverviewOutputSchema(Schema):
     daily_overview: list[DailyOverviewSingleSchema]
     data_processing_overview: dict[str, list[tuple[str, DataProcessingDayTimes]]]
+    reported_discharge_points: dict[str, list[ReportedDischargePointsOutputSchema]]
     save_data_overview: list[SaveDataOverviewSingleSchema]
     discharge_codes: list[tuple[str, str]]
     meteo_codes: list[tuple[str, str]]
