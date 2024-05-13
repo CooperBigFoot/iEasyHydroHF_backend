@@ -24,7 +24,7 @@ class HydrologicalMetricName(models.TextChoices):
     WATER_TEMPERATURE = "WTO", _("Water temperature observation")
     AIR_TEMPERATURE = "ATO", _("Air temperature observation")
     ICE_PHENOMENA_OBSERVATION = "IPO", _("Ice phenomena observation")
-    DAILY_PRECIPITATION = "DP", _("Daily precipitation")
+    PRECIPITATION_DAILY = "PD", _("Precipitation daily")
 
     RIVER_CROSS_SECTION_AREA = "RCSA", _("River cross section area")
     MAXIMUM_DEPTH = "MD", _("Maximum depth")

@@ -408,3 +408,249 @@ class TestVirtualStationsAPI:
 
         assert vs.virtualstationassociation_set.count() == 1
         assert VirtualStationAssociation.objects.count() == 1
+
+
+class TestForecastStatusAPI:
+    endpoint = "/api/v1/stations/{}/forecast-status"
+    endpoint_detail = "/api/v1/stations/{}/forecast-status/{}"
+
+    def test_get_status_for_unauthenticated_user(self, api_client, organization):
+        response = api_client.get(self.endpoint.format(organization.uuid))
+
+        assert response.status_code == 401
+
+    def test_get_status_for_unauthorized_user(self, authenticated_regular_user_api_client, backup_organization):
+        response = authenticated_regular_user_api_client.get(self.endpoint.format(backup_organization.uuid))
+
+        assert response.status_code == 403
+
+    def test_get_status_for_no_stations(self, authenticated_regular_user_api_client, organization):
+        response = authenticated_regular_user_api_client.get(self.endpoint.format(organization.uuid))
+
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_get_status_for_all_stations(
+        self, authenticated_regular_user_api_client, organization, manual_hydro_station, automatic_hydro_station
+    ):
+        response = authenticated_regular_user_api_client.get(self.endpoint.format(organization.uuid))
+
+        assert response.json() == [
+            {
+                "daily_forecast": False,
+                "pentad_forecast": False,
+                "decadal_forecast": False,
+                "monthly_forecast": False,
+                "seasonal_forecast": False,
+                "uuid": str(manual_hydro_station.uuid),
+                "station_code": manual_hydro_station.station_code,
+                "id": manual_hydro_station.id,
+                "name": manual_hydro_station.name,
+                "station_type": "M",
+            },
+            {
+                "daily_forecast": False,
+                "pentad_forecast": False,
+                "decadal_forecast": False,
+                "monthly_forecast": False,
+                "seasonal_forecast": False,
+                "uuid": str(automatic_hydro_station.uuid),
+                "station_code": automatic_hydro_station.station_code,
+                "id": automatic_hydro_station.id,
+                "name": automatic_hydro_station.name,
+                "station_type": "A",
+            },
+        ]
+
+    def test_for_single_non_existing_station(self, authenticated_regular_user_api_client, organization):
+        response = authenticated_regular_user_api_client.get(
+            self.endpoint_detail.format(organization.uuid, "11111111-aaaa-bbbb-cccc-222222222222")
+        )
+
+        assert response.status_code == 404
+
+    def test_for_single_station_from_different_organization(
+        self, authenticated_regular_user_other_organization_api_client, organization, manual_hydro_station
+    ):
+        response = authenticated_regular_user_other_organization_api_client.get(
+            self.endpoint_detail.format(organization.uuid, manual_hydro_station.uuid)
+        )
+
+        assert response.status_code == 403
+
+    def test_for_single_station(self, authenticated_regular_user_api_client, organization, manual_hydro_station):
+        response = authenticated_regular_user_api_client.get(
+            self.endpoint_detail.format(organization.uuid, manual_hydro_station.uuid)
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "daily_forecast": False,
+            "pentad_forecast": False,
+            "decadal_forecast": False,
+            "monthly_forecast": False,
+            "seasonal_forecast": False,
+            "uuid": str(manual_hydro_station.uuid),
+            "station_code": manual_hydro_station.station_code,
+            "id": manual_hydro_station.id,
+            "name": manual_hydro_station.name,
+            "station_type": "M",
+        }
+
+    def test_set_status_for_non_existing_station(self, authenticated_regular_user_api_client, organization):
+        data = {
+            "daily_forecast": True,
+            "pentad_forecast": True,
+            "decadal_forecast": False,
+            "monthly_forecast": False,
+            "seasonal_forecast": False,
+        }
+
+        response = authenticated_regular_user_api_client.post(
+            self.endpoint_detail.format(organization.uuid, "11111111-aaaa-bbbb-cccc-222222222222"),
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 404
+
+    def test_for_incomplete_payload(self, authenticated_regular_user_api_client, organization, manual_hydro_station):
+        data = {"daily_forecast": True, "pentad_forecast": True, "seasonal_forecast": False}
+
+        response = authenticated_regular_user_api_client.post(
+            self.endpoint_detail.format(organization, manual_hydro_station.uuid),
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 422
+
+    def test_set_forecast_status(self, authenticated_regular_user_api_client, organization, manual_hydro_station):
+        data = {
+            "daily_forecast": True,
+            "pentad_forecast": True,
+            "decadal_forecast": False,
+            "monthly_forecast": False,
+            "seasonal_forecast": False,
+        }
+
+        response = authenticated_regular_user_api_client.post(
+            self.endpoint_detail.format(organization.uuid, manual_hydro_station.uuid),
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        assert response.json() == {
+            "daily_forecast": True,
+            "pentad_forecast": True,
+            "decadal_forecast": False,
+            "monthly_forecast": False,
+            "seasonal_forecast": False,
+            "uuid": str(manual_hydro_station.uuid),
+            "station_code": manual_hydro_station.station_code,
+            "id": manual_hydro_station.id,
+            "name": manual_hydro_station.name,
+            "station_type": "M",
+        }
+
+    def test_bulk_toggle_for_non_existing_stations(self, authenticated_regular_user_api_client, organization):
+        data = ["11111111-aaaa-bbbb-cccc-222222222222"]
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint.format(organization.uuid)}/bulk-toggle?action=on",
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        assert response.json() == []
+
+    def test_bulk_toggle_for_single_station(
+        self, authenticated_regular_user_api_client, organization, manual_hydro_station
+    ):
+        data = [str(manual_hydro_station.uuid)]
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint.format(organization.uuid)}/bulk-toggle?action=on",
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        assert response.json() == [
+            {
+                "daily_forecast": True,
+                "pentad_forecast": True,
+                "decadal_forecast": True,
+                "monthly_forecast": True,
+                "seasonal_forecast": True,
+                "uuid": str(manual_hydro_station.uuid),
+                "station_code": manual_hydro_station.station_code,
+                "id": manual_hydro_station.id,
+                "name": manual_hydro_station.name,
+                "station_type": "M",
+            }
+        ]
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint.format(organization.uuid)}/bulk-toggle?action=off",
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        assert response.json() == [
+            {
+                "daily_forecast": False,
+                "pentad_forecast": False,
+                "decadal_forecast": False,
+                "monthly_forecast": False,
+                "seasonal_forecast": False,
+                "uuid": str(manual_hydro_station.uuid),
+                "station_code": manual_hydro_station.station_code,
+                "id": manual_hydro_station.id,
+                "name": manual_hydro_station.name,
+                "station_type": "M",
+            }
+        ]
+
+    def test_bulk_toggle_for_multiple_stations(
+        self, authenticated_regular_user_api_client, organization, manual_hydro_station, automatic_hydro_station
+    ):
+        data = [
+            str(manual_hydro_station.uuid),
+            str(automatic_hydro_station.uuid),
+            "11111111-aaaa-bbbb-cccc-222222222222",
+        ]
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint.format(organization.uuid)}/bulk-toggle?action=on",
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        assert response.json() == [
+            {
+                "daily_forecast": True,
+                "pentad_forecast": True,
+                "decadal_forecast": True,
+                "monthly_forecast": True,
+                "seasonal_forecast": True,
+                "uuid": str(manual_hydro_station.uuid),
+                "station_code": manual_hydro_station.station_code,
+                "id": manual_hydro_station.id,
+                "name": manual_hydro_station.name,
+                "station_type": "M",
+            },
+            {
+                "daily_forecast": True,
+                "pentad_forecast": True,
+                "decadal_forecast": True,
+                "monthly_forecast": True,
+                "seasonal_forecast": True,
+                "uuid": str(automatic_hydro_station.uuid),
+                "station_code": automatic_hydro_station.station_code,
+                "id": automatic_hydro_station.id,
+                "name": automatic_hydro_station.name,
+                "station_type": "A",
+            },
+        ]
