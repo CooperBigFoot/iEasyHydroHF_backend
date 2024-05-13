@@ -55,6 +55,7 @@ class HydrologicalMetric(models.Model):
 
     sensor_identifier = models.CharField(verbose_name=_("Sensor identifier"), blank=True, max_length=50)
     sensor_type = models.CharField(verbose_name=_("Sensor type"), blank=True, max_length=50)
+    value_code = models.IntegerField(verbose_name=_("Value code"), blank=True, null=True)
 
     objects = HydrologicalMetricQuerySet.as_manager()
 
@@ -89,29 +90,23 @@ class HydrologicalMetric(models.Model):
         if self.timestamp_local is not None and self.timestamp is None:
             self.timestamp = SmartDatetime(self.timestamp_local, self.station, local=True).utc
             self.timestamp_local = self.timestamp_local.replace(tzinfo=ZoneInfo('UTC'))
-        min_value = self.min_value
-        max_value = self.max_value
-        avg_value = self.avg_value
-
-        if self.min_value is None:
-            min_value = "NULL"
-        if self.max_value is None:
-            max_value = "NULL"
-        if self.avg_value is None:
-            avg_value = "NULL"
+        min_value = self.min_value if self.min_value is not None else "NULL"
+        max_value = self.max_value if self.max_value is not None else "NULL"
+        avg_value = self.avg_value if self.avg_value is not None else "NULL"
+        value_code = self.value_code if self.value_code is not None else "NULL"
 
         sql_query_insert = f"""
             INSERT INTO metrics_hydrologicalmetric
             (timestamp_local, station_id, metric_name, value_type, sensor_identifier, timestamp, min_value, avg_value, max_value,
-            unit, sensor_type)
+            unit, sensor_type, value_code)
             VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}', '{self.timestamp}', {min_value},
-            {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}');
+            {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}', {value_code});
             """
 
         sql_query_upsert = f"""
-            INSERT INTO metrics_hydrologicalmetric (timestamp_local, station_id, metric_name, value_type, sensor_identifier, timestamp, min_value, avg_value, max_value, unit, sensor_type)
-            VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}', '{self.timestamp}', {min_value},
-            {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}')
+            INSERT INTO metrics_hydrologicalmetric (timestamp_local, station_id, metric_name, value_type, sensor_identifier, timestamp, min_value, avg_value, max_value, unit, sensor_type, value_code)
+            VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}',  '{self.timestamp}', {min_value},
+            {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}', {value_code})
             ON CONFLICT (timestamp_local, station_id, metric_name, value_type, sensor_identifier)
             DO UPDATE
             SET min_value = EXCLUDED.min_value,

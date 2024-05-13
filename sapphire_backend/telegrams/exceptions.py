@@ -16,7 +16,7 @@ class InvalidTokenException(TelegramParserException):
     Raised when an invalid token is encountered during parsing.
     """
 
-    def __init__(self, token: str, message: str = "Invalid token encountered"):
+    def __init__(self, token: str | int, message: str = "Invalid token encountered"):
         self.token = token
         logger.error(f"{message}: {token}")
         super().__init__(f"{message}: {token}")
@@ -52,3 +52,9 @@ class TelegramAlreadyParsedException(TelegramParserException):
     def __init__(self, telegram: str, message: str = "Telegram already ingested"):
         logger.error(f"{message}: {telegram}")
         super().__init__(f"{message}: {telegram}")
+
+
+class MissingMeteoStationException(TelegramParserException):
+    def __init__(self, token: str, message: str = "Missing meteo station"):
+        logger.error(f"{message}: {token}")
+        super().__init__(f"{message}: {token}")
