@@ -25,8 +25,10 @@ from sapphire_backend.metrics.choices import (
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
     MetricUnit,
+    NormType
 )
-from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
+from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric, DischargeNorm
+from sapphire_backend.metrics.utils.helpers import calculate_decade_number
 from sapphire_backend.organizations.models import Basin, Organization, Region
 from sapphire_backend.stations.models import (
     HydrologicalStation,
@@ -354,6 +356,24 @@ def refresh_water_level_daily_average(start_date: str, end_date: str):
     logging.info('Done.')
 
 
+def parse_ice_phenomena(data_row):
+    try:
+        ice_phenomena_values = data_row.ice_phenomena_string.split('|')
+    except AttributeError:
+        # the ice phenomena is not stored inside the ice_phenomena_string, but inside the data value
+        integer_part, fractional_part = str(data_row.data_value).split(".")
+        code = int(integer_part)
+        if fractional_part == '0':
+            intensity = 0
+        elif len(fractional_part) == 1:
+            intensity = int(fractional_part) * 10
+        else:
+            intensity = int(fractional_part.rstrip('0'))
+        ice_phenomena_values = [f"{code}:{intensity}"]
+
+    return ice_phenomena_values
+
+
 def migrate_hydro_metrics(old_session, limiter, target_station):
     global nan_count
     if target_station == "":
@@ -363,6 +383,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
     hydro_stations = [station for station in old_data if station.site_type == "discharge"]
     for old in tqdm(hydro_stations, desc="Hydro stations", position=0):
         hydro_station = HydrologicalStation.objects.get(station_code=old.site_code_repr)
+        station_decades = {}
         for data_row in tqdm(
             old.data_values[-limiter:], desc="Hydro metrics", position=1, leave=False
         ):
@@ -374,18 +395,53 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
             # exceptionally set the maximum discharge on the hydro station level, exclude from metrics
             data_value = data_row.data_value
 
-            if data_row.variable.variable_code == Variables.discharge_maximum_recommendation:
+            if data_row.variable.variable_code == Variables.discharge_maximum_recommendation.value:
                 hydro_station.discharge_level_alarm = data_value
                 hydro_station.save()
                 continue
 
-            metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
+            if data_row.variable.variable_code == Variables.discharge_decade_average_historical.value:
+                if data_value == -9999:
+                    # empty value for some reason
+                    continue
 
-            if data_row.variable.variable_code == Variables.ice_phenomena_observation:
-                # TODO handle ice phenomena, currently skip
+                decade = calculate_decade_number(aware_datetime_utc)
+                if decade not in station_decades:
+                    station_decades[decade] = [data_value]
+                else:
+                    station_decades[decade].append(data_value)
+
+                # right now we're only preparing the data, we need to go over all the data values
+                # to store every relevant value after which we average them and store to the DischargeNorm model
                 continue
 
-            if data_row.variable.variable_code == Variables.gauge_height_average_daily_estimation:
+            metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
+
+            if data_row.variable.variable_code == Variables.ice_phenomena_observation.value:
+                ice_phenomena_values = parse_ice_phenomena(data_row)
+                for code_intensity_pair in ice_phenomena_values:
+                    values = code_intensity_pair.split(':')
+                    code = int(values[0])
+                    intensity = None if values[1] == 'nan' else int(float(values[1]))
+                    ice_phenomena_metric = HydrologicalMetric(
+                        timestamp=aware_datetime_utc,
+                        min_value=None,
+                        avg_value=intensity or -1,
+                        max_value=None,
+                        unit=metric_unit,
+                        metric_name=metric_name,
+                        value_type=measurement_type,
+                        station=hydro_station,
+                        sensor_identifier="",
+                        sensor_type="",
+                        value_code=code
+                    )
+                    ice_phenomena_metric.save(refresh_view=False)
+
+                # metrics saved so we continue to the next one
+                continue
+
+            if data_row.variable.variable_code == Variables.gauge_height_average_daily_estimation.value:
                 # this one is not used so it can be skipped
                 continue
 
@@ -406,6 +462,16 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                 sensor_type="",
             )
             new_hydro_metric.save(refresh_view=False)
+
+        for key, value in station_decades.items():
+            if len(value) > 0:
+                avg = sum(value) / len(value)
+                DischargeNorm.objects.create(
+                    station=hydro_station,
+                    ordinal_number=key,
+                    value=avg,
+                    norm_type=NormType.DECADAL
+                )
     refresh_water_level_daily_average('2015-01-01', '2030-01-01')
 
 
