@@ -207,3 +207,23 @@ class DischargeNormsAPIController:
         )
 
         return 201, norms
+
+
+@api_controller(
+    "metrics/operational-journal/{station_uuid}/{year}/{month}",
+    tags=["Operational journal"],
+    auth=JWTAuth(),
+    permissions=regular_permissions,
+)
+class OperationalJournalAPIController:
+    @route.get("daily-data")
+    def get_daily_data(self, station_uuid: str, year: int, month: int):
+        pass
+
+    @route.get("discharge-data")
+    def get_discharge_data(self, station_uuid: str, year: int, month: int):
+        pass
+
+    @route.get("decadal-data")
+    def get_decadal_data(self, station_uuid: str, year: int, month: int):
+        pass

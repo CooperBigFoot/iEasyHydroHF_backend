@@ -74,19 +74,19 @@ class TestTimeseriesQueryManager:
 
         assert query_manager._construct_sql_filter_string() == (f"o.uuid='{organization.uuid}'", [])
 
-    def test_raw_sql_filter_construction_for_simple_filter(self, organization):
+    def test_raw_sql_filter_construction_for_simple_filter(self, organization, manual_hydro_station):
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
             organization_uuid=organization.uuid,
             filter_dict={
                 "timestamp__gte": "2020-01-01T00:00:00Z",
-                "metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY,
+                "station": manual_hydro_station.id,
             },
         )
 
         assert query_manager._construct_sql_filter_string() == (
-            f"o.uuid='{organization.uuid}' AND timestamp >= %s AND metric_name = %s",
-            ["2020-01-01T00:00:00Z", "WLD"],
+            f"o.uuid='{organization.uuid}' AND timestamp >= %s AND st.id = %s",
+            ["2020-01-01T00:00:00Z", manual_hydro_station.id],
         )
 
     def test_raw_sql_filter_construction_for_array_filter(self, organization):
@@ -95,16 +95,19 @@ class TestTimeseriesQueryManager:
             organization_uuid=organization.uuid,
             filter_dict={
                 "timestamp__gte": "2020-01-01T00:00:00Z",
-                "metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY,
+                "metric_name__in": [
+                    HydrologicalMetricName.WATER_LEVEL_DAILY,
+                    HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+                ],
                 "station__station_code__in": ["1", "2", "3"],
-                "value_type": HydrologicalMeasurementType.MANUAL,
+                "value_type__in": [HydrologicalMeasurementType.MANUAL],
             },
         )
 
         assert query_manager._construct_sql_filter_string() == (
-            f"o.uuid='{organization.uuid}' AND timestamp >= %s AND metric_name = %s "
-            f"AND st.station_code IN (%s, %s, %s) AND value_type = %s",
-            ["2020-01-01T00:00:00Z", "WLD", "1", "2", "3", "M"],
+            f"o.uuid='{organization.uuid}' AND timestamp >= %s AND metric_name IN (%s, %s) "
+            f"AND st.station_code IN (%s, %s, %s) AND value_type IN (%s)",
+            ["2020-01-01T00:00:00Z", "WLD", "WDD", "1", "2", "3", "M"],
         )
 
     def test_raw_sql_filter_construction_for_invalid_field(self, organization):

@@ -120,13 +120,13 @@ class TimeseriesQueryManager:
                     case "avg_value__lte":
                         where_clauses.append("avg_value <= %s")
                         params.append(value)
-                    case "station_id":
+                    case "station":
                         where_clauses.append("st.id = %s")
                         params.append(value)
                     case "station__station_code":
                         where_clauses.append("st.station_code = %s")
                         params.append(value)
-                    case "station_id__in":
+                    case "station__in":
                         placeholders = ", ".join(["%s"] * len(value))
                         where_clauses.append(f"st.id IN ({placeholders})")
                         params.extend(value)
@@ -134,12 +134,14 @@ class TimeseriesQueryManager:
                         placeholders = ", ".join(["%s"] * len(value))
                         where_clauses.append(f"st.station_code IN ({placeholders})")
                         params.extend(value)
-                    case "metric_name":
-                        where_clauses.append("metric_name = %s")
-                        params.append(value)
-                    case "value_type":
-                        where_clauses.append("value_type = %s")
-                        params.append(value)
+                    case "metric_name__in":
+                        placeholders = ", ".join(["%s"] * len(value))
+                        where_clauses.append(f"metric_name IN ({placeholders})")
+                        params.extend(value)
+                    case "value_type__in":
+                        placeholders = ", ".join(["%s"] * len(value))
+                        where_clauses.append(f"value_type IN ({placeholders})")
+                        params.extend(value)
                     case "sensor_identifier":
                         where_clauses.append("sensor_identifier = %s")
                         params.append(value)

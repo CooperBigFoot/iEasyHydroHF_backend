@@ -21,8 +21,8 @@ class BaseTimeseriesFilterSchema(FilterSchema):
     timestamp__gte: datetime = None
     timestamp__lt: datetime = None
     timestamp__lte: datetime = None
-    station_id: int = None
-    station_id__in: list[int] = None
+    station: int = None
+    station__in: list[int] = None
     station__station_code: str = None
     station__station_code__in: list[str] = None
 
@@ -32,8 +32,8 @@ class HydroMetricFilterSchema(BaseTimeseriesFilterSchema):
     avg_value__gte: float = None
     avg_value__lt: float = None
     avg_value__lte: float = None
-    metric_name: HydrologicalMetricName = None
-    value_type: HydrologicalMeasurementType = None
+    metric_name__in: list[HydrologicalMetricName] = None
+    value_type__in: list[HydrologicalMeasurementType] = None
     sensor_identifier: str = None
 
 

@@ -84,8 +84,8 @@ class TestHydroMetricsAPI:
         response = authenticated_regular_user_api_client.get(
             self.endpoint.format(organization.uuid),
             {
-                "metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY.value,
-                "value_type": HydrologicalMeasurementType.MANUAL.value,
+                "metric_name__in": HydrologicalMetricName.WATER_LEVEL_DAILY.value,
+                "value_type__in": HydrologicalMeasurementType.MANUAL.value,
                 "station__station_code": manual_hydro_station.station_code,
             },
         )
