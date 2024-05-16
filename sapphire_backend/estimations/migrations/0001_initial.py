@@ -24,13 +24,13 @@ class Migration(migrations.Migration):
                 ('param_a', models.DecimalField(decimal_places=30, max_digits=50, verbose_name='Parameter a')),
                 ('param_b', models.DecimalField(decimal_places=30, max_digits=50, verbose_name='Parameter b')),
                 ('param_c', models.DecimalField(decimal_places=30, max_digits=50, verbose_name='Parameter c')),
-                ('valid_from', models.DateTimeField()),
+                ('valid_from_local', models.DateTimeField()),
                 ('station', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='stations.hydrologicalstation', verbose_name='Station')),
             ],
             options={
                 'verbose_name': 'Discharge model',
                 'verbose_name_plural': 'Discharge models',
-                'ordering': ['-valid_from'],
+                'ordering': ['-valid_from_local'],
             },
         ),
     ]

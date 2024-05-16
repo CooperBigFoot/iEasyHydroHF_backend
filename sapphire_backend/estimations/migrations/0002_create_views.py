@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
                 CREATE MATERIALIZED VIEW estimations_water_level_daily_average WITH (timescaledb.continuous)
                 AS
                 SELECT
-                    time_bucket('1 day',  hm.timestamp_local) at time zone 'UTC' + '12 hours' as timestamp,
+                    time_bucket('1 day',  hm.timestamp_local) at time zone 'UTC' + '12 hours' as timestamp_local,
                                     CAST(NULL AS NUMERIC) as min_value,
                                     CEIL(AVG(hm.avg_value)) AS avg_value,
                                     CAST(NULL AS NUMERIC) as max_value,
@@ -59,12 +59,12 @@ class Migration(migrations.Migration):
                 JOIN (
                     SELECT
                         dm.*,
-                        LEAD(valid_from) OVER (PARTITION BY station_id ORDER BY valid_from) AS next_valid_from,
-                        LEAD(name) OVER (PARTITION BY station_id ORDER BY valid_from) AS next_model_name,
-                        LEAD(station_id) OVER (PARTITION BY station_id ORDER BY valid_from) AS next_site_id
+                        LEAD(valid_from_local) OVER (PARTITION BY station_id ORDER BY valid_from_local) AS next_valid_from_local,
+                        LEAD(name) OVER (PARTITION BY station_id ORDER BY valid_from_local) AS next_model_name,
+                        LEAD(station_id) OVER (PARTITION BY station_id ORDER BY valid_from_local) AS next_site_id
                     FROM
                         estimations_dischargemodel dm
-                ) dm ON wld.timestamp >= dm.valid_from AND (wld.timestamp < dm.next_valid_from OR dm.next_valid_from IS NULL) AND wld.station_id = dm.station_id
+                ) dm ON wld.timestamp_local >= dm.valid_from_local AND (wld.timestamp_local < dm.next_valid_from_local OR dm.next_valid_from_local IS NULL) AND wld.station_id = dm.station_id
                 WHERE
                     wld.metric_name = 'WLD' and wld.value_type='M';
               """
@@ -77,7 +77,7 @@ class Migration(migrations.Migration):
                 """
                 create or replace view estimations_water_discharge_daily_average as
                 SELECT
-                    wlda.timestamp,
+                    wlda.timestamp_local,
                     CAST(NULL AS NUMERIC) as min_value,
                     dm.param_c * POWER((wlda.avg_value + dm.param_a), dm.param_b) AS avg_value,
                     CAST(NULL AS NUMERIC) as max_value,
@@ -92,12 +92,12 @@ class Migration(migrations.Migration):
                 JOIN (
                     SELECT
                         dm.*,
-                        LEAD(valid_from) OVER (PARTITION BY station_id ORDER BY valid_from) AS next_valid_from,
-                        LEAD(name) OVER (PARTITION BY station_id ORDER BY valid_from) AS next_model_name,
-                        LEAD(station_id) OVER (PARTITION BY station_id ORDER BY valid_from) AS next_site_id
+                        LEAD(valid_from_local) OVER (PARTITION BY station_id ORDER BY valid_from_local) AS next_valid_from_local,
+                        LEAD(name) OVER (PARTITION BY station_id ORDER BY valid_from_local) AS next_model_name,
+                        LEAD(station_id) OVER (PARTITION BY station_id ORDER BY valid_from_local) AS next_site_id
                     FROM
                         estimations_dischargemodel dm
-                ) dm ON wlda.timestamp >= dm.valid_from AND (wlda.timestamp < dm.next_valid_from OR dm.next_valid_from IS NULL) AND wlda.station_id = dm.station_id
+                ) dm ON wlda.timestamp_local >= dm.valid_from_local AND (wlda.timestamp_local < dm.next_valid_from_local OR dm.next_valid_from_local IS NULL) AND wlda.station_id = dm.station_id
                 WHERE
                     wlda.metric_name = 'WLDA';
               """
@@ -111,9 +111,9 @@ class Migration(migrations.Migration):
                 create or replace view estimations_water_discharge_fiveday_average as
                 WITH five_day_averages AS (
                     SELECT
-                        wdda.timestamp AS timestamp,
+                        wdda.timestamp_local AS timestamp_local,
                         CAST(NULL AS NUMERIC) as min_value,
-                        AVG(wdda.avg_value) OVER (PARTITION BY wdda.station_id, EXTRACT(YEAR FROM wdda.timestamp), EXTRACT(MONTH FROM wdda.timestamp) ORDER BY wdda.timestamp ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) AS avg_value,
+                        AVG(wdda.avg_value) OVER (PARTITION BY wdda.station_id, EXTRACT(YEAR FROM wdda.timestamp_local), EXTRACT(MONTH FROM wdda.timestamp_local) ORDER BY wdda.timestamp_local ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) AS avg_value,
                         CAST(NULL AS NUMERIC) as max_value,
                         'm^3/s' as unit,
                         'E' as value_type,
@@ -126,7 +126,7 @@ class Migration(migrations.Migration):
                 )
                 SELECT *
                 FROM five_day_averages
-                WHERE EXTRACT(DAY FROM timestamp) IN (3, 8, 13, 18, 23, 28);
+                WHERE EXTRACT(DAY FROM timestamp_local) IN (3, 8, 13, 18, 23, 28);
                 """
             )],
             reverse_sql=[("DROP VIEW IF EXISTS estimations_water_discharge_fiveday_average CASCADE;")],
@@ -138,9 +138,9 @@ class Migration(migrations.Migration):
                 create or replace view estimations_water_discharge_decade_average as
                 WITH decade_averages AS (
                     SELECT
-                        wdda.timestamp AS timestamp,
+                        wdda.timestamp_local AS timestamp_local,
                         CAST(NULL AS NUMERIC) as min_value,
-						AVG(wdda.avg_value) OVER (PARTITION BY wdda.station_id, EXTRACT(YEAR FROM wdda.timestamp), EXTRACT(MONTH FROM wdda.timestamp) ORDER BY wdda.timestamp ROWS BETWEEN 4 PRECEDING AND 5 FOLLOWING) as avg_value,
+						AVG(wdda.avg_value) OVER (PARTITION BY wdda.station_id, EXTRACT(YEAR FROM wdda.timestamp_local), EXTRACT(MONTH FROM wdda.timestamp_local) ORDER BY wdda.timestamp_local ROWS BETWEEN 4 PRECEDING AND 5 FOLLOWING) as avg_value,
                         CAST(NULL AS NUMERIC) as max_value,
                         'm^3/s' as unit,
                         'E' as value_type,
@@ -153,31 +153,9 @@ class Migration(migrations.Migration):
                 )
                 SELECT *
                 FROM decade_averages
-                WHERE EXTRACT(DAY FROM timestamp) IN (5, 15, 25);
+                WHERE EXTRACT(DAY FROM timestamp_local) IN (5, 15, 25);
                 """
             )],
             reverse_sql=[("DROP VIEW IF EXISTS estimations_water_discharge_decade_average CASCADE;")],
         ),
-        # migrations.RunSQL(sql=
-        #                   """
-        #                   create or replace view metrics_hydrologicalmetric_all as
-        #                     select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
-        #                     from public.estimations_water_level_daily_average
-        #                     union
-        #                     select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
-        #                     from public.estimations_water_discharge_daily
-        #                     union
-        #                     select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
-        #                     from public.estimations_water_discharge_daily_average
-        #                     union
-        #                     select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
-        #                     from public.estimations_water_discharge_fiveday_average
-        #                     union
-        #                     select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
-        #                     from public.estimations_water_discharge_decade_average
-        #                     union
-        #                     select timestamp, min_value, avg_value, max_value, unit, value_type, metric_name, sensor_identifier, sensor_type, station_id
-        #                     from public.metrics_hydrologicalmetric;
-        #                     """, reverse_sql="DROP VIEW IF EXISTS metrics_hydrologicalmetric_all;")
-
     ]

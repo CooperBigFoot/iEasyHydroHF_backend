@@ -108,6 +108,24 @@ class TimeseriesQueryManager:
                     case "timestamp__lte":
                         where_clauses.append("timestamp <= %s")
                         params.append(value)
+                    case "timestamp_local":
+                        where_clauses.append("timestamp_local = %s")
+                        params.append(value)
+                    case "timestamp_local__gt":
+                        where_clauses.append("timestamp_local > %s")
+                        params.append(value)
+                    case "timestamp_local__gte":
+                        where_clauses.append("timestamp_local >= %s")
+                        params.append(value)
+                    case "timestamp_local__lt":
+                        where_clauses.append("timestamp_local < %s")
+                        params.append(value)
+                    case "timestamp_local__lte":
+                        where_clauses.append("timestamp_local <= %s")
+                        params.append(value)
+                    case "avg_value":
+                        where_clauses.append("avg_value = %s")
+                        params.append(value)
                     case "avg_value__gt":
                         where_clauses.append("avg_value > %s")
                         params.append(value)

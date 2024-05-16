@@ -11,7 +11,7 @@ class DischargeModelBaseSchema(Schema):
     param_a: float
     param_b: float
     param_c: float
-    valid_from: datetime
+    valid_from_local: datetime
     station_id: int
     uuid: str
 
@@ -20,14 +20,14 @@ class DischargeModelBaseSchema(Schema):
         return str(obj.uuid)
 
     @staticmethod
-    def resolve_valid_from(obj):
-        transform_valid_from = SmartDatetime(obj.valid_from, station=obj.station, local=False).local.date()
-        return transform_valid_from
+    def resolve_valid_from_local(obj):
+        transform_valid_from_local = obj.valid_from_local.date()
+        return transform_valid_from_local
 
 
 class DischargeModelCreateBaseSchema(Schema):
     name: str
-    valid_from: str
+    valid_from_local: str
 
 
 class DischargeModelDeleteOutputSchema(Schema):
@@ -50,7 +50,7 @@ class DischargeModelCreateInputDeltaSchema(DischargeModelCreateBaseSchema):
 
 class OrderQueryParamSchema(Schema):
     order_direction: Literal["ASC", "DESC"] = "DESC"
-    order_param: Literal["timestamp", "avg_value"] = "timestamp"
+    order_param: Literal["timestamp_local", "avg_value"] = "timestamp_local"
 
 
 class EstimationsViewSchema(Schema):
@@ -64,11 +64,11 @@ class EstimationsViewSchema(Schema):
 
 
 class EstimationsFilterSchema(FilterSchema):
-    timestamp: datetime = None
-    timestamp__gt: datetime = None
-    timestamp__gte: datetime = None
-    timestamp__lt: datetime = None
-    timestamp__lte: datetime = None
+    timestamp_local: datetime = None
+    timestamp_local__gt: datetime = None
+    timestamp_local__gte: datetime = None
+    timestamp_local__lt: datetime = None
+    timestamp_local__lte: datetime = None
     station_id: int = None
     station_id__in: list[int] = None
     avg_value__gt: float = None

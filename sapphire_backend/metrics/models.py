@@ -1,6 +1,5 @@
 import logging
 from datetime import timedelta
-from zoneinfo import ZoneInfo
 
 import psycopg
 from django import db
@@ -86,10 +85,9 @@ class HydrologicalMetric(models.Model):
 
     def save(self, upsert=True, refresh_view=True, **kwargs) -> None:
         if self.timestamp_local is None and self.timestamp is not None:
-            self.timestamp_local = SmartDatetime(self.timestamp, self.station, local=False).local.replace(tzinfo=ZoneInfo('UTC'))
+            self.timestamp_local = SmartDatetime(self.timestamp, self.station, tz_included=True).local
         if self.timestamp_local is not None and self.timestamp is None:
-            self.timestamp = SmartDatetime(self.timestamp_local, self.station, local=True).utc
-            self.timestamp_local = self.timestamp_local.replace(tzinfo=ZoneInfo('UTC'))
+            self.timestamp = SmartDatetime(self.timestamp_local, self.station, tz_included=False).tz
         min_value = self.min_value if self.min_value is not None else "NULL"
         max_value = self.max_value if self.max_value is not None else "NULL"
         avg_value = self.avg_value if self.avg_value is not None else "NULL"
@@ -174,8 +172,8 @@ class HydrologicalMetric(models.Model):
 
     def _refresh_view(self):
         # cannot be in the same transaction block so we ensure this by creating a new connection with autocommit
-        start_date_str = self.timestamp.strftime("%Y-%m-%d")
-        end_date_str = (self.timestamp + timedelta(days=1)).strftime("%Y-%m-%d")
+        start_date_str = self.timestamp_local.strftime("%Y-%m-%d")
+        end_date_str = (self.timestamp_local + timedelta(days=1)).strftime("%Y-%m-%d")
         sql_refresh_view = f"CALL refresh_continuous_aggregate('estimations_water_level_daily_average', '{start_date_str}', '{end_date_str}');"
         conn = psycopg.connect(self.conn_string, autocommit=True)
         with conn.cursor() as cursor:
@@ -183,13 +181,18 @@ class HydrologicalMetric(models.Model):
         conn.close()
 
     def select_first(self):  # TODO JUST TEMPORARY USAGE, NOT SERIOUS
+        if self.timestamp_local is None and self.timestamp is not None:
+            self.timestamp_local = SmartDatetime(self.timestamp, self.station, tz_included=True).local
+        if self.timestamp_local is not None and self.timestamp is None:
+            self.timestamp = SmartDatetime(self.timestamp_local, self.station, tz_included=False).tz
+
         table_name = self._meta.db_table
         if self.value_type == HydrologicalMeasurementType.ESTIMATED:
             table_name = ESTIMATIONS_TABLE_MAP.get(self.metric_name, self._meta.db_table)
 
         sql_query_select = f"""
             SELECT min_value, avg_value, max_value, unit, sensor_type FROM {table_name} WHERE
-            timestamp='{self.timestamp}' AND station_id={self.station_id} AND metric_name='{self.metric_name}'
+            timestamp_local='{self.timestamp_local}' AND station_id={self.station_id} AND metric_name='{self.metric_name}'
             AND value_type='{self.value_type}' AND sensor_identifier='{self.sensor_identifier}';
             """
         with connection.cursor() as cursor:

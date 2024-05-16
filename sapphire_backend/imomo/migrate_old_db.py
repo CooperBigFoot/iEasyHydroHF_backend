@@ -367,13 +367,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
         for data_row in tqdm(
             old.data_values[-limiter:], desc="Hydro metrics", position=1, leave=False
         ):
-            # naive_datetime = data_row.date_time_utc
-            # aware_datetime_utc = timezone.make_aware(
-            #     naive_datetime, timezone=zoneinfo.ZoneInfo("UTC")
-            # )
-
-            utc_datetime = SmartDatetime(data_row.local_date_time, hydro_station, local=True).utc
-
+            smart_datetime = SmartDatetime(data_row.local_date_time, hydro_station, tz_included=False)
 
             # exceptionally set the maximum discharge on the hydro station level, exclude from metrics
             data_value = data_row.data_value
@@ -398,7 +392,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                 continue  # TODO skip NaN data value rows
 
             new_hydro_metric = HydrologicalMetric(
-                timestamp=utc_datetime,
+                timestamp_local=smart_datetime.local,
                 min_value=None,
                 avg_value=data_value,
                 max_value=None,
@@ -421,17 +415,17 @@ def migrate_discharge_models(old_session):
         if old.valid_from is None:
             # when valid_from is None then it is initial discharge model
             # 2000-01-01 is sufficient as the beginning date of the initial model
-            valid_from = SmartDatetime(datetime(2000, 1, 1, 0, 0, 0), hydro_station, local=True).day_beginning_utc
+            valid_from_local = SmartDatetime(datetime(2000, 1, 1, 0, 0, 0), hydro_station, tz_included=False).day_beginning_local
         else:
-            valid_from = SmartDatetime(old.valid_from, hydro_station, local=True).day_beginning_utc
+            valid_from_local = SmartDatetime(old.valid_from, hydro_station, tz_included=False).day_beginning_local
 
-        DischargeModel.objects.filter(station_id=hydro_station.id, valid_from=valid_from).delete()  # upsert
+        DischargeModel.objects.filter(station_id=hydro_station.id, valid_from_local=valid_from_local).delete()  # upsert
         new_discharge_model = DischargeModel(
             name=old.model_name,
             param_a=old.param_a,
             param_b=old.param_b,
             param_c=old.param_c,
-            valid_from=valid_from,
+            valid_from_local=valid_from_local,
             station=hydro_station
         )
         new_discharge_model.save()
@@ -493,7 +487,7 @@ def migrate(skip_cleanup: bool, skip_structure: bool, target_station: str, limit
     if target_station != "":
         logging.info(f"Will migrate only station {target_station} (--station)")
 
-    # migrate_discharge_models(old_session)
+    migrate_discharge_models(old_session)
     migrate_hydro_metrics(old_session, limiter, target_station)
     migrate_meteo_metrics(old_session, limiter, target_station)
     old_session.close()

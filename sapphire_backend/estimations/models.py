@@ -9,16 +9,16 @@ class DischargeModel(UUIDMixin, models.Model):
     param_a = models.DecimalField(verbose_name=_("Parameter a"), max_digits=50, decimal_places=30)
     param_b = models.DecimalField(verbose_name=_("Parameter b"), max_digits=50, decimal_places=30)
     param_c = models.DecimalField(verbose_name=_("Parameter c"), max_digits=50, decimal_places=30)
-    valid_from = models.DateTimeField()
+    valid_from_local = models.DateTimeField()
     station = models.ForeignKey("stations.HydrologicalStation", verbose_name=_("Station"), on_delete=models.PROTECT)
 
     class Meta:
         verbose_name = _("Discharge model")
         verbose_name_plural = _("Discharge models")
-        ordering = ["-valid_from"]
+        ordering = ["-valid_from_local"]
 
     def __str__(self):
-        return f"DischargeModel ({self.name}): Q = {self.param_c} (H + {self.param_a} ) ^ {self.param_b}, valid from: {self.valid_from}"
+        return f"DischargeModel ({self.name}): Q = {self.param_c} (H + {self.param_a} ) ^ {self.param_b}, valid from local: {self.valid_from_local}"
 
     def estimate_discharge(self, water_level):
         return float(self.param_c) * (float(water_level) + float(self.param_a)) ** float(self.param_b)
