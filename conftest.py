@@ -1,9 +1,10 @@
+from zoneinfo import ZoneInfo
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
 from ninja_jwt.tokens import AccessToken
 from pytest_factoryboy import register
-from zoneinfo import ZoneInfo
 
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.organizations.tests.factories import BasinFactory, OrganizationFactory, RegionFactory
@@ -32,6 +33,26 @@ def organization(db, organization_factory=OrganizationFactory):
         language=Organization.Language.RUSSIAN,
         year_type=Organization.YearType.HYDROLOGICAL,
         timezone=ZoneInfo("Asia/Bishkek"),
+    )
+
+
+@pytest.fixture
+def organization_kyrgyz(db, organization_factory=OrganizationFactory):
+    return organization_factory.create(
+        name="Kyrgyz Hydromet",
+        language=Organization.Language.RUSSIAN,
+        year_type=Organization.YearType.HYDROLOGICAL,
+        timezone=ZoneInfo("Asia/Bishkek"),
+    )
+
+
+@pytest.fixture
+def organization_uzbek(db, organization_factory=OrganizationFactory):
+    return organization_factory.create(
+        name="Uzbek Gidromet",
+        language=Organization.Language.RUSSIAN,
+        year_type=Organization.YearType.HYDROLOGICAL,
+        timezone=ZoneInfo("Asia/Tashkent"),
     )
 
 
@@ -68,13 +89,13 @@ def site_two(db, backup_organization):
 
 
 @pytest.fixture
-def site_kyrgyz(db, backup_organization):
-    return SiteFactory(country="Kyrgyzstan", organization=backup_organization, timezone=ZoneInfo("Asia/Bishkek"))
+def site_kyrgyz(db, organization_kyrgyz):
+    return SiteFactory(country="Kyrgyzstan", organization=organization_kyrgyz, timezone=ZoneInfo("Asia/Bishkek"))
 
 
 @pytest.fixture
-def site_uzbek(db, backup_organization):
-    return SiteFactory(country="Uzbekistan", organization=backup_organization, timezone=ZoneInfo("Asia/Tashkent"))
+def site_uzbek(db, organization_uzbek):
+    return SiteFactory(country="Uzbekistan", organization=organization_uzbek, timezone=ZoneInfo("Asia/Tashkent"))
 
 
 @pytest.fixture
@@ -110,6 +131,11 @@ def manual_hydro_station_uzbek(db, site_uzbek):
 @pytest.fixture
 def manual_meteo_station(db, site_one):
     return MeteorologicalStationFactory(site=site_one, station_code="12345", name="Manual Meteological Station")
+
+
+@pytest.fixture
+def manual_meteo_station_kyrgyz(db, site_kyrgyz):
+    return MeteorologicalStationFactory(site=site_kyrgyz, station_code="12345", name="Manual Meteorological Station")
 
 
 @pytest.fixture

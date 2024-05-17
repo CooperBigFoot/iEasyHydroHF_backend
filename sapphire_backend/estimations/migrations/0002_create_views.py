@@ -8,7 +8,6 @@ class Migration(migrations.Migration):
         ('estimations', '0001_initial'),
         ("metrics", "0003_create_hypertables"),
     ]
-    #'Asia/Bishkek'
     operations = [
         migrations.RunSQL(
             sql=[(

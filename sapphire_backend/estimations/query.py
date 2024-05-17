@@ -114,12 +114,9 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
             LIMIT %s
         """
 
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute(query, [*params, limit])
-                rows = cursor.fetchall()
-        finally:
-            connection.close()
+        with connection.cursor() as cursor:
+            cursor.execute(query, [*params, limit])
+            rows = cursor.fetchall()
 
         results = [{"timestamp_local": row[0], "value": row[1]} for row in rows]
         return results

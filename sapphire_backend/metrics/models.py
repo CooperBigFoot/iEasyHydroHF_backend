@@ -1,5 +1,5 @@
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import psycopg
 from django import db
@@ -15,20 +15,22 @@ from .choices import (
     NormType,
 )
 from .managers import DischargeNormQuerySet, HydrologicalMetricQuerySet, MeteorologicalMetricQuerySet
+from ..stations.models import HydrologicalStation, MeteorologicalStation
 from ..utils.datetime_helper import SmartDatetime
 
-ESTIMATIONS_TABLE_MAP = {
-    HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: "estimations_water_level_daily_average",
-    HydrologicalMetricName.WATER_DISCHARGE_DAILY: "estimations_water_discharge_daily",
-    HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: "estimations_water_discharge_daily_average",
-    HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: "estimations_water_discharge_fiveday_average",
-    HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: "estimations_water_discharge_decade_average",
-}
+
+def resolve_timestamp_local_tz_pair(timestamp_local: datetime, timestamp: datetime,
+                                    station: [HydrologicalStation | MeteorologicalStation]) -> (datetime, datetime):
+    if timestamp_local is None and timestamp is not None:
+        timestamp_local = SmartDatetime(timestamp, station, tz_included=True).local
+    if timestamp_local is not None and timestamp is None:
+        timestamp = SmartDatetime(timestamp_local, station, tz_included=False).tz
+    return timestamp_local, timestamp
 
 
 class HydrologicalMetric(models.Model):
-    timestamp_local = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp local"))
-    timestamp = models.DateTimeField(verbose_name=_("Timestamp UTC"))
+    timestamp_local = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp local without timezone"))
+    timestamp = models.DateTimeField(verbose_name=_("Timestamp with timezone"))
     min_value = models.DecimalField(
         verbose_name=_("Minimum value"), max_digits=15, decimal_places=5, null=True, blank=True
     )
@@ -61,15 +63,21 @@ class HydrologicalMetric(models.Model):
     class Meta:
         verbose_name = _("Hydrological metric")
         verbose_name_plural = _("Hydrological metrics")
-        ordering = ["-timestamp"]
+        ordering = ["-timestamp_local"]
+
+    def __init__(self, *args, **kwargs):
+        super(HydrologicalMetric, self).__init__(*args, **kwargs)
+        self.timestamp_local, self.timestamp = resolve_timestamp_local_tz_pair(timestamp_local=self.timestamp_local,
+                                                                               timestamp=self.timestamp,
+                                                                               station=self.station)
 
     def __str__(self):
-        return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
+        return f"{self.metric_name}, {self.station.name} on {self.timestamp_local.strftime('%Y-%m-%d %H:%M:%S')}"
 
     def delete(self, **kwargs):
         sql_query_delete = f"""
         DELETE FROM metrics_hydrologicalmetric WHERE
-        timestamp = '{self.timestamp}' AND
+        timestamp_local = '{self.timestamp_local}' AND
         station_id = {self.station_id} AND
         metric_name = '{self.metric_name}' AND
         value_type = '{self.value_type}' AND
@@ -84,10 +92,6 @@ class HydrologicalMetric(models.Model):
                 raise Exception(f"Delete statement {sql_query_delete} failed. {e}")
 
     def save(self, upsert=True, refresh_view=True, **kwargs) -> None:
-        if self.timestamp_local is None and self.timestamp is not None:
-            self.timestamp_local = SmartDatetime(self.timestamp, self.station, tz_included=True).local
-        if self.timestamp_local is not None and self.timestamp is None:
-            self.timestamp = SmartDatetime(self.timestamp_local, self.station, tz_included=False).tz
         min_value = self.min_value if self.min_value is not None else "NULL"
         max_value = self.max_value if self.max_value is not None else "NULL"
         avg_value = self.avg_value if self.avg_value is not None else "NULL"
@@ -155,7 +159,7 @@ class HydrologicalMetric(models.Model):
             if (
                 refresh_view
                 and self.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY
-                and self.value_type == HydrologicalMeasurementType.MANUAL
+                and self.value_type in [HydrologicalMeasurementType.MANUAL, HydrologicalMeasurementType.AUTOMATIC]
             ):
                 self._refresh_view()
 
@@ -180,31 +184,10 @@ class HydrologicalMetric(models.Model):
             cursor.execute(sql_refresh_view)
         conn.close()
 
-    def select_first(self):  # TODO JUST TEMPORARY USAGE, NOT SERIOUS
-        if self.timestamp_local is None and self.timestamp is not None:
-            self.timestamp_local = SmartDatetime(self.timestamp, self.station, tz_included=True).local
-        if self.timestamp_local is not None and self.timestamp is None:
-            self.timestamp = SmartDatetime(self.timestamp_local, self.station, tz_included=False).tz
-
-        table_name = self._meta.db_table
-        if self.value_type == HydrologicalMeasurementType.ESTIMATED:
-            table_name = ESTIMATIONS_TABLE_MAP.get(self.metric_name, self._meta.db_table)
-
-        sql_query_select = f"""
-            SELECT min_value, avg_value, max_value, unit, sensor_type FROM {table_name} WHERE
-            timestamp_local='{self.timestamp_local}' AND station_id={self.station_id} AND metric_name='{self.metric_name}'
-            AND value_type='{self.value_type}' AND sensor_identifier='{self.sensor_identifier}';
-            """
-        with connection.cursor() as cursor:
-            cursor.execute(sql_query_select)
-            row = cursor.fetchone()
-            if row is not None:
-                self.min_value, self.avg_value, self.max_value, self.unit, self.sensor_type = row
-                return self
-
 
 class MeteorologicalMetric(models.Model):
-    timestamp = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp"))
+    timestamp_local = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp local without timezone"))
+    timestamp = models.DateTimeField(verbose_name=_("Timestamp with timezone"))
     value = models.DecimalField(verbose_name=_("Value"), max_digits=10, decimal_places=5)
     value_type = models.CharField(
         verbose_name=_("Value type"),
@@ -227,15 +210,21 @@ class MeteorologicalMetric(models.Model):
     class Meta:
         verbose_name = _("Meteorological metric")
         verbose_name_plural = _("Meteorological metrics")
-        ordering = ["-timestamp"]
+        ordering = ["-timestamp_local"]
+
+    def __init__(self, *args, **kwargs):
+        super(MeteorologicalMetric, self).__init__(*args, **kwargs)
+        self.timestamp_local, self.timestamp = resolve_timestamp_local_tz_pair(timestamp_local=self.timestamp_local,
+                                                                               timestamp=self.timestamp,
+                                                                               station=self.station)
 
     def __str__(self):
-        return f"{self.metric_name}, {self.station.name} on {self.timestamp}"
+        return f"{self.metric_name}, {self.station.name} on {self.timestamp_local.strftime('%Y-%m-%d %H:%M:%S')}"
 
     def delete(self, **kwargs) -> None:
         sql_query_delete = f"""
         DELETE FROM metrics_meteorologicalmetric WHERE
-        timestamp = '{self.timestamp}' AND
+        timestamp_local = '{self.timestamp_local}' AND
         station_id = {self.station_id} AND
         metric_name = '{self.metric_name}';"""
         with connection.cursor() as cursor:
@@ -243,14 +232,14 @@ class MeteorologicalMetric(models.Model):
 
     def save(self, upsert=True, **kwargs) -> None:
         sql_query_insert = f"""
-        INSERT INTO metrics_meteorologicalmetric (timestamp, station_id, metric_name, value, value_type, unit )
-        VALUES ('{self.timestamp}'::timestamp, {self.station_id}, '{self.metric_name}', {self.value}, '{self.value_type}', '{self.unit}');
+        INSERT INTO metrics_meteorologicalmetric (timestamp_local, station_id, metric_name, timestamp, value, value_type, unit )
+        VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.timestamp}', {self.value}, '{self.value_type}', '{self.unit}');
         """
 
         sql_query_upsert = f"""
-    INSERT INTO metrics_meteorologicalmetric (timestamp, station_id, metric_name, value, value_type, unit)
-    VALUES ('{self.timestamp}'::timestamp, {self.station_id}, '{self.metric_name}', {self.value}, '{self.value_type}', '{self.unit}')
-    ON CONFLICT (timestamp, station_id, metric_name)
+    INSERT INTO metrics_meteorologicalmetric (timestamp_local, station_id, metric_name, timestamp, value, value_type, unit)
+    VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.timestamp}', {self.value}, '{self.value_type}', '{self.unit}')
+    ON CONFLICT (timestamp_local, station_id, metric_name)
     DO UPDATE
     SET value = EXCLUDED.value,
         value_type = EXCLUDED.value_type,
