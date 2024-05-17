@@ -3,7 +3,6 @@ from typing import Any
 from django.db import connection
 
 from sapphire_backend.metrics.timeseries.query import TimeseriesQueryManager
-from sapphire_backend.stations.models import HydrologicalStation
 
 from .schema import EstimationsViewSchema
 
@@ -12,12 +11,11 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
     def __init__(
         self,
         model: EstimationsViewSchema,
-        organization_uuid: str,
         filter_dict: dict[str, str | list[str]] = None,
         order_param: str = "timestamp",
         order_direction: str = "DESC",
     ):
-        super().__init__(model, organization_uuid, filter_dict, order_param, order_direction)
+        super().__init__(model, filter_dict, order_param, order_direction)
 
     @staticmethod
     def _set_model(
@@ -40,18 +38,12 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
         if "station_id" not in self.filter_dict and "station_id__uuid" not in self.filter_dict:
             raise ValueError("EstimationsViewQueryManager requires filtering by station ID")
 
-        if not HydrologicalStation.objects.filter(
-            site_id__in=[*self.organization.site_related.values_list("uuid", flat=True)],
-            id=self.filter_dict["station_id"],
-        ).exists():
-            raise ValueError(f"Station with the ID {self.filter_dict['station_id']} does not exist.")
-
         for key in self.filter_dict.keys():
             cleaned_key = key.split("__")[0]
             if cleaned_key not in self.filter_fields:
                 raise ValueError(f"{cleaned_key} field does not exist on the {self.model} view.")
 
-    def _construct_filter(self, organization_uuid: str) -> dict[str, Any]:
+    def _construct_filter(self) -> dict[str, Any]:
         self._validate_filter_dict()
         return self.filter_dict
 

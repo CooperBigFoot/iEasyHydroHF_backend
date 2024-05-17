@@ -1,4 +1,5 @@
 import os
+from datetime import datetime as dt
 from typing import Any
 
 from django.conf import settings
@@ -10,12 +11,14 @@ from ninja.files import UploadedFile
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
+from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from .choices import NormType
+from .choices import HydrologicalMeasurementType, HydrologicalMetricName, NormType
 from .models import DischargeNorm, HydrologicalMetric, MeteorologicalMetric
 from .schema import (
     DischargeNormOutputSchema,
@@ -47,10 +50,10 @@ class HydroMetricsAPIController:
         filters: Query[HydroMetricFilterSchema] = None,
     ):
         filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
         order_param, order_direction = order.order_param, order.order_direction
         return TimeseriesQueryManager(
             model=HydrologicalMetric,
-            organization_uuid=organization_uuid,
             order_param=order_param,
             order_direction=order_direction,
             filter_dict=filter_dict,
@@ -61,9 +64,8 @@ class HydroMetricsAPIController:
         self, organization_uuid: str, filters: Query[HydroMetricFilterSchema], total_only: bool = False
     ):
         filter_dict = filters.dict(exclude_none=True)
-        manager = TimeseriesQueryManager(
-            model=HydrologicalMetric, organization_uuid=organization_uuid, filter_dict=filter_dict
-        )
+        filter_dict["station__site__organization"] = organization_uuid
+        manager = TimeseriesQueryManager(model=HydrologicalMetric, filter_dict=filter_dict)
 
         if total_only:
             return {"total": manager.get_total()}
@@ -79,12 +81,12 @@ class HydroMetricsAPIController:
         filters: Query[HydroMetricFilterSchema],
     ):
         filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
         time_bucket_dict = time_bucket.dict()
         time_bucket_dict["agg_func"] = time_bucket_dict["agg_func"].value
         order_param, order_direction = order.order_param, order.order_direction
         query_manager = TimeseriesQueryManager(
             model=HydrologicalMetric,
-            organization_uuid=organization_uuid,
             filter_dict=filter_dict,
             order_param=order_param,
             order_direction=order_direction,
@@ -111,10 +113,10 @@ class MeteoMetricsAPIController:
         filters: Query[MeteoMetricFilterSchema] = None,
     ):
         filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
         order_param, order_direction = order.order_param, order.order_direction
         return TimeseriesQueryManager(
             model=MeteorologicalMetric,
-            organization_uuid=organization_uuid,
             order_param=order_param,
             order_direction=order_direction,
             filter_dict=filter_dict,
@@ -125,9 +127,8 @@ class MeteoMetricsAPIController:
         self, organization_uuid: str, filters: Query[MeteoMetricFilterSchema], total_only: bool = False
     ):
         filter_dict = filters.dict(exclude_none=True)
-        manager = TimeseriesQueryManager(
-            model=MeteorologicalMetric, organization_uuid=organization_uuid, filter_dict=filter_dict
-        )
+        filter_dict["station__site__organization"] = organization_uuid
+        manager = TimeseriesQueryManager(model=MeteorologicalMetric, filter_dict=filter_dict)
 
         if total_only:
             return {"total": manager.get_total()}
@@ -216,9 +217,33 @@ class DischargeNormsAPIController:
     permissions=regular_permissions,
 )
 class OperationalJournalAPIController:
-    @route.get("daily-data")
+    @route.get("daily-data", response={200: list[HydrologicalMetricOutputSchema]})
     def get_daily_data(self, station_uuid: str, year: int, month: int):
-        pass
+        station = HydrologicalStation.objects.get(uuid=station_uuid)
+        dt_start = SmartDatetime(dt(year, month, 1), station).day_beginning_local.isoformat()
+        dt_end = SmartDatetime(dt(year, month + 1, 1), station).day_beginning_local.isoformat()
+        filter_dict = {
+            "timestamp__gte": dt_start,
+            "timestamp__lt": dt_end,
+            "station": station.id,
+            "value_type__in": [HydrologicalMeasurementType.MANUAL.value],
+            "metric_name__in": [
+                HydrologicalMetricName.WATER_LEVEL_DAILY.value,
+                HydrologicalMetricName.PRECIPITATION_DAILY.value,
+                HydrologicalMetricName.WATER_TEMPERATURE.value,
+                HydrologicalMetricName.AIR_TEMPERATURE.value,
+                HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION.value,
+            ],
+        }
+
+        daily_hydro_metric_data = TimeseriesQueryManager(
+            model=HydrologicalMetric,
+            order_param="timestamp",
+            order_direction="ASC",
+            filter_dict=filter_dict,
+        ).execute_query()
+
+        return daily_hydro_metric_data
 
     @route.get("discharge-data")
     def get_discharge_data(self, station_uuid: str, year: int, month: int):

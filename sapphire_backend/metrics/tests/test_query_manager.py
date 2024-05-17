@@ -13,52 +13,47 @@ class TestTimeseriesQueryManager:
             ValueError,
             match="TimeseriesQueryManager can only be instantiated with HydrologicalMetric or MeteorologicalMetric.",
         ):
-            _ = TimeseriesQueryManager(None, "123")
-
-    @pytest.mark.django_db
-    def test_invalid_organization_uuid(self):
-        with pytest.raises(ValueError, match="Organization with the given UUID does not exist."):
-            _ = TimeseriesQueryManager(HydrologicalMetric, "aaaa1111-bb22-cc33-dd44-eee555fff666")
+            _ = TimeseriesQueryManager(None)
 
     def test_order_resolve(self, organization):
         descending_timestamp_query_manager = TimeseriesQueryManager(
-            HydrologicalMetric, organization.uuid, order_param="timestamp", order_direction="DESC"
+            HydrologicalMetric, order_param="timestamp", order_direction="DESC"
         )
         ascending_average_value_query_manager = TimeseriesQueryManager(
-            HydrologicalMetric, organization.uuid, order_param="avg_value", order_direction="ASC"
+            HydrologicalMetric, order_param="avg_value", order_direction="ASC"
         )
 
         assert descending_timestamp_query_manager.order == "-timestamp"
         assert ascending_average_value_query_manager.order == "avg_value"
 
     def test_orm_filter_construction_for_no_explicit_filter(self, organization):
-        query_manager = TimeseriesQueryManager(HydrologicalMetric, organization.uuid)
+        query_manager = TimeseriesQueryManager(HydrologicalMetric)
 
-        assert query_manager.filter == {"station__site__organization": organization.uuid}
+        assert query_manager.filter_dict == {}
 
     def test_orm_filter_construction_for_filter_dict(self, organization):
         dt_now = dt.datetime.utcnow()
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
-            organization.uuid,
             filter_dict={
                 "timestamp__lte": dt_now.isoformat(),
                 "metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY,
             },
         )
 
-        assert query_manager.filter == {
-            "station__site__organization": organization.uuid,
+        assert query_manager.filter_dict == {
             "timestamp__lte": dt_now.isoformat(),
             "metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY,
         }
 
     def test_orm_filter_construction_for_invalid_field(self, organization):
         with pytest.raises(ValueError, match="some_field field does not exist on the HydrologicalMetric model."):
-            _ = TimeseriesQueryManager(HydrologicalMetric, organization.uuid, filter_dict={"some_field": "some_value"})
+            _ = TimeseriesQueryManager(HydrologicalMetric, filter_dict={"some_field": "some_value"})
 
     def test_raw_sql_organization_join(self, organization):
-        query_manager = TimeseriesQueryManager(MeteorologicalMetric, organization_uuid=organization.uuid)
+        query_manager = TimeseriesQueryManager(
+            MeteorologicalMetric, {"station__site__organization": organization.uuid}
+        )
 
         assert (
             query_manager._construct_organization_sql_join_string()
@@ -70,31 +65,31 @@ class TestTimeseriesQueryManager:
         )
 
     def test_raw_sql_filter_construction_for_no_explicit_filter(self, organization):
-        query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
+        query_manager = TimeseriesQueryManager(HydrologicalMetric)
 
-        assert query_manager._construct_sql_filter_string() == (f"o.uuid='{organization.uuid}'", [])
+        assert query_manager._construct_sql_filter_string() == ("", [])
 
     def test_raw_sql_filter_construction_for_simple_filter(self, organization, manual_hydro_station):
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
-            organization_uuid=organization.uuid,
             filter_dict={
                 "timestamp__gte": "2020-01-01T00:00:00Z",
+                "station__site__organization": str(organization.uuid),
                 "station": manual_hydro_station.id,
             },
         )
 
         assert query_manager._construct_sql_filter_string() == (
-            f"o.uuid='{organization.uuid}' AND timestamp >= %s AND st.id = %s",
-            ["2020-01-01T00:00:00Z", manual_hydro_station.id],
+            "timestamp >= %s AND o.uuid = %s AND station_id = %s",
+            ["2020-01-01T00:00:00Z", str(organization.uuid), manual_hydro_station.id],
         )
 
     def test_raw_sql_filter_construction_for_array_filter(self, organization):
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
-            organization_uuid=organization.uuid,
             filter_dict={
                 "timestamp__gte": "2020-01-01T00:00:00Z",
+                "station__site__organization": str(organization.uuid),
                 "metric_name__in": [
                     HydrologicalMetricName.WATER_LEVEL_DAILY,
                     HydrologicalMetricName.WATER_DISCHARGE_DAILY,
@@ -105,9 +100,9 @@ class TestTimeseriesQueryManager:
         )
 
         assert query_manager._construct_sql_filter_string() == (
-            f"o.uuid='{organization.uuid}' AND timestamp >= %s AND metric_name IN (%s, %s) "
-            f"AND st.station_code IN (%s, %s, %s) AND value_type IN (%s)",
-            ["2020-01-01T00:00:00Z", "WLD", "WDD", "1", "2", "3", "M"],
+            "timestamp >= %s AND o.uuid = %s AND metric_name IN (%s, %s) "
+            "AND st.station_code IN (%s, %s, %s) AND value_type IN (%s)",
+            ["2020-01-01T00:00:00Z", str(organization.uuid), "WLD", "WDD", "1", "2", "3", "M"],
         )
 
     def test_raw_sql_filter_construction_for_invalid_field(self, organization):
@@ -116,7 +111,6 @@ class TestTimeseriesQueryManager:
         ):
             _ = TimeseriesQueryManager(
                 HydrologicalMetric,
-                organization_uuid=organization.uuid,
                 filter_dict={
                     "non_existing_field": "some_value",
                 },
@@ -131,25 +125,29 @@ class TestTimeseriesQueryManager:
         water_level_manual_other_organization,
         water_discharge,
     ):
-        query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
+        query_manager = TimeseriesQueryManager(HydrologicalMetric)
         results = query_manager.execute_query()
 
-        assert results.count() == 4
-        assert list(results) == [water_discharge, water_level_manual_other, water_level_automatic, water_level_manual]
+        assert results.count() == 5
+        assert list(results) == [
+            water_discharge,
+            water_level_manual_other_organization,
+            water_level_manual_other,
+            water_level_automatic,
+            water_level_manual,
+        ]
 
     def test_query_manager_with_timestamp_filter(
         self,
         organization,
         water_level_manual,
         water_level_manual_other,
-        water_level_manual_other_organization,
         water_discharge,
     ):
         query_dt = dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=36)
 
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
-            organization_uuid=organization.uuid,
             filter_dict={
                 "timestamp__gte": query_dt.isoformat(),
             },
@@ -164,8 +162,7 @@ class TestTimeseriesQueryManager:
     ):
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
-            organization_uuid=organization.uuid,
-            filter_dict={"value_type": HydrologicalMeasurementType.MANUAL},
+            filter_dict={"value_type__in": [HydrologicalMeasurementType.MANUAL]},
         )
 
         assert query_manager.execute_query().count() == 2
@@ -181,7 +178,6 @@ class TestTimeseriesQueryManager:
     ):
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
-            organization_uuid=organization.uuid,
             filter_dict={"station__station_code__in": [manual_hydro_station.station_code]},
         )
 
@@ -198,11 +194,10 @@ class TestTimeseriesQueryManager:
     ):
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
-            organization_uuid=organization.uuid,
-            filter_dict={"metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY},
+            filter_dict={"metric_name__in": [HydrologicalMetricName.WATER_LEVEL_DAILY]},
         )
 
-        assert query_manager.execute_query().count() == 3
+        assert query_manager.execute_query().count() == 4
 
     def test_query_manager_change_order(
         self,
@@ -213,13 +208,17 @@ class TestTimeseriesQueryManager:
         water_discharge,
         water_level_manual_other_organization,
     ):
-        query_manager = TimeseriesQueryManager(
-            HydrologicalMetric, organization_uuid=organization.uuid, order_direction="ASC"
-        )
+        query_manager = TimeseriesQueryManager(HydrologicalMetric, order_direction="ASC")
 
         results = query_manager.execute_query()
-        assert results.count() == 4
-        assert list(results) == [water_level_manual, water_level_automatic, water_level_manual_other, water_discharge]
+        assert results.count() == 5
+        assert list(results) == [
+            water_level_manual,
+            water_level_automatic,
+            water_level_manual_other,
+            water_level_manual_other_organization,
+            water_discharge,
+        ]
 
     def test_query_manager_get_total(
         self,
@@ -230,9 +229,9 @@ class TestTimeseriesQueryManager:
         water_discharge,
         water_level_manual_other_organization,
     ):
-        query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
+        query_manager = TimeseriesQueryManager(HydrologicalMetric)
 
-        assert query_manager.get_total() == 4
+        assert query_manager.get_total() == 5
 
     def test_query_manager_get_metric_distribution(
         self,
@@ -243,13 +242,13 @@ class TestTimeseriesQueryManager:
         water_level_manual_other,
         water_level_manual_other_organization,
     ):
-        query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
+        query_manager = TimeseriesQueryManager(HydrologicalMetric)
 
         results = query_manager.get_metric_distribution()
         assert len(results) == 2
 
         EXPECTED_OUTPUTS = [
-            {"metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY, "metric_count": 3},
+            {"metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY, "metric_count": 4},
             {"metric_name": HydrologicalMetricName.WATER_DISCHARGE_DAILY, "metric_count": 1},
         ]
 
@@ -259,7 +258,7 @@ class TestTimeseriesQueryManager:
     def test_query_manager_time_bucket_for_invalid_interval(
         self, organization, water_level_manual, water_level_manual_other, water_level_automatic, water_discharge
     ):
-        query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
+        query_manager = TimeseriesQueryManager(HydrologicalMetric)
 
         with pytest.raises(ValueError, match="Invalid time bucket interval"):
             _ = query_manager.time_bucket("error", "avg")
@@ -267,15 +266,21 @@ class TestTimeseriesQueryManager:
     def test_query_manager_time_bucket_for_invalid_function(
         self, organization, water_level_manual, water_level_manual_other, water_level_automatic, water_discharge
     ):
-        query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
+        query_manager = TimeseriesQueryManager(HydrologicalMetric)
 
         with pytest.raises(ValueError, match="Invalid aggregation function"):
             _ = query_manager.time_bucket("1 day", "error")
 
     def test_query_manager_time_bucket_for_daily_count_interval(
-        self, organization, water_level_manual, water_level_manual_other, water_level_automatic, water_discharge
+        self,
+        organization,
+        water_level_manual,
+        water_level_manual_other,
+        water_level_automatic,
+        water_discharge,
+        water_level_manual_other_organization,
     ):
-        query_manager = TimeseriesQueryManager(HydrologicalMetric, organization_uuid=organization.uuid)
+        query_manager = TimeseriesQueryManager(HydrologicalMetric)
 
         results = query_manager.time_bucket("1 day", "count")
 
@@ -287,7 +292,7 @@ class TestTimeseriesQueryManager:
                     water_discharge.timestamp.day,
                     tzinfo=dt.timezone.utc,
                 ),
-                "value": 1,
+                "value": 2,
             },
             {
                 "bucket": dt.datetime(
@@ -323,7 +328,6 @@ class TestTimeseriesQueryManager:
     ):
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
-            organization_uuid=organization.uuid,
             filter_dict={"timestamp__gte": (dt.datetime.utcnow() - dt.timedelta(hours=36)).isoformat()},
         )
 
@@ -361,7 +365,6 @@ class TestTimeseriesQueryManager:
     ):
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
-            organization_uuid=organization.uuid,
             filter_dict={"station__station_code__in": [automatic_hydro_station.station_code]},
         )
 
