@@ -25,8 +25,10 @@ from sapphire_backend.metrics.choices import (
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
     MetricUnit,
+    NormType
 )
-from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
+from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric, DischargeNorm
+from sapphire_backend.metrics.utils.helpers import calculate_decade_number
 from sapphire_backend.organizations.models import Basin, Organization, Region
 from sapphire_backend.stations.models import (
     HydrologicalStation,
@@ -190,7 +192,7 @@ def get_metric_name_unit_type(variable: Variable):
     elif var_code == Variables.temperature_month_average.value:  # 0017
         metric_name = MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE
         metric_unit = MetricUnit.TEMPERATURE
-        measurement_type = MeteorologicalMeasurementType.MANUAL
+        measurement_type = MeteorologicalMeasurementType.IMPORTED
     elif var_code == Variables.precipitation_decade_average.value:  # 0018
         metric_name = MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE
         metric_unit = MetricUnit.PRECIPITATION
@@ -198,7 +200,7 @@ def get_metric_name_unit_type(variable: Variable):
     elif var_code == Variables.precipitation_month_average.value:  # 0019
         metric_name = MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE
         metric_unit = MetricUnit.PRECIPITATION
-        measurement_type = MeteorologicalMeasurementType.MANUAL
+        measurement_type = MeteorologicalMeasurementType.IMPORTED
     elif var_code == Variables.discharge_decade_average_historical.value:  # 0020
         metric_name = HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE_HISTORICAL
         metric_unit = MetricUnit.WATER_DISCHARGE
@@ -352,6 +354,24 @@ def refresh_water_level_daily_average(start_date: str, end_date: str):
     logging.info('Done.')
 
 
+def parse_ice_phenomena(data_row):
+    try:
+        ice_phenomena_values = data_row.ice_phenomena_string.split('|')
+    except AttributeError:
+        # the ice phenomena is not stored inside the ice_phenomena_string, but inside the data value
+        integer_part, fractional_part = str(data_row.data_value).split(".")
+        code = int(integer_part)
+        if fractional_part == '0':
+            intensity = 0
+        elif len(fractional_part) == 1:
+            intensity = int(fractional_part) * 10
+        else:
+            intensity = int(fractional_part.rstrip('0'))
+        ice_phenomena_values = [f"{code}:{intensity}"]
+
+    return ice_phenomena_values
+
+
 def migrate_hydro_metrics(old_session, limiter, target_station):
     global nan_count
     if target_station == "":
@@ -362,26 +382,70 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
     for old in tqdm(hydro_stations, desc="Hydro stations", position=0):
         hydro_station = HydrologicalStation.objects.get(station_code=old.site_code_repr,
                                                         station_type=HydrologicalStation.StationType.MANUAL)
+        station_decades = {}
         for data_row in tqdm(
             old.data_values[-limiter:], desc="Hydro metrics", position=1, leave=False
         ):
+
             smart_datetime = SmartDatetime(data_row.local_date_time, hydro_station, tz_included=False)
+            timestamp_local = smart_datetime.local
+
+            if data_row.variable.variable_code in [Variables.air_temperature_observation.value,
+                                                   Variables.water_temperature_observation.value]:
+                # ensure that for ATO and WTO from section 1 group 4 the timestamp is set to morning because the old database
+                # was very inconsistent about this
+                timestamp_local = smart_datetime.morning_local
 
             # exceptionally set the maximum discharge on the hydro station level, exclude from metrics
             data_value = data_row.data_value
 
-            if data_row.variable.variable_code == Variables.discharge_maximum_recommendation:
+            if data_row.variable.variable_code == Variables.discharge_maximum_recommendation.value:
                 hydro_station.discharge_level_alarm = data_value
                 hydro_station.save()
                 continue
 
-            metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
+            if data_row.variable.variable_code == Variables.discharge_decade_average_historical.value:
+                if data_value == -9999:
+                    # empty value for some reason
+                    continue
 
-            if data_row.variable.variable_code == Variables.ice_phenomena_observation:
-                # TODO handle ice phenomena, currently skip
+                decade = calculate_decade_number(smart_datetime.local)
+                if decade not in station_decades:
+                    station_decades[decade] = [data_value]
+                else:
+                    station_decades[decade].append(data_value)
+
+                # right now we're only preparing the data, we need to go over all the data values
+                # to store every relevant value after which we average them and store to the DischargeNorm model
                 continue
 
-            if data_row.variable.variable_code == Variables.gauge_height_average_daily_estimation:
+            metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
+
+            if data_row.variable.variable_code == Variables.ice_phenomena_observation.value:
+                ice_phenomena_values = parse_ice_phenomena(data_row)
+                for code_intensity_pair in ice_phenomena_values:
+                    values = code_intensity_pair.split(':')
+                    code = int(values[0])
+                    intensity = None if values[1] == 'nan' else int(float(values[1]))
+                    ice_phenomena_metric = HydrologicalMetric(
+                        timestamp_local=timestamp_local,
+                        min_value=None,
+                        avg_value=intensity or -1,
+                        max_value=None,
+                        unit=metric_unit,
+                        metric_name=metric_name,
+                        value_type=measurement_type,
+                        station=hydro_station,
+                        sensor_identifier="",
+                        sensor_type="",
+                        value_code=code
+                    )
+                    ice_phenomena_metric.save(refresh_view=False)
+
+                # metrics saved so we continue to the next one
+                continue
+
+            if data_row.variable.variable_code == Variables.gauge_height_average_daily_estimation.value:
                 # this one is not used so it can be skipped
                 continue
 
@@ -390,7 +454,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                 continue  # TODO skip NaN data value rows
 
             new_hydro_metric = HydrologicalMetric(
-                timestamp_local=smart_datetime.local,
+                timestamp_local=timestamp_local,
                 min_value=None,
                 avg_value=data_value,
                 max_value=None,
@@ -402,6 +466,21 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                 sensor_type="",
             )
             new_hydro_metric.save(refresh_view=False)
+
+        for key, value in station_decades.items():
+            if len(value) > 0:
+                avg = sum(value) / len(value)
+                DischargeNorm.objects.filter(
+                    station=hydro_station,
+                    ordinal_number=key,
+                    norm_type=NormType.DECADAL
+                ).delete()
+                DischargeNorm.objects.create(
+                    station=hydro_station,
+                    ordinal_number=key,
+                    value=avg,
+                    norm_type=NormType.DECADAL
+                )
     refresh_water_level_daily_average('2015-01-01', '2030-01-01')
 
 
@@ -413,7 +492,8 @@ def migrate_discharge_models(old_session):
         if old.valid_from is None:
             # when valid_from is None then it is initial discharge model
             # 2000-01-01 is sufficient as the beginning date of the initial model
-            valid_from_local = SmartDatetime(datetime(2000, 1, 1, 0, 0, 0), hydro_station, tz_included=False).day_beginning_local
+            valid_from_local = SmartDatetime(datetime(2000, 1, 1, 0, 0, 0), hydro_station,
+                                             tz_included=False).day_beginning_local
         else:
             valid_from_local = SmartDatetime(old.valid_from, hydro_station, tz_included=False).day_beginning_local
 
@@ -436,6 +516,8 @@ def cleanup_all():
     Telegram.objects.all().delete()
     logging.info("Cleaning up meteo metrics")
     MeteorologicalMetric.objects.all().delete()
+    logging.info("Cleaning up discharge norms")
+    DischargeNorm.objects.all().delete()
     logging.info("Cleaning up hydro metrics")
     HydrologicalMetric.objects.all().delete()
     logging.info("Cleaning up hydro stations")
@@ -486,7 +568,7 @@ def migrate(skip_cleanup: bool, skip_structure: bool, target_station: str, limit
         logging.info(f"Will migrate only station {target_station} (--station)")
 
     # migrate_discharge_models(old_session)
-    # migrate_hydro_metrics(old_session, limiter, target_station)
+    migrate_hydro_metrics(old_session, limiter, target_station)
     migrate_meteo_metrics(old_session, limiter, target_station)
     old_session.close()
     print("Data migration completed successfully.")

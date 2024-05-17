@@ -172,7 +172,7 @@ def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dic
             max_value=None,
             unit=MetricUnit.PRECIPITATION,
             value_type=HydrologicalMeasurementType.MANUAL,
-            metric_name=HydrologicalMetricName.DAILY_PRECIPITATION,
+            metric_name=HydrologicalMetricName.PRECIPITATION_DAILY,
             station=hydro_station,
             sensor_identifier="",
             sensor_type="",

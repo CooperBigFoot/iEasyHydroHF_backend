@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 from django.db.models import Q
 from django.db.models.aggregates import Count
@@ -18,6 +19,8 @@ from .models import HydrologicalStation, MeteorologicalStation, Remark, Site, Vi
 from .schema import (
     HydrologicalStationFilterSchema,
     HydrologicalStationStatsSchema,
+    HydroStationForecastStatusInputSchema,
+    HydroStationForecastStatusOutputSchema,
     HydroStationInputSchema,
     HydroStationOutputDetailSchema,
     HydroStationUpdateSchema,
@@ -134,6 +137,61 @@ class HydroStationsAPIController:
     def delete_remark(self, request: HttpRequest, organization_uuid: str, remark_uuid: str):
         Remark.objects.filter(uuid=remark_uuid).delete()
         return 200, {"detail": _("Remark deleted successfully"), "code": "success"}
+
+
+@api_controller(
+    "stations/{organization_uuid}/forecast-status",
+    tags=["Forecast status"],
+    auth=JWTAuth(),
+    permissions=regular_permissions,
+)
+class ForecastStatusAPIController:
+    @route.post("bulk-toggle", response={201: list[HydroStationForecastStatusOutputSchema]})
+    def bulk_toggle_forecast_status(
+        self,
+        request: HttpRequest,
+        organization_uuid: str,
+        action: Query[Literal["on", "off"]],
+        station_uuids: list[str],
+    ):
+        status = action == "on"
+        stations = (
+            HydrologicalStation.objects.for_organization(organization_uuid).active().filter(uuid__in=station_uuids)
+        )
+        _ = stations.update(
+            daily_forecast=status,
+            pentad_forecast=status,
+            decadal_forecast=status,
+            monthly_forecast=status,
+            seasonal_forecast=status,
+        )
+        return 201, stations
+
+    @route.get("", response=list[HydroStationForecastStatusOutputSchema])
+    def get_hydrological_stations_forecast_status(self, request: HttpRequest, organization_uuid: str):
+        return HydrologicalStation.objects.for_organization(organization_uuid).active()
+
+    @route.get("{station_uuid}", response=HydroStationForecastStatusOutputSchema)
+    def get_single_hydrological_station_forecast_status(
+        self, request: HttpRequest, organization_uuid: str, station_uuid: str
+    ):
+        return HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
+
+    @route.post("{station_uuid}", response={201: HydroStationForecastStatusOutputSchema})
+    def set_hydrological_station_forecast_status(
+        self,
+        request: HttpRequest,
+        organization_uuid: str,
+        station_uuid: str,
+        forecast_data: HydroStationForecastStatusInputSchema,
+    ):
+        station = HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
+        for forecast, value in forecast_data.dict().items():
+            setattr(station, forecast, value)
+
+        station.save()
+
+        return 201, station
 
 
 @api_controller(

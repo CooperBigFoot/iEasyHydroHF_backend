@@ -18,6 +18,7 @@ from sapphire_backend.metrics.api import (
 from sapphire_backend.metrics.exceptions import DischargeNormParserException
 from sapphire_backend.organizations.api import BasinsAPIController, OrganizationsAPIController, RegionsAPIController
 from sapphire_backend.stations.api import (
+    ForecastStatusAPIController,
     HydroStationsAPIController,
     MeteoStationsAPIController,
     VirtualStationsAPIController,
@@ -38,6 +39,7 @@ api.register_controllers(AuthController)
 api.register_controllers(BasinsAPIController)
 api.register_controllers(DischargeNormsAPIController)
 api.register_controllers(HydroMetricsAPIController)
+api.register_controllers(ForecastStatusAPIController)
 api.register_controllers(MeteoMetricsAPIController)
 api.register_controllers(OrganizationsAPIController)
 api.register_controllers(RegionsAPIController)

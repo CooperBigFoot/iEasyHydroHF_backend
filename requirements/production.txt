@@ -4,10 +4,10 @@
 -r imomo_old.txt
 
 gunicorn==22.0.0  # https://github.com/benoitc/gunicorn
-psycopg==3.1.18  # https://github.com/psycopg/psycopg
+psycopg==3.1.19  # https://github.com/psycopg/psycopg
 Collectfast==2.2.0  # https://github.com/antonagestam/collectfast
 
 # Django
 # ------------------------------------------------------------------------------
-django-storages[boto3]==1.14.2  # https://github.com/jschneier/django-storages
+django-storages[boto3]==1.14.3  # https://github.com/jschneier/django-storages
 django-anymail[mailjet]==10.3  # https://github.com/anymail/django-anymail

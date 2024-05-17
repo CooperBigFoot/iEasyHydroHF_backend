@@ -12,9 +12,8 @@ class Command(BaseCommand):
         parser.add_argument('--limiter', type=int, default=0, help='Set limiter value')
         parser.add_argument('--station', type=str, default="", help='Specify which station code to migrate only')
 
-
     def handle(self, **options):
-        skip_structure= options["skip_structure"]
+        skip_structure = options["skip_structure"]
         skip_cleanup = options["skip_cleanup"]
         limiter = options["limiter"]
         target_station = options["station"]
