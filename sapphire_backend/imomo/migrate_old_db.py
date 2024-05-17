@@ -567,7 +567,7 @@ def migrate(skip_cleanup: bool, skip_structure: bool, target_station: str, limit
     if target_station != "":
         logging.info(f"Will migrate only station {target_station} (--station)")
 
-    # migrate_discharge_models(old_session)
+    migrate_discharge_models(old_session)
     migrate_hydro_metrics(old_session, limiter, target_station)
     migrate_meteo_metrics(old_session, limiter, target_station)
     old_session.close()
