@@ -1,9 +1,8 @@
 import datetime as dt
-from zoneinfo import ZoneInfo
 
 import pytest
 
-from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, MetricUnit
+from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
 from sapphire_backend.metrics.timeseries.query import TimeseriesQueryManager
 

@@ -3,8 +3,6 @@ from typing import Literal
 
 from ninja import FilterSchema, Schema
 
-from sapphire_backend.utils.datetime_helper import SmartDatetime
-
 
 class DischargeModelBaseSchema(Schema):
     name: str

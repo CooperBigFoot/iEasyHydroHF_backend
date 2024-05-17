@@ -1,16 +1,18 @@
 from datetime import datetime
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from django.utils.translation import gettext_lazy as _
 from ninja import Query
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
+
+from ..stations.models import HydrologicalStation
 from .models import DischargeModel
 from .query import EstimationsViewQueryManager
 from .schema import (
@@ -22,7 +24,6 @@ from .schema import (
     OrderQueryParamSchema,
 )
 from .utils import least_squares_fit
-from ..stations.models import HydrologicalStation
 
 
 @api_controller("estimations", tags=["Discharge Models"], auth=JWTAuth(), permissions=regular_permissions)
@@ -33,8 +34,8 @@ class DischargeModelsAPIController:
             queryset = DischargeModel.objects.filter(station__uuid=station_uuid)
 
             if year is not None:
-                start_of_year_local = datetime(year, 1, 1, tzinfo=ZoneInfo('UTC'))
-                end_of_year_local = datetime(year, 12, 31, 23, 59, 59, tzinfo=ZoneInfo('UTC'))
+                start_of_year_local = datetime(year, 1, 1, tzinfo=ZoneInfo("UTC"))
+                end_of_year_local = datetime(year, 12, 31, 23, 59, 59, tzinfo=ZoneInfo("UTC"))
                 queryset = queryset.filter(valid_from_local__range=(start_of_year_local, end_of_year_local))
 
             queryset = queryset.order_by("-valid_from_local")
@@ -52,9 +53,9 @@ class DischargeModelsAPIController:
         fit_params = least_squares_fit(input_data.points)
 
         hydro_station = HydrologicalStation.objects.get(uuid=station_uuid)
-        valid_from_local = datetime.fromisoformat(input_data.valid_from_local).replace(hour=0, minute=0, second=0,
-                                                                                       microsecond=0,
-                                                                                       tzinfo=ZoneInfo('UTC'))
+        valid_from_local = datetime.fromisoformat(input_data.valid_from_local).replace(
+            hour=0, minute=0, second=0, microsecond=0, tzinfo=ZoneInfo("UTC")
+        )
 
         DischargeModel.objects.filter(station__uuid=station_uuid, valid_from_local=valid_from_local).delete()
 
@@ -78,9 +79,9 @@ class DischargeModelsAPIController:
         param_b = float(old_model.param_b)
         param_c = float(old_model.param_c)
         hydro_station = HydrologicalStation.objects.get(uuid=station_uuid)
-        valid_from_local = datetime.fromisoformat(input_data.valid_from_local).replace(hour=0, minute=0, second=0,
-                                                                                       microsecond=0,
-                                                                                       tzinfo=ZoneInfo('UTC'))
+        valid_from_local = datetime.fromisoformat(input_data.valid_from_local).replace(
+            hour=0, minute=0, second=0, microsecond=0, tzinfo=ZoneInfo("UTC")
+        )
 
         DischargeModel.objects.filter(station__uuid=station_uuid, valid_from_local=valid_from_local).delete()
 

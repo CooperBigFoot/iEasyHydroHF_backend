@@ -1,14 +1,15 @@
 import datetime
-from zoneinfo import ZoneInfo
 
 import pytest
 from django.db import connection
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.metrics.choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
+    MeteorologicalMeasurementType,
     MeteorologicalMetricName,
-    MetricUnit, MeteorologicalMeasurementType,
+    MetricUnit,
 )
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
 
@@ -155,7 +156,7 @@ class TestMetricsModel:
 
     def test_hydro_metric_instantiate_with_timestamp_local(self, manual_hydro_station_kyrgyz):
         timestamp_morning_tz = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        timestamp_morning_local = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=ZoneInfo('UTC'))
+        timestamp_morning_local = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=ZoneInfo("UTC"))
 
         hydro_metric = HydrologicalMetric(
             timestamp_local=timestamp_morning_local,
@@ -171,7 +172,7 @@ class TestMetricsModel:
 
     def test_hydro_metric_instantiate_with_timestamp(self, manual_hydro_station_kyrgyz):
         timestamp_morning_tz = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        timestamp_morning_local = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=ZoneInfo('UTC'))
+        timestamp_morning_local = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=ZoneInfo("UTC"))
 
         hydro_metric = HydrologicalMetric(
             timestamp=timestamp_morning_tz,
@@ -187,7 +188,7 @@ class TestMetricsModel:
 
     def test_meteo_metric_instantiate_with_timestamp_local(self, manual_meteo_station_kyrgyz):
         timestamp_morning_tz = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=manual_meteo_station_kyrgyz.timezone)
-        timestamp_morning_local = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=ZoneInfo('UTC'))
+        timestamp_morning_local = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=ZoneInfo("UTC"))
 
         meteo_metric = MeteorologicalMetric(
             timestamp_local=timestamp_morning_local,
@@ -203,7 +204,7 @@ class TestMetricsModel:
 
     def test_meteo_metric_instantiate_with_timestamp(self, manual_meteo_station_kyrgyz):
         timestamp_morning_tz = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=manual_meteo_station_kyrgyz.timezone)
-        timestamp_morning_local = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=ZoneInfo('UTC'))
+        timestamp_morning_local = datetime.datetime(2020, 1, 1, 8, 0, 0, tzinfo=ZoneInfo("UTC"))
 
         meteo_metric = MeteorologicalMetric(
             timestamp=timestamp_morning_tz,

@@ -1,17 +1,20 @@
 from datetime import datetime, timedelta
+
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 
 
 class SmartDatetime:
-    def __init__(self, dt: [str | datetime], station: [HydrologicalStation | MeteorologicalStation], tz_included=False):
+    def __init__(
+        self, dt: [str | datetime], station: [HydrologicalStation | MeteorologicalStation], tz_included=False
+    ):
         self._local_timezone = station.timezone
         if isinstance(dt, str):
             if tz_included:
                 dt_tz = datetime.fromisoformat(dt)
                 if dt_tz.tzinfo is None:
-                    dt_tz = dt_tz.replace(tzinfo=ZoneInfo('UTC'))
+                    dt_tz = dt_tz.replace(tzinfo=ZoneInfo("UTC"))
                 self._dt_tz = dt_tz
             else:
                 self._dt_tz = datetime.fromisoformat(dt).replace(tzinfo=self._local_timezone)
@@ -19,7 +22,7 @@ class SmartDatetime:
             if tz_included:
                 dt_tz = dt
                 if dt.tzinfo is None:
-                    dt_tz = dt_tz.replace(tzinfo=ZoneInfo('UTC'))
+                    dt_tz = dt_tz.replace(tzinfo=ZoneInfo("UTC"))
                 self._dt_tz = dt_tz
             else:
                 self._dt_tz = dt.replace(tzinfo=self._local_timezone)
@@ -66,7 +69,7 @@ class SmartDatetime:
 
     @property
     def local(self):
-        return self.tz.astimezone(self.local_timezone).replace(tzinfo=ZoneInfo('UTC'))
+        return self.tz.astimezone(self.local_timezone).replace(tzinfo=ZoneInfo("UTC"))
 
     @property
     def day_beginning_local(self):

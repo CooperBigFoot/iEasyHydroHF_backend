@@ -31,24 +31,36 @@ class Command(BaseCommand):
 
         for username in super_admins:
             User.objects.filter(username=username, organization=kgz_org).delete()
-            new_user = User(username=username, email='testing@testing.abc', organization=kgz_org,
-                            user_role=User.UserRoles.SUPER_ADMIN)
+            new_user = User(
+                username=username,
+                email="testing@testing.abc",
+                organization=kgz_org,
+                user_role=User.UserRoles.SUPER_ADMIN,
+            )
             new_user.set_password(testuser_password)
             new_user.save()
             logging.info(f"Super admin {username} created")
 
         for username in organization_admins:
             User.objects.filter(username=username, organization=kgz_org).delete()
-            new_user = User(username=username, email='testing@testing.abc', organization=kgz_org,
-                            user_role=User.UserRoles.ORGANIZATION_ADMIN)
+            new_user = User(
+                username=username,
+                email="testing@testing.abc",
+                organization=kgz_org,
+                user_role=User.UserRoles.ORGANIZATION_ADMIN,
+            )
             new_user.set_password(testuser_password)
             new_user.save()
             logging.info(f"Organization admin {username} created")
 
         for username in regular_users:
             User.objects.filter(username=username, organization=kgz_org).delete()
-            new_user = User(username=username, email='testing@testing.abc', organization=kgz_org,
-                            user_role=User.UserRoles.REGULAR_USER)
+            new_user = User(
+                username=username,
+                email="testing@testing.abc",
+                organization=kgz_org,
+                user_role=User.UserRoles.REGULAR_USER,
+            )
             new_user.set_password(testuser_password)
             new_user.save()
             logging.info(f"Regular user {username} created")

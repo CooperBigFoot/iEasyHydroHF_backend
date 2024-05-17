@@ -1,12 +1,12 @@
-from zoneinfo import ZoneInfo
-
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, ForecastToggleMixin, UUIDMixin
+
 from .managers import HydroStationQuerySet, MeteoStationQuerySet, VirtualStationQuerySet
 from .mixins import LocationMixin
 
@@ -27,6 +27,7 @@ class Site(UUIDMixin, LocationMixin, models.Model):
 
 def get_timezone_from_site(site: Site) -> ZoneInfo:
     return site.timezone or site.organization.timezone or ZoneInfo(settings.TIME_ZONE)
+
 
 class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
     class StationType(models.TextChoices):

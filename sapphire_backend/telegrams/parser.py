@@ -347,9 +347,7 @@ class KN15TelegramParser(BaseTelegramParser):
                     parsed_date = dt(current_year - 1, 12, 31, hour, tzinfo=site_timezone)
                 else:
                     last_day_prev_month = (dt(current_year, current_month, 1) - timedelta(days=1)).day
-                    parsed_date = dt(
-                        current_year, current_month - 1, last_day_prev_month, hour, tzinfo=site_timezone
-                    )
+                    parsed_date = dt(current_year, current_month - 1, last_day_prev_month, hour, tzinfo=site_timezone)
 
             # if parsed_date is in the future, move it to the previous month
             if parsed_date > today:

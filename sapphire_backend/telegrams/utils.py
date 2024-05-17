@@ -58,7 +58,9 @@ def get_parsed_telegrams_data(
         try:
             decoded = parser.parse()
 
-            telegram_day_smart = SmartDatetime(decoded["section_zero"]["date"], parser.hydro_station, tz_included=False)
+            telegram_day_smart = SmartDatetime(
+                decoded["section_zero"]["date"], parser.hydro_station, tz_included=False
+            )
             if override_date is not None:
                 telegram_day_smart = SmartDatetime(override_date, parser.hydro_station, tz_included=False)
 
@@ -285,11 +287,14 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
 
             # water levels
             water_level_morning_old = getattr(
-                HydrologicalMetric.objects.filter(timestamp_local=smart_date.morning_local,
-                                                  metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
-                                                  station=hydro_station,
-                                                  value_type=HydrologicalMeasurementType.MANUAL).first(),
-                "avg_value", None,
+                HydrologicalMetric.objects.filter(
+                    timestamp_local=smart_date.morning_local,
+                    metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+                    station=hydro_station,
+                    value_type=HydrologicalMeasurementType.MANUAL,
+                ).first(),
+                "avg_value",
+                None,
             )
             result[station_code][date]["morning"] = NewOldMetrics(
                 water_level_new=None, water_level_old=None, discharge_new=None, discharge_old=None
@@ -335,8 +340,7 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
             discharge_morning_old_query_result = EstimationsViewQueryManager(
                 model="estimations_water_discharge_daily",
                 organization_uuid=hydro_station.site.organization.uuid,
-                filter_dict={"station_id": hydro_station.id,
-                             "timestamp_local": smart_date.morning_local},
+                filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.morning_local},
             ).execute_query()
 
             discharge_morning_old = None
@@ -349,8 +353,7 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
         discharge_evening_old_query_result = EstimationsViewQueryManager(
             model="estimations_water_discharge_daily",
             organization_uuid=hydro_station.site.organization.uuid,
-            filter_dict={"station_id": hydro_station.id,
-                         "timestamp_local": smart_date.evening_local},
+            filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.evening_local},
         ).execute_query()
 
         discharge_evening_old = None
@@ -363,8 +366,7 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
         discharge_average_old_query_result = EstimationsViewQueryManager(
             model="estimations_water_discharge_daily_average",
             organization_uuid=hydro_station.site.organization.uuid,
-            filter_dict={"station_id": hydro_station.id,
-                         "timestamp_local": smart_date.midday_local},
+            filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.midday_local},
         ).execute_query()
 
         discharge_average_old = None

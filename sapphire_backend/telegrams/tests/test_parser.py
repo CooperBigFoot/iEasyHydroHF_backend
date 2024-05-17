@@ -130,18 +130,24 @@ class TestKN15TelegramParserSectionZero:
             parser.parse()
 
     @patch("sapphire_backend.telegrams.parser.dt")
-    def test_parse_for_invalid_date_rollback_invalid_day(self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz):
+    def test_parse_for_invalid_date_rollback_invalid_day(
+        self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz
+    ):
         # April has 30 days
         mock_datetime.now.return_value = datetime.datetime(2024, 4, 30, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
         # 31081 means day 31 which is invalid for April
-        parser = KN15TelegramParser(f"{manual_hydro_station_kyrgyz.station_code} 31081 10417 20021 30410=", organization_kyrgyz.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 31081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
         decoded_values = parser.parse()
         assert decoded_values["section_zero"]["date"] == "2024-03-31T08:00:00+06:00"
 
     @patch("sapphire_backend.telegrams.parser.dt")
-    def test_parse_for_future_date_rollback_with_day_shift(self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz):
+    def test_parse_for_future_date_rollback_with_day_shift(
+        self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz
+    ):
         # May has 31 days
         mock_datetime.now.return_value = datetime.datetime(2024, 5, 30, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
@@ -149,19 +155,25 @@ class TestKN15TelegramParserSectionZero:
         # 31081 means day 31 which is a day in the future since the mocked today is the 30th,
         # so we assume the date should be in the previous month
         # and since April doesn't have 31 days, we shift the day for 1 as well
-        parser = KN15TelegramParser(f"{manual_hydro_station_kyrgyz.station_code} 31081 10417 20021 30410=", organization_kyrgyz.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 31081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
         decoded_values = parser.parse()
         assert decoded_values["section_zero"]["date"] == "2024-04-30T08:00:00+06:00"
 
     @patch("sapphire_backend.telegrams.parser.dt")
-    def test_parse_for_future_date_rollback_without_day_shift(self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz):
+    def test_parse_for_future_date_rollback_without_day_shift(
+        self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz
+    ):
         # April has 30 days
         mock_datetime.now.return_value = datetime.datetime(2024, 4, 20, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
         # 25081 means day 25 which is a day in the future since the mocked today is the 20th,
         # so we assume the date should be in the previous month
-        parser = KN15TelegramParser(f"{manual_hydro_station_kyrgyz.station_code} 25081 10417 20021 30410=", organization_kyrgyz.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 25081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
         decoded_values = parser.parse()
         assert decoded_values["section_zero"]["date"] == "2024-03-25T08:00:00+06:00"
 
@@ -170,7 +182,9 @@ class TestKN15TelegramParserSectionZero:
         mock_datetime.now.return_value = datetime.datetime(2024, 1, 20, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
-        parser = KN15TelegramParser(f"{manual_hydro_station_kyrgyz.station_code} 25081 10417 20021 30410=", organization_kyrgyz.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 25081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
 
         decoded_values = parser.parse()
         assert decoded_values["section_zero"]["date"] == "2023-12-25T08:00:00+06:00"
@@ -180,7 +194,9 @@ class TestKN15TelegramParserSectionZero:
         mock_datetime.now.return_value = datetime.datetime(2024, 3, 1, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
-        parser = KN15TelegramParser(f"{manual_hydro_station_kyrgyz.station_code} 30081 10417 20021 30410=", organization_kyrgyz.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 30081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
 
         decoded_values = parser.parse()
         assert decoded_values["section_zero"]["date"] == "2024-02-29T08:00:00+06:00"
@@ -190,7 +206,9 @@ class TestKN15TelegramParserSectionZero:
         mock_datetime.now.return_value = datetime.datetime(2023, 3, 1, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
-        parser = KN15TelegramParser(f"{manual_hydro_station_kyrgyz.station_code} 30081 10417 20021 30410=", organization_kyrgyz.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 30081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
 
         decoded_values = parser.parse()
         assert decoded_values["section_zero"]["date"] == "2023-02-28T08:00:00+06:00"
@@ -200,7 +218,9 @@ class TestKN15TelegramParserSectionZero:
         mock_datetime.now.return_value = datetime.datetime(2024, 4, 15, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
-        parser = KN15TelegramParser(f"{manual_hydro_station_kyrgyz.station_code} 14081 10417 20021 30410=", organization_kyrgyz.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 14081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
 
         decoded_values = parser.parse()
         assert decoded_values["section_zero"] == {

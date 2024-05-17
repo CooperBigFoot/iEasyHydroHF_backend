@@ -6,6 +6,8 @@ from django import db
 from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
 
+from ..stations.models import HydrologicalStation, MeteorologicalStation
+from ..utils.datetime_helper import SmartDatetime
 from .choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
@@ -15,12 +17,11 @@ from .choices import (
     NormType,
 )
 from .managers import DischargeNormQuerySet, HydrologicalMetricQuerySet, MeteorologicalMetricQuerySet
-from ..stations.models import HydrologicalStation, MeteorologicalStation
-from ..utils.datetime_helper import SmartDatetime
 
 
-def resolve_timestamp_local_tz_pair(timestamp_local: datetime, timestamp: datetime,
-                                    station: [HydrologicalStation | MeteorologicalStation]) -> (datetime, datetime):
+def resolve_timestamp_local_tz_pair(
+    timestamp_local: datetime, timestamp: datetime, station: [HydrologicalStation | MeteorologicalStation]
+) -> (datetime, datetime):
     if timestamp_local is None and timestamp is not None:
         timestamp_local = SmartDatetime(timestamp, station, tz_included=True).local
     if timestamp_local is not None and timestamp is None:
@@ -66,10 +67,10 @@ class HydrologicalMetric(models.Model):
         ordering = ["-timestamp_local"]
 
     def __init__(self, *args, **kwargs):
-        super(HydrologicalMetric, self).__init__(*args, **kwargs)
-        self.timestamp_local, self.timestamp = resolve_timestamp_local_tz_pair(timestamp_local=self.timestamp_local,
-                                                                               timestamp=self.timestamp,
-                                                                               station=self.station)
+        super().__init__(*args, **kwargs)
+        self.timestamp_local, self.timestamp = resolve_timestamp_local_tz_pair(
+            timestamp_local=self.timestamp_local, timestamp=self.timestamp, station=self.station
+        )
 
     def __str__(self):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp_local.strftime('%Y-%m-%d %H:%M:%S')}"
@@ -213,10 +214,10 @@ class MeteorologicalMetric(models.Model):
         ordering = ["-timestamp_local"]
 
     def __init__(self, *args, **kwargs):
-        super(MeteorologicalMetric, self).__init__(*args, **kwargs)
-        self.timestamp_local, self.timestamp = resolve_timestamp_local_tz_pair(timestamp_local=self.timestamp_local,
-                                                                               timestamp=self.timestamp,
-                                                                               station=self.station)
+        super().__init__(*args, **kwargs)
+        self.timestamp_local, self.timestamp = resolve_timestamp_local_tz_pair(
+            timestamp_local=self.timestamp_local, timestamp=self.timestamp, station=self.station
+        )
 
     def __str__(self):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp_local.strftime('%Y-%m-%d %H:%M:%S')}"

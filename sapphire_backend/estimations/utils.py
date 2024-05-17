@@ -31,4 +31,8 @@ def get_discharge_model_from_timestamp_local(station: HydrologicalStation, times
     """
     Return a corresponding discharge model object where its valid_from matches the metric's timestamp
     """
-    return DischargeModel.objects.filter(station=station, valid_from_local__lte=timestamp_local).order_by("-valid_from_local").first()
+    return (
+        DischargeModel.objects.filter(station=station, valid_from_local__lte=timestamp_local)
+        .order_by("-valid_from_local")
+        .first()
+    )
