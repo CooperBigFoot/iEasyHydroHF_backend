@@ -123,7 +123,7 @@ class TestHydroMetricsAPI:
     ):
         response = authenticated_regular_user_api_client.get(
             f"{self.endpoint.format(organization.uuid)}/metric-count",
-            {"timestamp__gte": (dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=50)).isoformat()},
+            {"timestamp_local__gte": (dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=50)).isoformat()},
         )
 
         assert response.json() == [
@@ -144,7 +144,7 @@ class TestHydroMetricsAPI:
         response = authenticated_regular_user_api_client.get(
             f"{self.endpoint.format(organization.uuid)}/metric-count",
             {
-                "timestamp__gte": (dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=50)).isoformat(),
+                "timestamp_local__gte": (dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=50)).isoformat(),
                 "total_only": True,
             },
         )
@@ -183,7 +183,7 @@ class TestHydroMetricsAPI:
             {
                 "interval": "1 day",
                 "agg_func": "COUNT",
-                "timestamp__gte": (dt.datetime.utcnow() - dt.timedelta(hours=50)).isoformat(),
+                "timestamp_local__gte": (dt.datetime.utcnow() - dt.timedelta(hours=50)).isoformat(),
             },
         )
 
