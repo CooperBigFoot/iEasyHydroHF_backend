@@ -16,11 +16,11 @@ from .utils.helpers import calculate_decade_date
 
 
 class BaseTimeseriesFilterSchema(FilterSchema):
-    timestamp: datetime = None
-    timestamp__gt: datetime = None
-    timestamp__gte: datetime = None
-    timestamp__lt: datetime = None
-    timestamp__lte: datetime = None
+    timestamp_local: datetime = None
+    timestamp_local__gt: datetime = None
+    timestamp_local__gte: datetime = None
+    timestamp_local__lt: datetime = None
+    timestamp_local__lte: datetime = None
     station_id: int = None
     station_id__in: list[int] = None
     station__station_code: str = None
@@ -48,12 +48,12 @@ class MeteoMetricFilterSchema(BaseTimeseriesFilterSchema):
 
 class OrderQueryParamSchema(Schema):
     order_direction: Literal["ASC", "DESC"] = "DESC"
-    order_param: Literal["timestamp", "avg_value"] = "timestamp"
+    order_param: Literal["timestamp_local", "avg_value"] = "timestamp_local"
 
 
 class HydrologicalMetricOutputSchema(Schema):
     avg_value: float
-    timestamp: datetime
+    timestamp_local: datetime
     metric_name: HydrologicalMetricName
     value_type: str
     sensor_identifier: str
@@ -62,7 +62,7 @@ class HydrologicalMetricOutputSchema(Schema):
 
 class MeteorologicalMetricOutputSchema(Schema):
     value: float
-    timestamp: datetime
+    timestamp_local: datetime
     metric_name: MeteorologicalMetricName
     station_id: int
 
@@ -95,14 +95,14 @@ class DischargeNormTypeFiltersSchema(FilterSchema):
 
 
 class DischargeNormOutputSchema(ModelSchema):
-    timestamp: datetime
+    timestamp_local: datetime
 
     class Meta:
         model = DischargeNorm
         fields = ["ordinal_number", "value"]
 
     @staticmethod
-    def resolve_timestamp(obj):
+    def resolve_timestamp_local(obj):
         if obj.norm_type == NormType.MONTHLY:
             return datetime(datetime.utcnow().year, obj.ordinal_number, 1, 12, tzinfo=timezone.utc)
         else:

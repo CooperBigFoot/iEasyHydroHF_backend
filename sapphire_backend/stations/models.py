@@ -1,7 +1,9 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, ForecastToggleMixin, UUIDMixin
 
@@ -21,6 +23,10 @@ class Site(UUIDMixin, LocationMixin, models.Model):
 
     def __str__(self):
         return str(self.uuid)
+
+
+def get_timezone_from_site(site: Site) -> ZoneInfo:
+    return site.timezone or site.organization.timezone or ZoneInfo(settings.TIME_ZONE)
 
 
 class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
@@ -69,6 +75,10 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
     def __str__(self):
         return self.name
 
+    @property
+    def timezone(self):
+        return get_timezone_from_site(self.site)
+
 
 class MeteorologicalStation(UUIDMixin, models.Model):
     name = models.CharField(verbose_name=_("Station name"), blank=False, max_length=150)
@@ -95,6 +105,10 @@ class MeteorologicalStation(UUIDMixin, models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def timezone(self):
+        return get_timezone_from_site(self.site)
 
 
 class Remark(UUIDMixin, CreateLastModifiedDateMixin, models.Model):

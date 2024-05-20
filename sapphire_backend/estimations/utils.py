@@ -27,8 +27,12 @@ def least_squares_fit(points: list[DischargeModelPointsPair]) -> dict[str, float
     }
 
 
-def get_discharge_model_from_timestamp(station: HydrologicalStation, timestamp: datetime):
+def get_discharge_model_from_timestamp_local(station: HydrologicalStation, timestamp_local: datetime):
     """
     Return a corresponding discharge model object where its valid_from matches the metric's timestamp
     """
-    return DischargeModel.objects.filter(station=station, valid_from__lte=timestamp).order_by("-valid_from").first()
+    return (
+        DischargeModel.objects.filter(station=station, valid_from_local__lte=timestamp_local)
+        .order_by("-valid_from_local")
+        .first()
+    )

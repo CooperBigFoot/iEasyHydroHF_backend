@@ -130,18 +130,24 @@ class TestKN15TelegramParserSectionZero:
             parser.parse()
 
     @patch("sapphire_backend.telegrams.parser.dt")
-    def test_parse_for_invalid_date_rollback_invalid_day(self, mock_datetime, organization, manual_hydro_station):
+    def test_parse_for_invalid_date_rollback_invalid_day(
+        self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz
+    ):
         # April has 30 days
         mock_datetime.now.return_value = datetime.datetime(2024, 4, 30, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
         # 31081 means day 31 which is invalid for April
-        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 31081 10417 20021 30410=", organization.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 31081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
         decoded_values = parser.parse()
-        assert decoded_values["section_zero"]["date"] == "2024-03-31T08:00:00+00:00"
+        assert decoded_values["section_zero"]["date"] == "2024-03-31T08:00:00+06:00"
 
     @patch("sapphire_backend.telegrams.parser.dt")
-    def test_parse_for_future_date_rollback_with_day_shift(self, mock_datetime, organization, manual_hydro_station):
+    def test_parse_for_future_date_rollback_with_day_shift(
+        self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz
+    ):
         # May has 31 days
         mock_datetime.now.return_value = datetime.datetime(2024, 5, 30, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
@@ -149,64 +155,78 @@ class TestKN15TelegramParserSectionZero:
         # 31081 means day 31 which is a day in the future since the mocked today is the 30th,
         # so we assume the date should be in the previous month
         # and since April doesn't have 31 days, we shift the day for 1 as well
-        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 31081 10417 20021 30410=", organization.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 31081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
         decoded_values = parser.parse()
-        assert decoded_values["section_zero"]["date"] == "2024-04-30T08:00:00+00:00"
+        assert decoded_values["section_zero"]["date"] == "2024-04-30T08:00:00+06:00"
 
     @patch("sapphire_backend.telegrams.parser.dt")
-    def test_parse_for_future_date_rollback_without_day_shift(self, mock_datetime, organization, manual_hydro_station):
+    def test_parse_for_future_date_rollback_without_day_shift(
+        self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz
+    ):
         # April has 30 days
         mock_datetime.now.return_value = datetime.datetime(2024, 4, 20, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
         # 25081 means day 25 which is a day in the future since the mocked today is the 20th,
         # so we assume the date should be in the previous month
-        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 25081 10417 20021 30410=", organization.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 25081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
         decoded_values = parser.parse()
-        assert decoded_values["section_zero"]["date"] == "2024-03-25T08:00:00+00:00"
+        assert decoded_values["section_zero"]["date"] == "2024-03-25T08:00:00+06:00"
 
     @patch("sapphire_backend.telegrams.parser.dt")
-    def test_parse_for_date_new_year_rollback(self, mock_datetime, organization, manual_hydro_station):
+    def test_parse_for_date_new_year_rollback(self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz):
         mock_datetime.now.return_value = datetime.datetime(2024, 1, 20, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
-        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 25081 10417 20021 30410=", organization.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 25081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
 
         decoded_values = parser.parse()
-        assert decoded_values["section_zero"]["date"] == "2023-12-25T08:00:00+00:00"
+        assert decoded_values["section_zero"]["date"] == "2023-12-25T08:00:00+06:00"
 
     @patch("sapphire_backend.telegrams.parser.dt")
-    def test_parse_for_date_leap_year_feb(self, mock_datetime, organization, manual_hydro_station):
+    def test_parse_for_date_leap_year_feb(self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz):
         mock_datetime.now.return_value = datetime.datetime(2024, 3, 1, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
-        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 30081 10417 20021 30410=", organization.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 30081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
 
         decoded_values = parser.parse()
-        assert decoded_values["section_zero"]["date"] == "2024-02-29T08:00:00+00:00"
+        assert decoded_values["section_zero"]["date"] == "2024-02-29T08:00:00+06:00"
 
     @patch("sapphire_backend.telegrams.parser.dt")
-    def test_parse_for_date_non_leap_year_feb(self, mock_datetime, organization, manual_hydro_station):
+    def test_parse_for_date_non_leap_year_feb(self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz):
         mock_datetime.now.return_value = datetime.datetime(2023, 3, 1, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
-        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 30081 10417 20021 30410=", organization.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 30081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
 
         decoded_values = parser.parse()
-        assert decoded_values["section_zero"]["date"] == "2023-02-28T08:00:00+00:00"
+        assert decoded_values["section_zero"]["date"] == "2023-02-28T08:00:00+06:00"
 
     @patch("sapphire_backend.telegrams.parser.dt")
-    def test_parse_full_output(self, mock_datetime, organization, manual_hydro_station):
+    def test_parse_full_output(self, mock_datetime, organization_kyrgyz, manual_hydro_station_kyrgyz):
         mock_datetime.now.return_value = datetime.datetime(2024, 4, 15, tzinfo=ZoneInfo("UTC"))
         mock_datetime.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
 
-        parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 14081 10417 20021 30410=", organization.uuid)
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station_kyrgyz.station_code} 14081 10417 20021 30410=", organization_kyrgyz.uuid
+        )
 
         decoded_values = parser.parse()
         assert decoded_values["section_zero"] == {
-            "station_code": manual_hydro_station.station_code,
-            "station_name": manual_hydro_station.name,
-            "date": "2024-04-14T08:00:00+00:00",
+            "station_code": manual_hydro_station_kyrgyz.station_code,
+            "station_name": manual_hydro_station_kyrgyz.name,
+            "date": "2024-04-14T08:00:00+06:00",
             "section_code": 1,
         }
 
@@ -485,10 +505,10 @@ class TestKN15TelegramParserSectionSix:
                 organization.uuid,
             )
 
-    def test_parse_with_only_mandatory_data(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_with_only_mandatory_data(self, datetime_mock, organization_kyrgyz, manual_hydro_station_kyrgyz):
         parser = KN15TelegramParser(
-            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 96604 10212 22126 51310=",
-            organization.uuid,
+            f"{manual_hydro_station_kyrgyz.station_code} 14082 10417 20021 30410 00000 96604 10212 22126 51310=",
+            organization_kyrgyz.uuid,
         )
 
         decoded_data = parser.parse()
@@ -498,14 +518,14 @@ class TestKN15TelegramParserSectionSix:
                 "discharge": 12.6,
                 "cross_section_area": None,
                 "maximum_depth": None,
-                "date": "2024-04-13T10:00:00+00:00",
+                "date": "2024-04-13T10:00:00+06:00",
             }
         ]
 
-    def test_parse_with_optional_data(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_with_optional_data(self, datetime_mock, organization_kyrgyz, manual_hydro_station_kyrgyz):
         parser = KN15TelegramParser(
-            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 96604 15212 21126 32133 40020 51310=",
-            organization.uuid,
+            f"{manual_hydro_station_kyrgyz.station_code} 14082 10417 20021 30410 00000 96604 15212 21126 32133 40020 51310=",
+            organization_kyrgyz.uuid,
         )
 
         decoded_data = parser.parse()
@@ -515,15 +535,15 @@ class TestKN15TelegramParserSectionSix:
                 "discharge": 1.26,
                 "cross_section_area": 13.3,
                 "maximum_depth": 20,
-                "date": "2024-04-13T10:00:00+00:00",
+                "date": "2024-04-13T10:00:00+06:00",
             }
         ]
 
-    def test_parse_with_multiple_966_sections(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_with_multiple_966_sections(self, datetime_mock, organization_kyrgyz, manual_hydro_station_kyrgyz):
         parser = KN15TelegramParser(
-            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 "
+            f"{manual_hydro_station_kyrgyz.station_code} 14082 10417 20021 30410 00000 "
             f"96604 10212 22126 51310 96604 10250 22130 32133 40040 51410=",
-            organization.uuid,
+            organization_kyrgyz.uuid,
         )
 
         decoded_data = parser.parse()
@@ -533,21 +553,21 @@ class TestKN15TelegramParserSectionSix:
                 "discharge": 12.6,
                 "cross_section_area": None,
                 "maximum_depth": None,
-                "date": "2024-04-13T10:00:00+00:00",
+                "date": "2024-04-13T10:00:00+06:00",
             },
             {
                 "water_level": 250,
                 "discharge": 13.0,
                 "cross_section_area": 13.3,
                 "maximum_depth": 40,
-                "date": "2024-04-14T10:00:00+00:00",
+                "date": "2024-04-14T10:00:00+06:00",
             },
         ]
 
-    def test_parse_with_previous_year_data(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_with_previous_year_data(self, datetime_mock, organization_kyrgyz, manual_hydro_station_kyrgyz):
         parser = KN15TelegramParser(
-            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 96604 10212 22126 51610=",
-            organization.uuid,
+            f"{manual_hydro_station_kyrgyz.station_code} 14082 10417 20021 30410 00000 96604 10212 22126 51610=",
+            organization_kyrgyz.uuid,
         )
 
         decoded_data = parser.parse()
@@ -557,14 +577,14 @@ class TestKN15TelegramParserSectionSix:
                 "discharge": 12.6,
                 "cross_section_area": None,
                 "maximum_depth": None,
-                "date": "2023-04-16T10:00:00+00:00",
+                "date": "2023-04-16T10:00:00+06:00",
             }
         ]
 
-    def test_parse_with_additional_sections(self, datetime_mock, organization, manual_hydro_station):
+    def test_parse_with_additional_sections(self, datetime_mock, organization_kyrgyz, manual_hydro_station_kyrgyz):
         parser = KN15TelegramParser(
-            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 96604 10212 22126 51410 61000=",
-            organization.uuid,
+            f"{manual_hydro_station_kyrgyz.station_code} 14082 10417 20021 30410 00000 96604 10212 22126 51410 61000=",
+            organization_kyrgyz.uuid,
         )
 
         decoded_data = parser.parse()
@@ -574,7 +594,7 @@ class TestKN15TelegramParserSectionSix:
                 "discharge": 12.6,
                 "cross_section_area": None,
                 "maximum_depth": None,
-                "date": "2024-04-14T10:00:00+00:00",
+                "date": "2024-04-14T10:00:00+06:00",
             }
         ]
 
