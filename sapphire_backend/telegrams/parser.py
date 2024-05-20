@@ -2,8 +2,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime as dt
 from datetime import timedelta
 from typing import Any
-
-from django.conf import settings
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
@@ -559,8 +557,8 @@ class KN15TelegramParser(BaseTelegramParser):
         hour = int(input_token[3:])
 
         # Calculate the date
-        today = dt.now(tz=ZoneInfo(settings.TIME_ZONE))
-        date = dt(today.year, month, day_in_month, hour, tzinfo=ZoneInfo(settings.TIME_ZONE))
+        today = dt.now(tz=self.site_timezone)
+        date = dt(today.year, month, day_in_month, hour, tzinfo=self.site_timezone)
         if date > today:
             date = date.replace(year=date.year - 1)
 
