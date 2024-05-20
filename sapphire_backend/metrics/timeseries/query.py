@@ -93,21 +93,6 @@ class TimeseriesQueryManager:
         if self.filter_dict is not None:
             for field, value in self.filter_dict.items():
                 match field:
-                    case "timestamp":
-                        where_clauses.append("timestamp = %s")
-                        params.append(value)
-                    case "timestamp__gt":
-                        where_clauses.append("timestamp > %s")
-                        params.append(value)
-                    case "timestamp__gte":
-                        where_clauses.append("timestamp >= %s")
-                        params.append(value)
-                    case "timestamp__lt":
-                        where_clauses.append("timestamp < %s")
-                        params.append(value)
-                    case "timestamp__lte":
-                        where_clauses.append("timestamp <= %s")
-                        params.append(value)
                     case "timestamp_local":
                         where_clauses.append("timestamp_local = %s")
                         params.append(value)

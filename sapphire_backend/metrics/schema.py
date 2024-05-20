@@ -16,11 +16,6 @@ from .utils.helpers import calculate_decade_date
 
 
 class BaseTimeseriesFilterSchema(FilterSchema):
-    timestamp: datetime = None
-    timestamp__gt: datetime = None
-    timestamp__gte: datetime = None
-    timestamp__lt: datetime = None
-    timestamp__lte: datetime = None
     timestamp_local: datetime = None
     timestamp_local__gt: datetime = None
     timestamp_local__gte: datetime = None
