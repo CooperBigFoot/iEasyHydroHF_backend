@@ -7,7 +7,7 @@ from sapphire_backend.organizations.models import Organization
 from sapphire_backend.users.models import User
 
 super_admins = ["andrey", "bea", "tobias", "davor.skalec"]
-organization_admins = ["elvira"]
+organization_admins = ["Elvira"]
 regular_users = ["Aidai", "Aliya", "Begaim", "Janai", "Munara"]
 
 
