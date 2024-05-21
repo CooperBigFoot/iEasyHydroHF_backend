@@ -339,7 +339,6 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
             # discharges
             discharge_morning_old_query_result = EstimationsViewQueryManager(
                 model="estimations_water_discharge_daily",
-                organization_uuid=hydro_station.site.organization.uuid,
                 filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.morning_local},
             ).execute_query()
 
@@ -352,7 +351,6 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
 
         discharge_evening_old_query_result = EstimationsViewQueryManager(
             model="estimations_water_discharge_daily",
-            organization_uuid=hydro_station.site.organization.uuid,
             filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.evening_local},
         ).execute_query()
 
@@ -365,7 +363,6 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
 
         discharge_average_old_query_result = EstimationsViewQueryManager(
             model="estimations_water_discharge_daily_average",
-            organization_uuid=hydro_station.site.organization.uuid,
             filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.midday_local},
         ).execute_query()
 
@@ -462,11 +459,10 @@ def generate_daily_overview(parsed_data: dict):
             water_level_query_manager_result = (
                 TimeseriesQueryManager(
                     HydrologicalMetric,
-                    organization_uuid=hydro_station.site.organization.uuid,
                     filter_dict={
                         "timestamp_local": telegram_day_smart.previous_morning_local,
                         "metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY,
-                        "station": hydro_station,
+                        "station": hydro_station.id,
                         "value_type": HydrologicalMeasurementType.MANUAL,
                     },
                 )

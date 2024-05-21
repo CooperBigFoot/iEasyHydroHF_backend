@@ -28,3 +28,7 @@ def calculate_decade_number(date: datetime) -> int:
     ordinal_number = month_decrement * 3 + decade
 
     return ordinal_number
+
+
+def transform_daily_operational_data(data: list[dict[str, float | None]]) -> list:
+    pass

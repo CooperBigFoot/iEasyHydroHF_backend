@@ -58,6 +58,24 @@ class HydrologicalMetricOutputSchema(Schema):
     value_type: str
     sensor_identifier: str
     station_id: int
+    value_code: int | None
+
+
+class OperationalJournalDailyMeasurement(Schema):
+    time: str
+    WLD: float
+    trend: int | None = None
+    ATO: float | None = None
+    WTO: float | None = None
+    IPO: float | None = None
+    WDD: float | None = None
+    PD: float | None = None
+    value_code: int | None = None
+
+
+class OperationalJournalOutputSchema(Schema):
+    date: str
+    measurements: list[OperationalJournalDailyMeasurement]
 
 
 class MeteorologicalMetricOutputSchema(Schema):
