@@ -93,7 +93,7 @@ class TestHydroMetricsAPI:
         EXPECTED_OUTPUT = [
             {
                 "avg_value": water_level_manual_other.avg_value,
-                "timestamp": water_level_manual_other.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+                "timestamp_local": water_level_manual_other.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
                 "metric_name": water_level_manual_other.metric_name,
                 "value_type": water_level_manual_other.value_type,
                 "sensor_identifier": water_level_manual_other.sensor_identifier,
@@ -101,7 +101,7 @@ class TestHydroMetricsAPI:
             },
             {
                 "avg_value": water_level_manual.avg_value,
-                "timestamp": water_level_manual.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+                "timestamp_local": water_level_manual.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
                 "metric_name": water_level_manual.metric_name,
                 "value_type": water_level_manual.value_type,
                 "sensor_identifier": water_level_manual.sensor_identifier,
@@ -123,7 +123,7 @@ class TestHydroMetricsAPI:
     ):
         response = authenticated_regular_user_api_client.get(
             f"{self.endpoint.format(organization.uuid)}/metric-count",
-            {"timestamp__gte": (dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=50)).isoformat()},
+            {"timestamp_local__gte": (dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=50)).isoformat()},
         )
 
         assert response.json() == [
@@ -144,7 +144,7 @@ class TestHydroMetricsAPI:
         response = authenticated_regular_user_api_client.get(
             f"{self.endpoint.format(organization.uuid)}/metric-count",
             {
-                "timestamp__gte": (dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=50)).isoformat(),
+                "timestamp_local__gte": (dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=50)).isoformat(),
                 "total_only": True,
             },
         )
@@ -183,7 +183,7 @@ class TestHydroMetricsAPI:
             {
                 "interval": "1 day",
                 "agg_func": "COUNT",
-                "timestamp__gte": (dt.datetime.utcnow() - dt.timedelta(hours=50)).isoformat(),
+                "timestamp_local__gte": (dt.datetime.utcnow() - dt.timedelta(hours=50)).isoformat(),
             },
         )
 
@@ -393,18 +393,18 @@ class TestDischargeNormsAPI:
         )
 
         assert response.json() == [
-            {"timestamp": "2024-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.0"},
-            {"timestamp": "2024-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.0"},
-            {"timestamp": "2024-03-01T12:00:00Z", "ordinal_number": 3, "value": "3.0"},
-            {"timestamp": "2024-04-01T12:00:00Z", "ordinal_number": 4, "value": "4.0"},
-            {"timestamp": "2024-05-01T12:00:00Z", "ordinal_number": 5, "value": "5.0"},
-            {"timestamp": "2024-06-01T12:00:00Z", "ordinal_number": 6, "value": "6.0"},
-            {"timestamp": "2024-07-01T12:00:00Z", "ordinal_number": 7, "value": "7.0"},
-            {"timestamp": "2024-08-01T12:00:00Z", "ordinal_number": 8, "value": "8.0"},
-            {"timestamp": "2024-09-01T12:00:00Z", "ordinal_number": 9, "value": "9.0"},
-            {"timestamp": "2024-10-01T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
-            {"timestamp": "2024-11-01T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
-            {"timestamp": "2024-12-01T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
+            {"timestamp_local": "2024-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.0"},
+            {"timestamp_local": "2024-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.0"},
+            {"timestamp_local": "2024-03-01T12:00:00Z", "ordinal_number": 3, "value": "3.0"},
+            {"timestamp_local": "2024-04-01T12:00:00Z", "ordinal_number": 4, "value": "4.0"},
+            {"timestamp_local": "2024-05-01T12:00:00Z", "ordinal_number": 5, "value": "5.0"},
+            {"timestamp_local": "2024-06-01T12:00:00Z", "ordinal_number": 6, "value": "6.0"},
+            {"timestamp_local": "2024-07-01T12:00:00Z", "ordinal_number": 7, "value": "7.0"},
+            {"timestamp_local": "2024-08-01T12:00:00Z", "ordinal_number": 8, "value": "8.0"},
+            {"timestamp_local": "2024-09-01T12:00:00Z", "ordinal_number": 9, "value": "9.0"},
+            {"timestamp_local": "2024-10-01T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
+            {"timestamp_local": "2024-11-01T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
+            {"timestamp_local": "2024-12-01T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
         ]
 
     def test_upload_decadal_norm_partial_api_response(
@@ -416,18 +416,18 @@ class TestDischargeNormsAPI:
         )
 
         assert response.json()[:12] == [
-            {"timestamp": "2024-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.0"},
-            {"timestamp": "2024-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.0"},
-            {"timestamp": "2024-01-25T12:00:00Z", "ordinal_number": 3, "value": "3.0"},
-            {"timestamp": "2024-02-05T12:00:00Z", "ordinal_number": 4, "value": "4.0"},
-            {"timestamp": "2024-02-15T12:00:00Z", "ordinal_number": 5, "value": "5.0"},
-            {"timestamp": "2024-02-25T12:00:00Z", "ordinal_number": 6, "value": "6.0"},
-            {"timestamp": "2024-03-05T12:00:00Z", "ordinal_number": 7, "value": "7.0"},
-            {"timestamp": "2024-03-15T12:00:00Z", "ordinal_number": 8, "value": "8.0"},
-            {"timestamp": "2024-03-25T12:00:00Z", "ordinal_number": 9, "value": "9.0"},
-            {"timestamp": "2024-04-05T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
-            {"timestamp": "2024-04-15T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
-            {"timestamp": "2024-04-25T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
+            {"timestamp_local": "2024-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.0"},
+            {"timestamp_local": "2024-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.0"},
+            {"timestamp_local": "2024-01-25T12:00:00Z", "ordinal_number": 3, "value": "3.0"},
+            {"timestamp_local": "2024-02-05T12:00:00Z", "ordinal_number": 4, "value": "4.0"},
+            {"timestamp_local": "2024-02-15T12:00:00Z", "ordinal_number": 5, "value": "5.0"},
+            {"timestamp_local": "2024-02-25T12:00:00Z", "ordinal_number": 6, "value": "6.0"},
+            {"timestamp_local": "2024-03-05T12:00:00Z", "ordinal_number": 7, "value": "7.0"},
+            {"timestamp_local": "2024-03-15T12:00:00Z", "ordinal_number": 8, "value": "8.0"},
+            {"timestamp_local": "2024-03-25T12:00:00Z", "ordinal_number": 9, "value": "9.0"},
+            {"timestamp_local": "2024-04-05T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
+            {"timestamp_local": "2024-04-15T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
+            {"timestamp_local": "2024-04-25T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
         ]
 
     def test_upload_norm_overwrites_existing_records(
@@ -513,8 +513,8 @@ class TestDischargeNormsAPI:
             f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d"
         )
         assert response.json() == [
-            {"timestamp": "2024-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.00000"},
-            {"timestamp": "2024-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.00000"},
+            {"timestamp_local": "2024-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.00000"},
+            {"timestamp_local": "2024-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.00000"},
         ]
 
     def test_get_monthly_norm(
@@ -530,6 +530,6 @@ class TestDischargeNormsAPI:
             f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m"
         )
         assert response.json() == [
-            {"timestamp": "2024-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.00000"},
-            {"timestamp": "2024-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.00000"},
+            {"timestamp_local": "2024-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.00000"},
+            {"timestamp_local": "2024-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.00000"},
         ]

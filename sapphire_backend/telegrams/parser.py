@@ -3,7 +3,6 @@ from datetime import datetime as dt
 from datetime import timedelta
 from typing import Any
 
-from django.conf import settings
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
@@ -38,6 +37,10 @@ class BaseTelegramParser(ABC):
     @property
     def exists_meteo_station(self):
         return self.meteo_station is not None
+
+    @property
+    def site_timezone(self):
+        return getattr(self.hydro_station, "timezone", None) or getattr(self.meteo_station, "timezone", None)
 
     def handle_telegram_termination_character(self, termination_character: str = "="):
         return (
@@ -329,23 +332,21 @@ class KN15TelegramParser(BaseTelegramParser):
             except ValueError:
                 self.save_parsing_error(f"Invalid hour for token {date_token}", date_token[2:4], InvalidTokenException)
 
-        def determine_date(day_in_month: int, hour: int) -> dt:
-            today = dt.now(tz=ZoneInfo(settings.TIME_ZONE))
+        def determine_date(day_in_month: int, hour: int, site_timezone: ZoneInfo) -> dt:
+            today = dt.now(tz=site_timezone)
             current_year, current_month = today.year, today.month
 
             # try setting the day of the current month to day_in_month
             try:
-                parsed_date = dt(current_year, current_month, day_in_month, hour, tzinfo=ZoneInfo(settings.TIME_ZONE))
+                parsed_date = dt(current_year, current_month, day_in_month, hour, tzinfo=site_timezone)
             except ValueError:
                 # if day_in_month is invalid for the current month,
                 # set parsed_date to the last day of the previous month
                 if current_month == 1:  # if January, move to December of the previous year
-                    parsed_date = dt(current_year - 1, 12, 31, hour, tzinfo=ZoneInfo(settings.TIME_ZONE))
+                    parsed_date = dt(current_year - 1, 12, 31, hour, tzinfo=site_timezone)
                 else:
                     last_day_prev_month = (dt(current_year, current_month, 1) - timedelta(days=1)).day
-                    parsed_date = dt(
-                        current_year, current_month - 1, last_day_prev_month, hour, tzinfo=ZoneInfo(settings.TIME_ZONE)
-                    )
+                    parsed_date = dt(current_year, current_month - 1, last_day_prev_month, hour, tzinfo=site_timezone)
 
             # if parsed_date is in the future, move it to the previous month
             if parsed_date > today:
@@ -366,7 +367,7 @@ class KN15TelegramParser(BaseTelegramParser):
         input_token = self.get_next_token()
         parsed_day_in_month = extract_day_from_token(input_token)
         parsed_hour = extract_hour_from_token(input_token)
-        date = determine_date(parsed_day_in_month, parsed_hour)
+        date = determine_date(parsed_day_in_month, parsed_hour, site_timezone=self.site_timezone)
 
         section_code = int(input_token[4])
 
@@ -557,8 +558,8 @@ class KN15TelegramParser(BaseTelegramParser):
         hour = int(input_token[3:])
 
         # Calculate the date
-        today = dt.now(tz=ZoneInfo(settings.TIME_ZONE))
-        date = dt(today.year, month, day_in_month, hour, tzinfo=ZoneInfo(settings.TIME_ZONE))
+        today = dt.now(tz=self.site_timezone)
+        date = dt(today.year, month, day_in_month, hour, tzinfo=self.site_timezone)
         if date > today:
             date = date.replace(year=date.year - 1)
 
@@ -662,7 +663,7 @@ class KN15TelegramParser(BaseTelegramParser):
         temperature = extract_temperature(input_token)
 
         day_in_month = get_day_in_month_for_decade(decade)
-        timestamp = dt(year=dt.now().year, month=month, day=day_in_month, hour=12, tzinfo=ZoneInfo("UTC"))
+        timestamp = dt(year=dt.now().year, month=month, day=day_in_month, hour=12, tzinfo=self.site_timezone)
 
         # Skip additional tokens until section end
         while self.tokens and not self.tokens[0].startswith("9"):

@@ -1,7 +1,5 @@
 from datetime import datetime, timezone
 
-from ..schema import HydrologicalMetricOutputSchema
-
 
 def calculate_decade_date(ordinal_number: int):
     days_in_decade = [5, 15, 25]
@@ -30,12 +28,3 @@ def calculate_decade_number(date: datetime) -> int:
     ordinal_number = month_decrement * 3 + decade
 
     return ordinal_number
-
-
-class DischargeStationOperationalJournalDataTransformer:
-    def __init__(self, daily_hydro_data: HydrologicalMetricOutputSchema):
-        self.daily_hydro_data = daily_hydro_data
-        self.daily_data = self._transform_daily_data()
-
-    def _transform_daily_data(self) -> list:
-        return []

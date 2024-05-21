@@ -36,13 +36,13 @@ class TestTimeseriesQueryManager:
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
             filter_dict={
-                "timestamp__lte": dt_now.isoformat(),
+                "timestamp_local__lte": dt_now.isoformat(),
                 "metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY,
             },
         )
 
         assert query_manager.filter_dict == {
-            "timestamp__lte": dt_now.isoformat(),
+            "timestamp_local__lte": dt_now.isoformat(),
             "metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY,
         }
 
@@ -73,14 +73,14 @@ class TestTimeseriesQueryManager:
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
             filter_dict={
-                "timestamp__gte": "2020-01-01T00:00:00Z",
+                "timestamp_local__gte": "2020-01-01T00:00:00Z",
                 "station__site__organization": str(organization.uuid),
                 "station": manual_hydro_station.id,
             },
         )
 
         assert query_manager._construct_sql_filter_string() == (
-            "timestamp >= %s AND o.uuid = %s AND station_id = %s",
+            "timestamp_local >= %s AND o.uuid = %s AND station_id = %s",
             ["2020-01-01T00:00:00Z", str(organization.uuid), manual_hydro_station.id],
         )
 
@@ -88,7 +88,7 @@ class TestTimeseriesQueryManager:
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
             filter_dict={
-                "timestamp__gte": "2020-01-01T00:00:00Z",
+                "timestamp_local__gte": "2020-01-01T00:00:00Z",
                 "station__site__organization": str(organization.uuid),
                 "metric_name__in": [
                     HydrologicalMetricName.WATER_LEVEL_DAILY,
@@ -100,7 +100,7 @@ class TestTimeseriesQueryManager:
         )
 
         assert query_manager._construct_sql_filter_string() == (
-            "timestamp >= %s AND o.uuid = %s AND metric_name IN (%s, %s) "
+            "timestamp_local >= %s AND o.uuid = %s AND metric_name IN (%s, %s) "
             "AND st.station_code IN (%s, %s, %s) AND value_type IN (%s)",
             ["2020-01-01T00:00:00Z", str(organization.uuid), "WLD", "WDD", "1", "2", "3", "M"],
         )
@@ -328,7 +328,7 @@ class TestTimeseriesQueryManager:
     ):
         query_manager = TimeseriesQueryManager(
             HydrologicalMetric,
-            filter_dict={"timestamp__gte": (dt.datetime.utcnow() - dt.timedelta(hours=36)).isoformat()},
+            filter_dict={"timestamp_local__gte": (dt.datetime.utcnow() - dt.timedelta(hours=36)).isoformat()},
         )
 
         results = query_manager.time_bucket("1 day", "avg")

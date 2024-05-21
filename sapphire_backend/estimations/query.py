@@ -12,7 +12,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
         self,
         model: EstimationsViewSchema,
         filter_dict: dict[str, str | list[str]] = None,
-        order_param: str = "timestamp",
+        order_param: str = "timestamp_local",
         order_direction: str = "DESC",
     ):
         super().__init__(model, filter_dict, order_param, order_direction)
@@ -32,7 +32,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
         return model
 
     def _add_filter_fields(self):
-        return ["avg_value", "timestamp", "station_id"]
+        return ["avg_value", "timestamp_local", "station_id"]
 
     def _validate_filter_dict(self):
         if "station_id" not in self.filter_dict and "station_id__uuid" not in self.filter_dict:
@@ -54,20 +54,20 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
         if self.filter_dict is not None:
             for field, value in self.filter_dict.items():
                 match field:
-                    case "timestamp":
-                        where_clauses.append("timestamp = %s")
+                    case "timestamp_local":
+                        where_clauses.append("timestamp_local = %s")
                         params.append(value)
-                    case "timestamp__gt":
-                        where_clauses.append("timestamp > %s")
+                    case "timestamp_local__gt":
+                        where_clauses.append("timestamp_local > %s")
                         params.append(value)
-                    case "timestamp__gte":
-                        where_clauses.append("timestamp >= %s")
+                    case "timestamp_local__gte":
+                        where_clauses.append("timestamp_local >= %s")
                         params.append(value)
-                    case "timestamp__lt":
-                        where_clauses.append("timestamp < %s")
+                    case "timestamp_local__lt":
+                        where_clauses.append("timestamp_local < %s")
                         params.append(value)
-                    case "timestamp__lte":
-                        where_clauses.append("timestamp <= %s")
+                    case "timestamp_local__lte":
+                        where_clauses.append("timestamp_local <= %s")
                         params.append(value)
                     case "avg_value__gt":
                         where_clauses.append("avg_value > %s")
@@ -99,19 +99,16 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
 
         query = f"""
             SELECT
-            timestamp, avg_value
+            timestamp_local, avg_value
             FROM {self.model}
             WHERE {where_string}
-            ORDER BY timestamp {self.order_direction}
+            ORDER BY timestamp_local {self.order_direction}
             LIMIT %s
         """
 
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute(query, [*params, limit])
-                rows = cursor.fetchall()
-        finally:
-            connection.close()
+        with connection.cursor() as cursor:
+            cursor.execute(query, [*params, limit])
+            rows = cursor.fetchall()
 
-        results = [{"timestamp": row[0], "value": row[1]} for row in rows]
+        results = [{"timestamp_local": row[0], "value": row[1]} for row in rows]
         return results

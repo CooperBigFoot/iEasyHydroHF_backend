@@ -322,14 +322,12 @@ def migrate_meteo_metrics(old_session, limiter, target_station):
         for data_row in tqdm(
             old.data_values[-limiter:], desc="Meteo metrics", position=1, leave=False
         ):
-            naive_datetime = data_row.date_time_utc
-            aware_datetime_utc = timezone.make_aware(
-                naive_datetime, timezone=zoneinfo.ZoneInfo("UTC")
-            )
+            smart_datetime = SmartDatetime(data_row.local_date_time, meteo_station, tz_included=False)
+
             metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
 
             new_meteo_metric = MeteorologicalMetric(
-                timestamp=aware_datetime_utc,
+                timestamp_local=smart_datetime.local,
                 value=data_row.data_value,
                 value_type=measurement_type,
                 metric_name=metric_name,
@@ -382,15 +380,21 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
         old_data = old_session.query(OldSite).filter(OldSite.site_code == target_station)
     hydro_stations = [station for station in old_data if station.site_type == "discharge"]
     for old in tqdm(hydro_stations, desc="Hydro stations", position=0):
-        hydro_station = HydrologicalStation.objects.get(station_code=old.site_code_repr)
+        hydro_station = HydrologicalStation.objects.get(station_code=old.site_code_repr,
+                                                        station_type=HydrologicalStation.StationType.MANUAL)
         station_decades = {}
         for data_row in tqdm(
             old.data_values[-limiter:], desc="Hydro metrics", position=1, leave=False
         ):
-            naive_datetime = data_row.date_time_utc
-            aware_datetime_utc = timezone.make_aware(
-                naive_datetime, timezone=zoneinfo.ZoneInfo("UTC")
-            )
+
+            smart_datetime = SmartDatetime(data_row.local_date_time, hydro_station, tz_included=False)
+            timestamp_local = smart_datetime.local
+
+            if data_row.variable.variable_code in [Variables.air_temperature_observation.value,
+                                                   Variables.water_temperature_observation.value]:
+                # ensure that for ATO and WTO from section 1 group 4 the timestamp is set to morning because the old database
+                # was very inconsistent about this
+                timestamp_local = smart_datetime.morning_local
 
             # exceptionally set the maximum discharge on the hydro station level, exclude from metrics
             data_value = data_row.data_value
@@ -405,7 +409,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                     # empty value for some reason
                     continue
 
-                decade = calculate_decade_number(aware_datetime_utc)
+                decade = calculate_decade_number(smart_datetime.local)
                 if decade not in station_decades:
                     station_decades[decade] = [data_value]
                 else:
@@ -424,7 +428,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                     code = int(values[0])
                     intensity = None if values[1] == 'nan' else int(float(values[1]))
                     ice_phenomena_metric = HydrologicalMetric(
-                        timestamp=aware_datetime_utc,
+                        timestamp_local=timestamp_local,
                         min_value=None,
                         avg_value=intensity or -1,
                         max_value=None,
@@ -450,7 +454,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                 continue  # TODO skip NaN data value rows
 
             new_hydro_metric = HydrologicalMetric(
-                timestamp=aware_datetime_utc,
+                timestamp_local=timestamp_local,
                 min_value=None,
                 avg_value=data_value,
                 max_value=None,
@@ -466,6 +470,11 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
         for key, value in station_decades.items():
             if len(value) > 0:
                 avg = sum(value) / len(value)
+                DischargeNorm.objects.filter(
+                    station=hydro_station,
+                    ordinal_number=key,
+                    norm_type=NormType.DECADAL
+                ).delete()
                 DischargeNorm.objects.create(
                     station=hydro_station,
                     ordinal_number=key,
@@ -478,21 +487,23 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
 def migrate_discharge_models(old_session):
     old_discharge_models = old_session.query(OldDischargeModel).all()
     for old in tqdm(old_discharge_models, desc="Discharge models", position=0):
-        hydro_station = HydrologicalStation.objects.get(station_code=old.site.site_code_repr)
+        hydro_station = HydrologicalStation.objects.get(station_code=old.site.site_code_repr,
+                                                        station_type=HydrologicalStation.StationType.MANUAL)
         if old.valid_from is None:
             # when valid_from is None then it is initial discharge model
             # 2000-01-01 is sufficient as the beginning date of the initial model
-            valid_from = SmartDatetime(datetime(2000, 1, 1, 0, 0, 0), hydro_station, local=True).day_beginning_utc
+            valid_from_local = SmartDatetime(datetime(2000, 1, 1, 0, 0, 0), hydro_station,
+                                             tz_included=False).day_beginning_local
         else:
-            valid_from = SmartDatetime(old.valid_from, hydro_station, local=True).day_beginning_utc
+            valid_from_local = SmartDatetime(old.valid_from, hydro_station, tz_included=False).day_beginning_local
 
-        DischargeModel.objects.filter(station_id=hydro_station.id, valid_from=valid_from).delete()  # upsert
+        DischargeModel.objects.filter(station_id=hydro_station.id, valid_from_local=valid_from_local).delete()  # upsert
         new_discharge_model = DischargeModel(
             name=old.model_name,
             param_a=old.param_a,
             param_b=old.param_b,
             param_c=old.param_c,
-            valid_from=valid_from,
+            valid_from_local=valid_from_local,
             station=hydro_station
         )
         new_discharge_model.save()
@@ -505,6 +516,8 @@ def cleanup_all():
     Telegram.objects.all().delete()
     logging.info("Cleaning up meteo metrics")
     MeteorologicalMetric.objects.all().delete()
+    logging.info("Cleaning up discharge norms")
+    DischargeNorm.objects.all().delete()
     logging.info("Cleaning up hydro metrics")
     HydrologicalMetric.objects.all().delete()
     logging.info("Cleaning up hydro stations")

@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from ninja import Query
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
@@ -12,7 +13,6 @@ from sapphire_backend.utils.permissions import (
 )
 
 from ..stations.models import HydrologicalStation
-from ..utils.datetime_helper import SmartDatetime
 from .models import DischargeModel
 from .query import EstimationsViewQueryManager
 from .schema import (
@@ -31,15 +31,14 @@ class DischargeModelsAPIController:
     @route.get("discharge-models/{station_uuid}/list", response={200: list[DischargeModelBaseSchema], 404: Message})
     def get_discharge_models(self, station_uuid: str, year: int = Query(None, description="Filter by year")):
         try:
-            hydro_station = HydrologicalStation.objects.get(uuid=station_uuid)
             queryset = DischargeModel.objects.filter(station__uuid=station_uuid)
 
             if year is not None:
-                start_of_year_utc = SmartDatetime(datetime(year, 1, 1), hydro_station, local=True).day_beginning_utc
-                end_of_year_utc = SmartDatetime(datetime(year, 12, 31, 23, 59, 59), hydro_station, local=True).utc
-                queryset = queryset.filter(valid_from__range=(start_of_year_utc, end_of_year_utc))
+                start_of_year_local = datetime(year, 1, 1, tzinfo=ZoneInfo("UTC"))
+                end_of_year_local = datetime(year, 12, 31, 23, 59, 59, tzinfo=ZoneInfo("UTC"))
+                queryset = queryset.filter(valid_from_local__range=(start_of_year_local, end_of_year_local))
 
-            queryset = queryset.order_by("-valid_from")
+            queryset = queryset.order_by("-valid_from_local")
 
             return 200, queryset
         except DischargeModel.DoesNotExist:
@@ -54,18 +53,18 @@ class DischargeModelsAPIController:
         fit_params = least_squares_fit(input_data.points)
 
         hydro_station = HydrologicalStation.objects.get(uuid=station_uuid)
-        valid_from_utc = SmartDatetime(
-            datetime.fromisoformat(input_data.valid_from).replace(hour=0), hydro_station, local=True
-        ).day_beginning_utc
+        valid_from_local = datetime.fromisoformat(input_data.valid_from_local).replace(
+            hour=0, minute=0, second=0, microsecond=0, tzinfo=ZoneInfo("UTC")
+        )
 
-        DischargeModel.objects.filter(station__uuid=station_uuid, valid_from=valid_from_utc).delete()
+        DischargeModel.objects.filter(station__uuid=station_uuid, valid_from_local=valid_from_local).delete()
 
         new_model = DischargeModel(
             name=input_data.name,
             param_a=fit_params["param_a"],
             param_b=fit_params["param_b"],
             param_c=fit_params["param_c"],
-            valid_from=valid_from_utc,
+            valid_from_local=valid_from_local,
             station=hydro_station,
         )
         new_model.save()
@@ -80,16 +79,18 @@ class DischargeModelsAPIController:
         param_b = float(old_model.param_b)
         param_c = float(old_model.param_c)
         hydro_station = HydrologicalStation.objects.get(uuid=station_uuid)
-        valid_from_utc = SmartDatetime(input_data.valid_from, hydro_station, local=True).day_beginning_utc
+        valid_from_local = datetime.fromisoformat(input_data.valid_from_local).replace(
+            hour=0, minute=0, second=0, microsecond=0, tzinfo=ZoneInfo("UTC")
+        )
 
-        DischargeModel.objects.filter(station__uuid=station_uuid, valid_from=valid_from_utc).delete()
+        DischargeModel.objects.filter(station__uuid=station_uuid, valid_from_local=valid_from_local).delete()
 
         new_model = DischargeModel(
             name=input_data.name,
             param_a=param_a,
             param_b=param_b,
             param_c=param_c,
-            valid_from=valid_from_utc,
+            valid_from_local=valid_from_local,
             station=hydro_station,
         )
         new_model.save()
