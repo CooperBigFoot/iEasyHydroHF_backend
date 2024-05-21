@@ -393,7 +393,9 @@ def insert_template_with_new_metrics(data_template: dict, parsed_data: dict) -> 
             discharge_model_morning = get_discharge_model_from_timestamp_local(
                 station=hydro_station, timestamp_local=smart_datetime.morning_local
             )
-            discharge_morning_new = discharge_model_morning.estimate_discharge(wl_morning_new)
+            discharge_morning_new = None
+            if discharge_model_morning is not None:
+                discharge_morning_new = discharge_model_morning.estimate_discharge(wl_morning_new)
 
             result[station_code][telegram_day_date]["morning"].water_level_new = custom_ceil(wl_morning_new)
             result[station_code][telegram_day_date]["morning"].discharge_new = custom_round(discharge_morning_new, 1)
@@ -404,9 +406,11 @@ def insert_template_with_new_metrics(data_template: dict, parsed_data: dict) -> 
             discharge_model_previous_evening = get_discharge_model_from_timestamp_local(
                 station=hydro_station, timestamp_local=smart_datetime.previous_evening_local
             )
-            discharge_previous_evening_new = discharge_model_previous_evening.estimate_discharge(
-                wl_previous_evening_new
-            )
+            discharge_previous_evening_new = None
+            if discharge_model_previous_evening is not None:
+                discharge_previous_evening_new = discharge_model_previous_evening.estimate_discharge(
+                    wl_previous_evening_new
+                )
 
             result[station_code][previous_day_date]["evening"].water_level_new = custom_ceil(wl_previous_evening_new)
             result[station_code][previous_day_date]["evening"].discharge_new = custom_round(
@@ -439,12 +443,14 @@ def insert_new_averages(data_template: dict, parsed_data: dict) -> dict:
             )
             if None not in [wl_morning_new, wl_evening_new]:
                 wl_average_new = custom_ceil((wl_morning_new + wl_evening_new) / 2)
-                discharge_average_new = discharge_model.estimate_discharge(wl_average_new)
+                if discharge_model is not None:
+                    discharge_average_new = discharge_model.estimate_discharge(wl_average_new)
             elif wl_morning_new is None and wl_evening_new is None:
                 wl_average_new = None
             else:
                 wl_average_new = wl_morning_new or wl_evening_new
-                discharge_average_new = discharge_model.estimate_discharge(wl_average_new)
+                if discharge_model is not None:
+                    discharge_average_new = discharge_model.estimate_discharge(wl_average_new)
 
             result[station_code][date]["average"].water_level_new = wl_average_new
             result[station_code][date]["average"].discharge_new = custom_round(discharge_average_new, 1)
