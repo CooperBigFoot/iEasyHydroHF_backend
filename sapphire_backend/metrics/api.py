@@ -11,6 +11,7 @@ from ninja.files import UploadedFile
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
+from sapphire_backend.estimations.query import EstimationsViewQueryManager
 from sapphire_backend.stations.models import HydrologicalStation
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.mixins.schemas import Message
@@ -33,6 +34,7 @@ from .schema import (
     TimeBucketQueryParams,
 )
 from .timeseries.query import TimeseriesQueryManager
+from .utils.helpers import transform_daily_operational_data
 from .utils.parser import DecadalDischargeNormFileParser, MonthlyDischargeNormFileParser
 
 agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": Sum}
@@ -217,14 +219,15 @@ class DischargeNormsAPIController:
     permissions=regular_permissions,
 )
 class OperationalJournalAPIController:
-    @route.get("daily-data", response={200: list[HydrologicalMetricOutputSchema]})
+    @route.get("daily-data", response={200: dict})
     def get_daily_data(self, station_uuid: str, year: int, month: int):
         station = HydrologicalStation.objects.get(uuid=station_uuid)
         dt_start = SmartDatetime(dt(year, month, 1), station).day_beginning_local.isoformat()
         dt_end = SmartDatetime(dt(year, month + 1, 1), station).day_beginning_local.isoformat()
-        filter_dict = {
-            "timestamp__gte": dt_start,
-            "timestamp__lt": dt_end,
+        common_filter_dict = {"timestamp_local__gte": dt_start, "timestamp_local__lt": dt_end}
+        estimations_filter_dict = {"station_id": station.id, **common_filter_dict}
+        daily_data_filter_dict = {
+            **common_filter_dict,
             "station": station.id,
             "value_type__in": [HydrologicalMeasurementType.MANUAL.value],
             "metric_name__in": [
@@ -236,14 +239,35 @@ class OperationalJournalAPIController:
             ],
         }
 
+        operational_journal_data = []
+
         daily_hydro_metric_data = TimeseriesQueryManager(
             model=HydrologicalMetric,
-            order_param="timestamp",
+            order_param="timestamp_local",
             order_direction="ASC",
-            filter_dict=filter_dict,
+            filter_dict=daily_data_filter_dict,
         ).execute_query()
 
-        return daily_hydro_metric_data
+        operational_journal_data.extend(
+            daily_hydro_metric_data.values("timestamp_local", "avg_value", "metric_name", "value_code")
+        )
+
+        estimated_data_queries = [
+            ("estimations_water_discharge_daily", HydrologicalMetricName.WATER_DISCHARGE_DAILY),
+            ("estimations_water_level_daily_average", HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE),
+            ("estimations_water_discharge_daily_average", HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE),
+        ]
+
+        for view_name, metric_name in estimated_data_queries:
+            estimation_data = EstimationsViewQueryManager(
+                view_name, order_param="timestamp_local", order_direction="ASC", filter_dict=estimations_filter_dict
+            ).execute_query()
+
+            operational_journal_data.extend({**d, "metric_name": metric_name} for d in estimation_data)
+
+        prepared_data = transform_daily_operational_data(operational_journal_data)
+
+        return prepared_data
 
     @route.get("discharge-data")
     def get_discharge_data(self, station_uuid: str, year: int, month: int):

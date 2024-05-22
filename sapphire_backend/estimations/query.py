@@ -1,6 +1,7 @@
 from typing import Any
 
 from django.db import connection
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.metrics.timeseries.query import TimeseriesQueryManager
 
@@ -35,7 +36,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
         return ["avg_value", "timestamp_local", "station_id"]
 
     def _validate_filter_dict(self):
-        if "station_id" not in self.filter_dict and "station_id__uuid" not in self.filter_dict:
+        if "station_id" not in self.filter_dict:
             raise ValueError("EstimationsViewQueryManager requires filtering by station ID")
 
         for key in self.filter_dict.keys():
@@ -110,5 +111,5 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
             cursor.execute(query, [*params, limit])
             rows = cursor.fetchall()
 
-        results = [{"timestamp_local": row[0], "value": row[1]} for row in rows]
+        results = [{"timestamp_local": row[0].astimezone(ZoneInfo("UTC")), "avg_value": row[1]} for row in rows]
         return results
