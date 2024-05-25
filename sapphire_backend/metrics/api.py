@@ -32,11 +32,12 @@ from .schema import (
     MetricCountSchema,
     MetricTotalCountSchema,
     OperationalJournalDaySchema,
+    OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
     TimeBucketQueryParams,
 )
 from .timeseries.query import TimeseriesQueryManager
-from .utils.helpers import transform_daily_operational_data
+from .utils.helpers import transform_daily_operational_data, transform_discharge_operational_data
 from .utils.parser import DecadalDischargeNormFileParser, MonthlyDischargeNormFileParser
 
 agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": Sum}
@@ -273,9 +274,34 @@ class OperationalJournalAPIController:
 
         return prepared_data
 
-    @route.get("discharge-data")
+    @route.get("discharge-data", response=dict[str, OperationalJournalDischargeDataSchema])
     def get_discharge_data(self, station_uuid: str, year: int, month: int):
-        pass
+        station = HydrologicalStation.objects.get(uuid=station_uuid)
+        dt_start = SmartDatetime(dt(year, month, 1), station).day_beginning_local.isoformat()
+        dt_end = SmartDatetime(dt(year, month + 1, 1), station).day_beginning_local.isoformat()
+
+        discharge_data = TimeseriesQueryManager(
+            model=HydrologicalMetric,
+            order_param="timestamp_local",
+            order_direction="ASC",
+            filter_dict={
+                "timestamp_local__gte": dt_start,
+                "timestamp_local__lt": dt_end,
+                "station": station.id,
+                "value_type__in": [HydrologicalMeasurementType.MANUAL.value],
+                "metric_name__in": [
+                    HydrologicalMetricName.WATER_LEVEL_DECADAL,
+                    HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+                    HydrologicalMetricName.RIVER_CROSS_SECTION_AREA,
+                ],
+            },
+        ).execute_query()
+
+        prepared_data = transform_discharge_operational_data(
+            discharge_data.values("timestamp_local", "avg_value", "metric_name")
+        )
+
+        return prepared_data
 
     @route.get("decadal-data")
     def get_decadal_data(self, station_uuid: str, year: int, month: int):

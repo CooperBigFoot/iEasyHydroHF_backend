@@ -117,6 +117,12 @@ class OperationalJournalDaySchema(Schema):
     daily_data: OperationalJournalDailyDataSchema
 
 
+class OperationalJournalDischargeDataSchema(Schema):
+    WLDC: Decimal
+    WDD: Decimal
+    RCSA: Decimal | None = None
+
+
 class MeteorologicalMetricOutputSchema(Schema):
     value: float
     timestamp_local: datetime

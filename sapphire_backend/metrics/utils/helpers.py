@@ -136,3 +136,35 @@ def transform_daily_operational_data(
         results[date.strftime("%Y-%m-%d")] = day_dict
 
     return results
+
+
+def transform_discharge_operational_data(data: list[dict[str, float | None]]) -> dict[str, dict[str, float | int]]:
+    df = pd.DataFrame(data)
+    if df.empty:
+        return {}
+
+    df["timestamp_local"] = pd.to_datetime(df["timestamp_local"])
+    df["date"] = df["timestamp_local"].dt.date
+
+    results = {}
+
+    for date in df["date"].unique():
+        daily_data = df[df["date"] == date]
+        water_level = daily_data[daily_data["metric_name"] == HydrologicalMetricName.WATER_LEVEL_DECADAL]["avg_value"]
+        water_level_value = ceil(water_level.iloc[0]) if not water_level.empty else None
+        water_discharge = daily_data[daily_data["metric_name"] == HydrologicalMetricName.WATER_DISCHARGE_DAILY][
+            "avg_value"
+        ]
+        water_discharge_value = round(water_discharge.iloc[0], 1) if not water_discharge.empty else None
+        river_cross_section = daily_data[daily_data["metric_name"] == HydrologicalMetricName.RIVER_CROSS_SECTION_AREA][
+            "avg_value"
+        ]
+        river_cross_section_value = round(river_cross_section.iloc[0], 2) if not river_cross_section.empty else None
+
+        results[date.strftime("%Y-%m-%d")] = {
+            HydrologicalMetricName.WATER_LEVEL_DECADAL.value: water_level_value,
+            HydrologicalMetricName.WATER_DISCHARGE_DAILY.value: water_discharge_value,
+            HydrologicalMetricName.RIVER_CROSS_SECTION_AREA.value: river_cross_section_value,
+        }
+
+    return results
