@@ -2,6 +2,7 @@ import os
 from datetime import datetime as dt
 from typing import Any
 
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Avg, Count, Max, Min, Sum
 from django.http import FileResponse
@@ -30,6 +31,7 @@ from .schema import (
     MeteorologicalMetricOutputSchema,
     MetricCountSchema,
     MetricTotalCountSchema,
+    OperationalJournalDaySchema,
     OrderQueryParamSchema,
     TimeBucketQueryParams,
 )
@@ -219,10 +221,12 @@ class DischargeNormsAPIController:
     permissions=regular_permissions,
 )
 class OperationalJournalAPIController:
-    @route.get("daily-data", response={200: dict})
+    @route.get("daily-data", response={200: dict[str, OperationalJournalDaySchema]})
     def get_daily_data(self, station_uuid: str, year: int, month: int):
         station = HydrologicalStation.objects.get(uuid=station_uuid)
-        dt_start = SmartDatetime(dt(year, month, 1), station).day_beginning_local.isoformat()
+        first_day_current_month = dt(year, month, 1)
+        last_day_previous_month = first_day_current_month - relativedelta(days=1)
+        dt_start = SmartDatetime(last_day_previous_month, station).day_beginning_local.isoformat()
         dt_end = SmartDatetime(dt(year, month + 1, 1), station).day_beginning_local.isoformat()
         common_filter_dict = {"timestamp_local__gte": dt_start, "timestamp_local__lt": dt_end}
         estimations_filter_dict = {"station_id": station.id, **common_filter_dict}
