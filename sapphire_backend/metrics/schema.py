@@ -1,12 +1,8 @@
 from datetime import datetime, timezone
-from decimal import Decimal
 from enum import Enum
 from typing import Literal
 
-from ninja import Field, FilterSchema, ModelSchema, Schema
-
-from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitationCodeMapper
-from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
+from ninja import FilterSchema, ModelSchema, Schema
 
 from .choices import (
     HydrologicalMeasurementType,
@@ -65,62 +61,28 @@ class HydrologicalMetricOutputSchema(Schema):
     value_code: int | None
 
 
-class OperationalJournalIcePhenomenaSchema(Schema):
-    intensity: int = Field(..., alias="avg_value")
-    code: int = Field(None, alias="value_code")
-    description: str | None = None
-
-    @staticmethod
-    def resolve_description(obj):
-        return IcePhenomenaCodeMapper(obj["value_code"]).get_description() if obj else None
-
-
-class OperationalJournalDailyPrecipitationSchema(Schema):
-    value: int = Field(None, alias="avg_value")
-    duration: int = Field(None, alias="value_code")
-    description: str | None = None
-
-    @staticmethod
-    def resolve_description(obj):
-        return DailyPrecipitationCodeMapper(obj["value_code"]).get_description() if obj else None
-
-
 class OperationalJournalDailyDataSchema(Schema):
-    IPO: list[OperationalJournalIcePhenomenaSchema]
-    WTO: Decimal | None = None
-    ATO: Decimal | None = None
-    PD: OperationalJournalDailyPrecipitationSchema | None = None
-    WLDA: Decimal | None = None
-    WDDA: Decimal | None = None
-
-    @staticmethod
-    def resolve_WTO(obj):
-        return round(obj["WTO"], 1) if obj["WTO"] else None
-
-
-class OperationalJournalMorningEveningDataSchema(Schema):
-    WLD: Decimal | None = None
-    WDD: Decimal | None = None
-
-
-class OperationalJournalMorningDataSchema(OperationalJournalMorningEveningDataSchema):
-    water_level_trend: int | None = None
-
-
-class OperationalJournalEveningDataSchema(OperationalJournalMorningEveningDataSchema):
-    pass
-
-
-class OperationalJournalDaySchema(Schema):
-    morning_data: OperationalJournalMorningDataSchema
-    evening_data: OperationalJournalEveningDataSchema
-    daily_data: OperationalJournalDailyDataSchema
+    id: str
+    date: str
+    water_level_morning: int | str
+    water_discharge_morning: float | str
+    trend: int | None = None
+    water_level_evening: int | str
+    water_discharge_evening: float | str
+    water_level_average: int | str
+    water_discharge_average: float | str
+    ice_phenomena: str
+    daily_precipitation: str
+    water_temperature: float | str
+    air_temperature: float | str
 
 
 class OperationalJournalDischargeDataSchema(Schema):
-    WLDC: Decimal
-    WDD: Decimal
-    RCSA: Decimal | None = None
+    id: str
+    date: str
+    water_level: int | str
+    water_discharge: float | str
+    cross_section: float | str
 
 
 class MeteorologicalMetricOutputSchema(Schema):

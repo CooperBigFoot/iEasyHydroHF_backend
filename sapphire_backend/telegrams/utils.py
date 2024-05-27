@@ -1,5 +1,4 @@
 import logging
-import math
 from datetime import timedelta
 
 from sapphire_backend.estimations.query import EstimationsViewQueryManager
@@ -18,24 +17,7 @@ from sapphire_backend.telegrams.exceptions import TelegramParserException
 from sapphire_backend.telegrams.parser import KN15TelegramParser
 from sapphire_backend.telegrams.schema import NewOldMetrics, TelegramBulkWithDatesInputSchema
 from sapphire_backend.utils.datetime_helper import SmartDatetime
-
-
-def custom_round(value: float | None, ndigits: int | None = None) -> float | None:
-    """
-    Custom round accepts float and None, returns None if so
-    """
-    if value is None:
-        return None
-    return round(float(value), ndigits)
-
-
-def custom_ceil(value: int | None) -> int | None:
-    """
-    Custom ceil accepts float and None, returns None if so
-    """
-    if value is None:
-        return None
-    return math.ceil(value)
+from sapphire_backend.utils.rounding import custom_ceil, custom_round
 
 
 def get_parsed_telegrams_data(

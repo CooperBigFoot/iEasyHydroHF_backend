@@ -31,13 +31,13 @@ from .schema import (
     MeteorologicalMetricOutputSchema,
     MetricCountSchema,
     MetricTotalCountSchema,
-    OperationalJournalDaySchema,
+    OperationalJournalDailyDataSchema,
     OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
     TimeBucketQueryParams,
 )
 from .timeseries.query import TimeseriesQueryManager
-from .utils.helpers import transform_daily_operational_data, transform_discharge_operational_data
+from .utils.helpers import OperationalJournalDataTransformer
 from .utils.parser import DecadalDischargeNormFileParser, MonthlyDischargeNormFileParser
 
 agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": Sum}
@@ -222,13 +222,14 @@ class DischargeNormsAPIController:
     permissions=regular_permissions,
 )
 class OperationalJournalAPIController:
-    @route.get("daily-data", response={200: dict[str, OperationalJournalDaySchema]})
+    @route.get("daily-data", response={200: list[OperationalJournalDailyDataSchema]})
     def get_daily_data(self, station_uuid: str, year: int, month: int):
         station = HydrologicalStation.objects.get(uuid=station_uuid)
         first_day_current_month = dt(year, month, 1)
         last_day_previous_month = first_day_current_month - relativedelta(days=1)
+        first_day_next_month = first_day_current_month + relativedelta(months=1)
         dt_start = SmartDatetime(last_day_previous_month, station).day_beginning_local.isoformat()
-        dt_end = SmartDatetime(dt(year, month + 1, 1), station).day_beginning_local.isoformat()
+        dt_end = SmartDatetime(first_day_next_month, station).day_beginning_local.isoformat()
         common_filter_dict = {"timestamp_local__gte": dt_start, "timestamp_local__lt": dt_end}
         estimations_filter_dict = {"station_id": station.id, **common_filter_dict}
         daily_data_filter_dict = {
@@ -270,15 +271,17 @@ class OperationalJournalAPIController:
 
             operational_journal_data.extend({**d, "metric_name": metric_name} for d in estimation_data)
 
-        prepared_data = transform_daily_operational_data(operational_journal_data)
+        prepared_data = OperationalJournalDataTransformer(operational_journal_data).get_daily_data()
 
         return prepared_data
 
-    @route.get("discharge-data", response=dict[str, OperationalJournalDischargeDataSchema])
+    @route.get("discharge-data", response=list[OperationalJournalDischargeDataSchema])
     def get_discharge_data(self, station_uuid: str, year: int, month: int):
         station = HydrologicalStation.objects.get(uuid=station_uuid)
-        dt_start = SmartDatetime(dt(year, month, 1), station).day_beginning_local.isoformat()
-        dt_end = SmartDatetime(dt(year, month + 1, 1), station).day_beginning_local.isoformat()
+        first_day_current_month = dt(year, month, 1)
+        dt_start = SmartDatetime(first_day_current_month, station).day_beginning_local.isoformat()
+        first_day_next_month = first_day_current_month + relativedelta(months=1)
+        dt_end = SmartDatetime(first_day_next_month, station).day_beginning_local.isoformat()
 
         discharge_data = TimeseriesQueryManager(
             model=HydrologicalMetric,
@@ -297,9 +300,9 @@ class OperationalJournalAPIController:
             },
         ).execute_query()
 
-        prepared_data = transform_discharge_operational_data(
+        prepared_data = OperationalJournalDataTransformer(
             discharge_data.values("timestamp_local", "avg_value", "metric_name")
-        )
+        ).get_discharge_data()
 
         return prepared_data
 

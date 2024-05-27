@@ -3,6 +3,10 @@ from math import ceil
 
 import pandas as pd
 
+from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitationCodeMapper
+from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
+from sapphire_backend.utils.rounding import hydrological_round
+
 from ..choices import HydrologicalMetricName
 
 
@@ -35,136 +39,167 @@ def calculate_decade_number(date: datetime) -> int:
     return ordinal_number
 
 
-def transform_daily_operational_data(
-    data: list[dict[str, float | None]]
-) -> dict[str, dict[str, dict[str, float | int]]]:
-    df = pd.DataFrame(data)
-    if df.empty:
-        return {}
-    df["timestamp_local"] = pd.to_datetime(df["timestamp_local"])
-    df["date"] = df["timestamp_local"].dt.date
-    df["time"] = df["timestamp_local"].dt.strftime("%H:%M")
+class OperationalJournalDataTransformer:
+    def __init__(self, data: list[dict[str, float | None]]):
+        self.original_data = data
+        self.df = self._convert_data_to_dataframe()
+        self.is_empty = self.df.empty
 
-    first_day_of_given_month = df["date"].min()
-    last_day_previous_month_data = df[df["date"] == first_day_of_given_month]
+    def _convert_data_to_dataframe(self):
+        df = pd.DataFrame(self.original_data)
+        if not df.empty:
+            df["timestamp_local"] = pd.to_datetime(df["timestamp_local"])
+            df["date"] = df["timestamp_local"].dt.date
+            df["time"] = df["timestamp_local"].dt.strftime("%H:%M")
 
-    # get the morning water level to be able to calculate the trend
-    previous_day_water_level = None
-    if not last_day_previous_month_data.empty:
-        morning_data = last_day_previous_month_data[last_day_previous_month_data["time"] == "08:00"]
-        if not morning_data.empty:
-            previous_day_water_level = ceil(
-                morning_data[morning_data["metric_name"] == HydrologicalMetricName.WATER_LEVEL_DAILY][
-                    "avg_value"
-                ].iloc[0]
-            )
-    # exclude the last day of the previous month
-    df = df[df["date"] != first_day_of_given_month]
+        return df
 
-    results = {}
+    @staticmethod
+    def _get_morning_data(data: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
+        return data[data["time"] == "08:00"]
 
-    for date in df["date"].unique():
-        daily_data = df[df["date"] == date]
-        day_dict = {
-            "morning_data": {},
-            "evening_data": {},
-            "daily_data": {},
-        }
+    @staticmethod
+    def _get_evening_data(data: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
+        return data[data["time"] == "20:00"]
 
-        morning_data = daily_data[daily_data["time"] == "08:00"]
-        if not morning_data.empty:
-            water_level_morning = morning_data[
-                morning_data["metric_name"] == HydrologicalMetricName.WATER_LEVEL_DAILY
-            ]["avg_value"]
-            water_discharge_morning = morning_data[
-                morning_data["metric_name"] == HydrologicalMetricName.WATER_DISCHARGE_DAILY
-            ]["avg_value"]
-            morning_water_level_value = ceil(water_level_morning.iloc[0]) if not water_level_morning.empty else None
-            day_dict["morning_data"][HydrologicalMetricName.WATER_LEVEL_DAILY] = morning_water_level_value
-            day_dict["morning_data"][HydrologicalMetricName.WATER_DISCHARGE_DAILY] = (
-                round(water_discharge_morning.iloc[0], 1) if not water_discharge_morning.empty else None
-            )
-            if previous_day_water_level is not None and morning_water_level_value is not None:
-                day_dict["morning_data"]["water_level_trend"] = morning_water_level_value - previous_day_water_level
+    @staticmethod
+    def _get_metric_value(data: pd.DataFrame | pd.Series, metric: str) -> int | float | str:
+        if not data.empty:
+            metric_value = data[data["metric_name"] == metric]["avg_value"]
+            if metric_value.empty:
+                return "--"
+            if metric in [HydrologicalMetricName.WATER_LEVEL_DAILY, HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE]:
+                return ceil(metric_value.iloc[0])
+            elif metric in [
+                HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+                HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
+            ]:
+                return hydrological_round(metric_value.iloc[0])
+            else:
+                return round(metric_value.iloc[0], 1)
 
-            previous_day_water_level = morning_water_level_value
-        else:
-            previous_day_water_level = None
+        return "--"
 
-        evening_data = daily_data[daily_data["time"] == "20:00"]
-        if not evening_data.empty:
-            water_level_evening = evening_data[
-                evening_data["metric_name"] == HydrologicalMetricName.WATER_LEVEL_DAILY
-            ]["avg_value"]
-            water_discharge_evening = evening_data[
-                evening_data["metric_name"] == HydrologicalMetricName.WATER_DISCHARGE_DAILY
-            ]["avg_value"]
-            day_dict["evening_data"][HydrologicalMetricName.WATER_LEVEL_DAILY] = (
-                ceil(water_level_evening.iloc[0]) if not water_level_evening.empty else None
-            )
-            day_dict["evening_data"][HydrologicalMetricName.WATER_DISCHARGE_DAILY] = (
-                round(water_discharge_evening.iloc[0], 1) if not water_discharge_evening.empty else None
-            )
+    @staticmethod
+    def _get_ice_phenomena(data: pd.DataFrame | pd.Series) -> str:
+        output_string = "--"
+        if not data.empty:
+            ice_phenomena_data = data[data["metric_name"] == HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION]
+            values = ice_phenomena_data[["avg_value", "value_code"]].to_dict("records")
+            strings = []
+            for value in values:
+                description = IcePhenomenaCodeMapper(value["value_code"]).get_description()
+                intensity = f" ({round(value['avg_value'] * 10, 0)}%)" if value["avg_value"] != -1 else ""
+                strings.append(f"{description}{intensity}")
+            output_string = ",".join(strings) if strings else "--"
 
-        ice_phenomena_data = daily_data[daily_data["metric_name"] == HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION]
-        day_dict["daily_data"][HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION] = ice_phenomena_data[
-            ["avg_value", "value_code"]
-        ].to_dict("records")
+        return output_string
 
-        daily_precipitation_data = daily_data[daily_data["metric_name"] == HydrologicalMetricName.PRECIPITATION_DAILY]
-        day_dict["daily_data"][HydrologicalMetricName.PRECIPITATION_DAILY] = (
-            daily_precipitation_data[["avg_value", "value_code"]].iloc[0].to_dict()
-            if not daily_precipitation_data.empty
-            else None
-        )
+    @staticmethod
+    def _get_daily_precipitation(data: pd.DataFrame | pd.Series) -> str:
+        output_string = "--"
+        if not data.empty:
+            daily_precipitation_data = data[data["metric_name"] == HydrologicalMetricName.PRECIPITATION_DAILY]
+            if not daily_precipitation_data.empty:
+                value = daily_precipitation_data[["avg_value", "value_code"]].iloc[0].to_dict()
+                description = DailyPrecipitationCodeMapper(value["value_code"]).get_description()
+                output_string = f"{value['avg_value']} ({description})"
 
-        for metric in [
-            HydrologicalMetricName.WATER_TEMPERATURE,
-            HydrologicalMetricName.AIR_TEMPERATURE,
-            HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
-            HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
-        ]:
-            metric_data = daily_data[daily_data["metric_name"] == metric]["avg_value"]
-            day_dict["daily_data"][metric] = (
-                round(
-                    metric_data.iloc[0], 1 if metric != HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE.value else 0
+        return output_string
+
+    def get_daily_data(self) -> list[dict[str, str | float | int]]:
+        df = self.df
+        results = []
+        if self.is_empty:
+            return results
+
+        previous_month_last_day = df["date"].min()
+        previous_month_last_day_data = df[df["date"] == previous_month_last_day]
+
+        # get morning water_level to be able to calculate the trend on the first day of the given month
+        previous_day_water_level = None
+        if not previous_month_last_day_data.empty:
+            morning_data = self._get_morning_data(previous_month_last_day_data)
+            previous_day_water_level = self._get_metric_value(morning_data, HydrologicalMetricName.WATER_LEVEL_DAILY)
+
+        # exclude the last day of the previous month from the dataframe
+        df = df[df["date"] != previous_month_last_day]
+
+        # iterate over the existing dates
+        for date in df["date"].unique():
+            daily_data = df[df["date"] == date]
+            day_dict = {}
+
+            # get morning data first
+            morning_data = self._get_morning_data(daily_data)
+            if not morning_data.empty:
+                water_level_morning = self._get_metric_value(morning_data, HydrologicalMetricName.WATER_LEVEL_DAILY)
+                water_discharge_morning = self._get_metric_value(
+                    morning_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY
                 )
-                if not metric_data.empty
-                else None
-            )
+                day_dict["water_level_morning"] = water_level_morning
+                day_dict["water_discharge_morning"] = water_discharge_morning
+                if previous_day_water_level != "--" and water_level_morning != "--":
+                    day_dict["trend"] = water_level_morning - previous_day_water_level
+                previous_day_water_level = water_level_morning
+            else:
+                previous_day_water_level = None
+                day_dict["water_level_morning"] = "--"
+                day_dict["water_discharge_morning"] = "--"
 
-        results[date.strftime("%Y-%m-%d")] = day_dict
+            # get evening data next
+            evening_data = self._get_evening_data(daily_data)
+            if not evening_data.empty:
+                water_level_evening = self._get_metric_value(evening_data, HydrologicalMetricName.WATER_LEVEL_DAILY)
+                water_discharge_evening = self._get_metric_value(
+                    evening_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY
+                )
+                day_dict["water_level_evening"] = water_level_evening
+                day_dict["water_discharge_evening"] = water_discharge_evening
+            else:
+                day_dict["water_level_evening"] = "--"
+                day_dict["water_discharge_evening"] = "--"
 
-    return results
+            # finally, get the rest of the daily data, including water level and discharge averages
+            ice_phenomena_data = self._get_ice_phenomena(daily_data)
+            day_dict["ice_phenomena"] = ice_phenomena_data
+            daily_precipitation_data = self._get_daily_precipitation(daily_data)
+            day_dict["daily_precipitation"] = daily_precipitation_data
 
+            for metric_name, metric_code in {
+                "water_level_average": HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
+                "water_discharge_average": HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
+                "water_temperature": HydrologicalMetricName.WATER_TEMPERATURE,
+                "air_temperature": HydrologicalMetricName.AIR_TEMPERATURE,
+            }.items():
+                day_dict[metric_name] = self._get_metric_value(daily_data, metric_code)
+            day_dict["date"] = date.strftime("%Y-%m-%d")
+            day_dict["id"] = date.strftime("%Y-%m-%d")
 
-def transform_discharge_operational_data(data: list[dict[str, float | None]]) -> dict[str, dict[str, float | int]]:
-    df = pd.DataFrame(data)
-    if df.empty:
-        return {}
+            results.append(day_dict)
 
-    df["timestamp_local"] = pd.to_datetime(df["timestamp_local"])
-    df["date"] = df["timestamp_local"].dt.date
+        return results
 
-    results = {}
+    def get_discharge_data(self) -> list[dict[str, str | float | int]]:
+        results = []
+        df = self.df
 
-    for date in df["date"].unique():
-        daily_data = df[df["date"] == date]
-        water_level = daily_data[daily_data["metric_name"] == HydrologicalMetricName.WATER_LEVEL_DECADAL]["avg_value"]
-        water_level_value = ceil(water_level.iloc[0]) if not water_level.empty else None
-        water_discharge = daily_data[daily_data["metric_name"] == HydrologicalMetricName.WATER_DISCHARGE_DAILY][
-            "avg_value"
-        ]
-        water_discharge_value = round(water_discharge.iloc[0], 1) if not water_discharge.empty else None
-        river_cross_section = daily_data[daily_data["metric_name"] == HydrologicalMetricName.RIVER_CROSS_SECTION_AREA][
-            "avg_value"
-        ]
-        river_cross_section_value = round(river_cross_section.iloc[0], 2) if not river_cross_section.empty else None
+        if self.is_empty:
+            return results
 
-        results[date.strftime("%Y-%m-%d")] = {
-            HydrologicalMetricName.WATER_LEVEL_DECADAL.value: water_level_value,
-            HydrologicalMetricName.WATER_DISCHARGE_DAILY.value: water_discharge_value,
-            HydrologicalMetricName.RIVER_CROSS_SECTION_AREA.value: river_cross_section_value,
-        }
+        for date in df["date"].unique():
+            day_dict = {}
+            daily_data = df[df["date"] == date]
 
-    return results
+            for metric_name, metric_code in {
+                "water_level": HydrologicalMetricName.WATER_LEVEL_DECADAL,
+                "water_discharge": HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+                "cross_section": HydrologicalMetricName.RIVER_CROSS_SECTION_AREA,
+            }.items():
+                day_dict[metric_name] = self._get_metric_value(daily_data, metric_code)
+
+            day_dict["date"] = date.strftime("%Y-%m-%d")
+            day_dict["id"] = date.strftime("%Y-%m-%d")
+            results.append(day_dict)
+
+        return results
