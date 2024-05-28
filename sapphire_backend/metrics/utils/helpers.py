@@ -21,9 +21,7 @@ def calculate_decade_date(ordinal_number: int):
     return datetime(datetime.utcnow().year, month, day, 12, tzinfo=timezone.utc)
 
 
-def calculate_decade_number(date: datetime) -> int:
-    month, day = date.month, date.day
-
+def calculate_decade_from_day_in_month(day: int) -> int:
     if 1 <= day <= 10:
         decade = 1
     elif 11 <= day <= 20:
@@ -32,6 +30,14 @@ def calculate_decade_number(date: datetime) -> int:
         decade = 3
     else:
         raise ValueError(f"Day {day} is an invalid day")
+
+    return decade
+
+
+def calculate_decade_number(date: datetime) -> int:
+    month, day = date.month, date.day
+
+    decade = calculate_decade_from_day_in_month(day)
 
     month_decrement = month - 1
     ordinal_number = month_decrement * 3 + decade
@@ -68,11 +74,16 @@ class OperationalJournalDataTransformer:
             metric_value = data[data["metric_name"] == metric]["avg_value"]
             if metric_value.empty:
                 return "--"
-            if metric in [HydrologicalMetricName.WATER_LEVEL_DAILY, HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE]:
+            if metric in [
+                HydrologicalMetricName.WATER_LEVEL_DAILY,
+                HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
+                HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE,
+            ]:
                 return ceil(metric_value.iloc[0])
             elif metric in [
                 HydrologicalMetricName.WATER_DISCHARGE_DAILY,
                 HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
+                HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE,
             ]:
                 return hydrological_round(metric_value.iloc[0])
             else:
@@ -108,7 +119,7 @@ class OperationalJournalDataTransformer:
         return output_string
 
     @staticmethod
-    def _get_daily_data_extremes(transformed_data: list[dict[str, str | float | int]]) -> list[dict[str, str | float]]:
+    def _get_daily_data_extremes(daily_data: list[dict[str, str | float | int]]) -> list[dict[str, str | float]]:
         relevant_metrics = [
             "water_level_morning",
             "water_discharge_morning",
@@ -124,7 +135,7 @@ class OperationalJournalDataTransformer:
         max_row = {"id": "max", "date": "maximum"}
 
         for metric in relevant_metrics:
-            valid_values = [row[metric] for row in transformed_data if row[metric] != "--"]
+            valid_values = [row[metric] for row in daily_data if row[metric] != "--"]
             if valid_values:
                 min_row[metric] = min(valid_values)
                 max_row[metric] = max(valid_values)
@@ -133,6 +144,19 @@ class OperationalJournalDataTransformer:
                 max_row[metric] = "--"
 
         return [min_row, max_row]
+
+    @staticmethod
+    def _get_monthly_averages_from_decadal_data(decadal_data: list[dict[int | str, int | float | str]]):
+        avg_row = {"id": "avg", "decade": "average"}
+        for metric in ["water_level", "water_discharge"]:
+            valid_values = [row[metric] for row in decadal_data if row[metric] != "--"]
+            if valid_values:
+                avg_value = sum(valid_values) / len(valid_values)
+                avg_row[metric] = hydrological_round(avg_value) if metric == "water_discharge" else ceil(avg_value)
+            else:
+                avg_row[metric] = "--"
+
+        return avg_row
 
     def get_daily_data(self) -> list[dict[str, str | float | int]]:
         df = self.df
@@ -230,5 +254,30 @@ class OperationalJournalDataTransformer:
             day_dict["date"] = date.strftime("%Y-%m-%d")
             day_dict["id"] = date.strftime("%Y-%m-%d")
             results.append(day_dict)
+
+        return results
+
+    def get_decadal_data(self) -> list[dict[int | str, int | float | str]]:
+        results = []
+        df = self.df
+
+        if self.is_empty:
+            return results
+
+        for date in df["date"].unique():
+            decade_dict = {}
+            decade_data = df[df["date"] == date]
+
+            for metric_name, metric_code in {
+                "water_level": HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE,
+                "water_discharge": HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE,
+            }.items():
+                decade_dict[metric_name] = self._get_metric_value(decade_data, metric_code)
+
+            decade_dict["decade"] = calculate_decade_from_day_in_month(date.day)
+            decade_dict["id"] = date.strftime("%Y-%m-%d")
+            results.append(decade_dict)
+
+        results.append(self._get_monthly_averages_from_decadal_data(results))
 
         return results

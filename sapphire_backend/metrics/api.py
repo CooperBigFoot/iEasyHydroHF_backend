@@ -32,6 +32,7 @@ from .schema import (
     MetricCountSchema,
     MetricTotalCountSchema,
     OperationalJournalDailyDataSchema,
+    OperationalJournalDecadalDataSchema,
     OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
     TimeBucketQueryParams,
@@ -306,7 +307,7 @@ class OperationalJournalAPIController:
 
         return prepared_data
 
-    @route.get("decadal-data", response=list)
+    @route.get("decadal-data", response=list[OperationalJournalDecadalDataSchema])
     def get_decadal_data(self, station_uuid: str, year: int, month: int):
         station = HydrologicalStation.objects.get(uuid=station_uuid)
         first_day_current_month = dt(year, month, 1)
@@ -333,6 +334,8 @@ class OperationalJournalAPIController:
                 },
             ).execute_query()
 
-            decadal_data.append({metric_name: view_data})
+            decadal_data.extend({**d, "metric_name": metric_name} for d in view_data)
 
-        return decadal_data
+        prepared_data = OperationalJournalDataTransformer(decadal_data).get_decadal_data()
+
+        return prepared_data
