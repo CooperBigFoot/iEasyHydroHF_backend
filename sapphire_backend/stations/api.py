@@ -121,6 +121,10 @@ class HydroStationsAPIController:
         station.save()
         return station
 
+    @route.get("{station_uuid}/remarks", response={200: list[RemarkOutputSchema]})
+    def get_remarks(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
+        return Remark.objects.filter(hydro_station=station_uuid)
+
     @route.post("{station_uuid}/remarks", response={200: RemarkOutputSchema})
     def create_remark(
         self, request: HttpRequest, organization_uuid: str, station_uuid: str, remark_data: RemarkInputSchema
