@@ -306,6 +306,33 @@ class OperationalJournalAPIController:
 
         return prepared_data
 
-    @route.get("decadal-data")
+    @route.get("decadal-data", response=list)
     def get_decadal_data(self, station_uuid: str, year: int, month: int):
-        pass
+        station = HydrologicalStation.objects.get(uuid=station_uuid)
+        first_day_current_month = dt(year, month, 1)
+        dt_start = SmartDatetime(first_day_current_month, station).day_beginning_local.isoformat()
+        first_day_next_month = first_day_current_month + relativedelta(months=1)
+        dt_end = SmartDatetime(first_day_next_month, station).day_beginning_local.isoformat()
+
+        decadal_data = []
+
+        querying_views = [
+            ("estimations_water_level_decade_average", HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE),
+            ("estimations_water_discharge_decade_average", HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE),
+        ]
+
+        for view_name, metric_name in querying_views:
+            view_data = EstimationsViewQueryManager(
+                view_name,
+                order_param="timestamp_local",
+                order_direction="ASC",
+                filter_dict={
+                    "timestamp_local__gte": dt_start,
+                    "timestamp_local__lt": dt_end,
+                    "station_id": station.id,
+                },
+            ).execute_query()
+
+            decadal_data.append({metric_name: view_data})
+
+        return decadal_data

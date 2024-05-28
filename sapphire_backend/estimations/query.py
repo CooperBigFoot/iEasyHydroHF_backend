@@ -24,6 +24,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
     ):
         if model not in [
             "estimations_water_level_daily_average",
+            "estimations_water_level_decade_average",
             "estimations_water_discharge_daily",
             "estimations_water_discharge_daily_average",
             "estimations_water_discharge_fiveday_average",

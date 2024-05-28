@@ -157,4 +157,31 @@ class Migration(migrations.Migration):
             )],
             reverse_sql=[("DROP VIEW IF EXISTS estimations_water_discharge_decade_average CASCADE;")],
         ),
+
+        migrations.RunSQL(
+            sql=[(
+                """
+                create or replace view estimations_water_level_decade_average as
+                WITH decade_averages AS (
+                    SELECT
+                        wlda.timestamp_local AS timestamp_local,
+                        CAST(NULL AS NUMERIC) as min_value,
+						CEIL(AVG(wlda.avg_value) OVER (PARTITION BY wlda.station_id, EXTRACT(YEAR FROM wlda.timestamp_local), EXTRACT(MONTH FROM wlda.timestamp_local) ORDER BY wlda.timestamp_local ROWS BETWEEN 4 PRECEDING AND 5 FOLLOWING)) as avg_value,
+                        CAST(NULL AS NUMERIC) as max_value,
+                        'cm' as unit,
+                        'E' as value_type,
+                        'WLDCA' as metric_name,
+                        '' as sensor_identifier,
+                        '' as sensor_type,
+                        wlda.station_id
+                    FROM
+                        public.estimations_water_level_daily_average wlda
+                )
+                SELECT *
+                FROM decade_averages
+                WHERE EXTRACT(DAY FROM timestamp_local) IN (5, 15, 25);
+                """
+            )],
+            reverse_sql=[("DROP VIEW IF EXISTS estimations_water_level_decade_average CASCADE;")],
+        ),
     ]

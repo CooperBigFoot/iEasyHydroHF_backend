@@ -13,7 +13,8 @@ class HydrologicalMeasurementType(models.TextChoices):
 class HydrologicalMetricName(models.TextChoices):
     WATER_LEVEL_DAILY = "WLD", _("Water level daily")
     WATER_LEVEL_DAILY_AVERAGE = "WLDA", _("Water level daily average")
-    WATER_LEVEL_DECADAL = "WLDC", _("Water level decadal")
+    WATER_LEVEL_DECADAL = "WLDC", _("Water level decadal")  # used for storing water level from group 966
+    WATER_LEVEL_DECADE_AVERAGE = "WLDCA", _("Water level decade average")
 
     WATER_DISCHARGE_DAILY = "WDD", _("Water discharge daily")
     WATER_DISCHARGE_DAILY_AVERAGE = "WDDA", _("Water discharge daily average")

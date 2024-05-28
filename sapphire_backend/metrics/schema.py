@@ -66,13 +66,13 @@ class OperationalJournalDailyDataSchema(Schema):
     date: str
     water_level_morning: int | str
     water_discharge_morning: float | str
-    trend: int | None = None
+    trend: int | str | None = "--"
     water_level_evening: int | str
     water_discharge_evening: float | str
     water_level_average: int | str
     water_discharge_average: float | str
-    ice_phenomena: str
-    daily_precipitation: str
+    ice_phenomena: str | None = "--"
+    daily_precipitation: str | None = "--"
     water_temperature: float | str
     air_temperature: float | str
 

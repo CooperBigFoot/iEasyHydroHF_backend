@@ -107,6 +107,33 @@ class OperationalJournalDataTransformer:
 
         return output_string
 
+    @staticmethod
+    def _get_daily_data_extremes(transformed_data: list[dict[str, str | float | int]]) -> list[dict[str, str | float]]:
+        relevant_metrics = [
+            "water_level_morning",
+            "water_discharge_morning",
+            "water_level_evening",
+            "water_discharge_evening",
+            "water_level_average",
+            "water_discharge_average",
+            "water_temperature",
+            "air_temperature",
+        ]
+
+        min_row = {"id": "min", "date": "minimum"}
+        max_row = {"id": "max", "date": "maximum"}
+
+        for metric in relevant_metrics:
+            valid_values = [row[metric] for row in transformed_data if row[metric] != "--"]
+            if valid_values:
+                min_row[metric] = min(valid_values)
+                max_row[metric] = max(valid_values)
+            else:
+                min_row[metric] = "--"
+                max_row[metric] = "--"
+
+        return [min_row, max_row]
+
     def get_daily_data(self) -> list[dict[str, str | float | int]]:
         df = self.df
         results = []
@@ -177,6 +204,8 @@ class OperationalJournalDataTransformer:
             day_dict["id"] = date.strftime("%Y-%m-%d")
 
             results.append(day_dict)
+
+        results.extend(self._get_daily_data_extremes(results))
 
         return results
 
