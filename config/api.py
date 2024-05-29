@@ -11,9 +11,10 @@ from pydantic import ValidationError as PydanticValidationError
 
 from sapphire_backend.estimations.api import DischargeModelsAPIController, EstimationsAPIController
 from sapphire_backend.metrics.api import (
-    DischargeNormsAPIController,
+    HydrologicalNormsAPIController,
     HydroMetricsAPIController,
     MeteoMetricsAPIController,
+    MeteorologicalNormsAPIController,
     OperationalJournalAPIController,
 )
 from sapphire_backend.metrics.exceptions import DischargeNormParserException
@@ -38,7 +39,8 @@ api = NinjaExtraAPI(
 
 api.register_controllers(AuthController)
 api.register_controllers(BasinsAPIController)
-api.register_controllers(DischargeNormsAPIController)
+api.register_controllers(HydrologicalNormsAPIController)
+(api.register_controllers(MeteorologicalNormsAPIController),)
 api.register_controllers(HydroMetricsAPIController)
 api.register_controllers(ForecastStatusAPIController)
 api.register_controllers(MeteoMetricsAPIController)

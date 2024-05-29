@@ -13,10 +13,16 @@ from .choices import (
     HydrologicalMetricName,
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
+    MeteorologicalNormMetric,
     MetricUnit,
-    NormType,
 )
-from .managers import DischargeNormQuerySet, HydrologicalMetricQuerySet, MeteorologicalMetricQuerySet
+from .managers import (
+    HydrologicalMetricQuerySet,
+    HydrologicalNormQuerySet,
+    MeteorologicalMetricQuerySet,
+    MeteorologicalNormQuerySet,
+)
+from .mixins import NormModelMixin
 
 
 def resolve_timestamp_local_tz_pair(
@@ -254,20 +260,15 @@ class MeteorologicalMetric(models.Model):
                 cursor.execute(sql_query_insert)
 
 
-class DischargeNorm(models.Model):
+class HydrologicalNorm(NormModelMixin, models.Model):
     station = models.ForeignKey(
         "stations.HydrologicalStation",
         to_field="uuid",
         verbose_name=_("Hydrological station"),
         on_delete=models.CASCADE,
     )
-    ordinal_number = models.PositiveIntegerField(verbose_name=_("Ordinal number"))
-    value = models.DecimalField(verbose_name=_("Value"), max_digits=10, decimal_places=5)
-    norm_type = models.CharField(
-        verbose_name=_("Norm type"), choices=NormType, default=NormType.DECADAL, max_length=20
-    )
 
-    objects = DischargeNormQuerySet.as_manager()
+    objects = HydrologicalNormQuerySet.as_manager()
 
     class Meta:
         verbose_name = _("Discharge norm")
@@ -276,7 +277,41 @@ class DischargeNorm(models.Model):
         constraints = [
             models.UniqueConstraint("station", "ordinal_number", "norm_type", name="discharge_norm_unique_cn")
         ]
-        indexes = [models.Index("norm_type", name="norm_type_idx")]
+        indexes = [models.Index("norm_type", name="discharge_norm_type_idx")]
 
     def __str__(self):
-        return f"{self.station.name} {self.norm_type} #{self.ordinal_number} - {self.value}"
+        return f"Discharge norm {self.station.name} ({self.norm_type} - {self.ordinal_number})"
+
+
+class MeteorologicalNorm(NormModelMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.MeteorologicalStation",
+        to_field="uuid",
+        verbose_name=_("Meteorological station"),
+        on_delete=models.CASCADE,
+    )
+    norm_metric = models.CharField(
+        verbose_name=_("Norm type"),
+        choices=MeteorologicalNormMetric,
+        default=MeteorologicalNormMetric.PRECIPITATION,
+        max_length=2,
+    )
+
+    objects = MeteorologicalNormQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = _("Meteorological norm")
+        verbose_name_plural = _("Meteorological norms")
+        ordering = ["ordinal_number"]
+        constraints = [
+            models.UniqueConstraint(
+                "station", "ordinal_number", "norm_type", "norm_metric", name="meteorological_norm_unique_cn"
+            )
+        ]
+        indexes = [
+            models.Index("norm_type", name="meteo_norm_type_idx"),
+            models.Index("norm_metric", name="meteo_norm_metric_idx"),
+        ]
+
+    def __str__(self):
+        return f"Meteo norm {self.station.name} ({self.norm_type}, {self.norm_metric} - {self.ordinal_number})"

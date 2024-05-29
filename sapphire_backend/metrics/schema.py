@@ -9,9 +9,10 @@ from .choices import (
     HydrologicalMetricName,
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
+    MeteorologicalNormMetric,
     NormType,
 )
-from .models import DischargeNorm
+from .models import HydrologicalNorm, MeteorologicalNorm
 from .utils.helpers import calculate_decade_date
 
 
@@ -122,15 +123,19 @@ class TimeBucketQueryParams(Schema):
     limit: int = 100
 
 
-class DischargeNormTypeFiltersSchema(FilterSchema):
+class HydrologicalNormTypeFiltersSchema(FilterSchema):
     norm_type: NormType
 
 
-class DischargeNormOutputSchema(ModelSchema):
+class MeteorologicalNormTypeFiltersSchema(HydrologicalNormTypeFiltersSchema):
+    norm_metric: MeteorologicalNormMetric
+
+
+class HydrologicalNormOutputSchema(ModelSchema):
     timestamp_local: datetime
 
     class Meta:
-        model = DischargeNorm
+        model = HydrologicalNorm
         fields = ["ordinal_number", "value"]
 
     @staticmethod
@@ -139,3 +144,8 @@ class DischargeNormOutputSchema(ModelSchema):
             return datetime(datetime.utcnow().year, obj.ordinal_number, 1, 12, tzinfo=timezone.utc)
         else:
             return calculate_decade_date(obj.ordinal_number)
+
+
+class MeteorologicalNormOutputSchema(HydrologicalNormOutputSchema):
+    class Meta(HydrologicalNormOutputSchema.Meta):
+        model = MeteorologicalNorm

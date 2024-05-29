@@ -86,3 +86,13 @@ class DecadalDischargeNormFileParser(BaseNormFileParser):
                     )
 
         return parsed_data
+
+
+class MonthlyMeteoNormFileParser(MonthlyDischargeNormFileParser):
+    def _get_sheet_names(self):
+        return ["precipitation", "temperature"]
+
+
+class DecadalMeteoNormFileParser(DecadalDischargeNormFileParser):
+    def _get_sheet_names(self):
+        return ["precipitation", "temperature"]

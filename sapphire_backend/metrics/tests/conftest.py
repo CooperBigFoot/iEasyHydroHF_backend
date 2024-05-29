@@ -3,11 +3,23 @@ import datetime as dt
 import pytest
 from pytest_factoryboy import register
 
-from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, MetricUnit, NormType
+from sapphire_backend.metrics.choices import (
+    HydrologicalMeasurementType,
+    HydrologicalMetricName,
+    MeteorologicalNormMetric,
+    MetricUnit,
+    NormType,
+)
 
-from .factories import DischargeNormFactory, HydrologicalMetricFactory, MeteorologicalMetricFactory
+from .factories import (
+    HydrologicalMetricFactory,
+    HydrologicalNormFactory,
+    MeteorologicalMetricFactory,
+    MeteorologicalNormFactory,
+)
 
-register(DischargeNormFactory)
+register(MeteorologicalNormFactory)
+register(HydrologicalNormFactory)
 register(HydrologicalMetricFactory)
 register(MeteorologicalMetricFactory)
 
@@ -79,19 +91,82 @@ def water_level_manual_other_organization(db, manual_hydro_station_other_organiz
 
 @pytest.fixture
 def decadal_discharge_norm_first(db, manual_hydro_station):
-    return DischargeNormFactory(station=manual_hydro_station, value=1.0, norm_type=NormType.DECADAL, ordinal_number=1)
+    return HydrologicalNormFactory(
+        station=manual_hydro_station, value=1.0, norm_type=NormType.DECADAL, ordinal_number=1
+    )
 
 
 @pytest.fixture
 def decadal_discharge_norm_second(db, manual_hydro_station):
-    return DischargeNormFactory(station=manual_hydro_station, value=2.0, norm_type=NormType.DECADAL, ordinal_number=2)
+    return HydrologicalMetricFactory(
+        station=manual_hydro_station, value=2.0, norm_type=NormType.DECADAL, ordinal_number=2
+    )
 
 
 @pytest.fixture
 def monthly_discharge_norm_first(db, manual_hydro_station):
-    return DischargeNormFactory(station=manual_hydro_station, value=1.0, norm_type=NormType.MONTHLY, ordinal_number=1)
+    return HydrologicalNormFactory(
+        station=manual_hydro_station, value=1.0, norm_type=NormType.MONTHLY, ordinal_number=1
+    )
 
 
 @pytest.fixture
 def monthly_discharge_norm_second(db, manual_hydro_station):
-    return DischargeNormFactory(station=manual_hydro_station, value=2.0, norm_type=NormType.MONTHLY, ordinal_number=2)
+    return HydrologicalMetricFactory(
+        station=manual_hydro_station, value=2.0, norm_type=NormType.MONTHLY, ordinal_number=2
+    )
+
+
+@pytest.fixture
+def decadal_precipitation_norm_first(db, manual_meteo_station):
+    return MeteorologicalNormFactory(
+        station=manual_meteo_station,
+        value=1.0,
+        norm_type=NormType.DECADAL,
+        ordinal_number=1,
+        norm_metric=MeteorologicalNormMetric.PRECIPITATION,
+    )
+
+
+@pytest.fixture
+def decadal_precipitation_norm_second(db, manual_meteo_station):
+    return MeteorologicalNormFactory(
+        station=manual_meteo_station,
+        value=2.0,
+        norm_type=NormType.DECADAL,
+        ordinal_number=2,
+        norm_metric=MeteorologicalNormMetric.PRECIPITATION,
+    )
+
+
+@pytest.fixture
+def decadal_temperature_norm(db, manual_meteo_station):
+    return MeteorologicalNormFactory(
+        station=manual_meteo_station,
+        value=1.0,
+        norm_type=NormType.DECADAL,
+        ordinal_number=1,
+        norm_metric=MeteorologicalNormMetric.TEMPERATURE,
+    )
+
+
+@pytest.fixture
+def monthly_precipitation_norm(db, manual_meteo_station):
+    return MeteorologicalNormFactory(
+        station=manual_meteo_station,
+        value=1.0,
+        norm_type=NormType.MONTHLY,
+        ordinal_number=1,
+        norm_metric=MeteorologicalNormMetric.PRECIPITATION,
+    )
+
+
+@pytest.fixture
+def monthly_temperature_norm(db, manual_meteo_station):
+    return MeteorologicalNormFactory(
+        station=manual_meteo_station,
+        value=1.0,
+        norm_type=NormType.MONTHLY,
+        ordinal_number=1,
+        norm_metric=MeteorologicalNormMetric.TEMPERATURE,
+    )

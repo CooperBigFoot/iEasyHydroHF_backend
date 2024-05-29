@@ -20,15 +20,17 @@ from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from .choices import HydrologicalMeasurementType, HydrologicalMetricName, NormType
-from .models import DischargeNorm, HydrologicalMetric, MeteorologicalMetric
+from .choices import HydrologicalMeasurementType, HydrologicalMetricName, MeteorologicalNormMetric, NormType
+from .models import HydrologicalMetric, HydrologicalNorm, MeteorologicalMetric, MeteorologicalNorm
 from .schema import (
-    DischargeNormOutputSchema,
-    DischargeNormTypeFiltersSchema,
     HydrologicalMetricOutputSchema,
+    HydrologicalNormOutputSchema,
+    HydrologicalNormTypeFiltersSchema,
     HydroMetricFilterSchema,
     MeteoMetricFilterSchema,
     MeteorologicalMetricOutputSchema,
+    MeteorologicalNormOutputSchema,
+    MeteorologicalNormTypeFiltersSchema,
     MetricCountSchema,
     MetricTotalCountSchema,
     OperationalJournalDailyDataSchema,
@@ -39,7 +41,12 @@ from .schema import (
 )
 from .timeseries.query import TimeseriesQueryManager
 from .utils.helpers import OperationalJournalDataTransformer
-from .utils.parser import DecadalDischargeNormFileParser, MonthlyDischargeNormFileParser
+from .utils.parser import (
+    DecadalDischargeNormFileParser,
+    DecadalMeteoNormFileParser,
+    MonthlyDischargeNormFileParser,
+    MonthlyMeteoNormFileParser,
+)
 
 agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": Sum}
 
@@ -142,13 +149,13 @@ class MeteoMetricsAPIController:
             return manager.get_metric_distribution()
 
 
-@api_controller("discharge-norms", tags=["Discharge norms"], auth=JWTAuth())
-class DischargeNormsAPIController:
+@api_controller("hydrological-norms", tags=["Hydrological norms"], auth=JWTAuth())
+class HydrologicalNormsAPIController:
     @route.get("download-template", response={200: None, 404: Message})
-    def download_template_file(self, norm_types: Query[DischargeNormTypeFiltersSchema]):
+    def download_template_file(self, norm_type: Query[HydrologicalNormTypeFiltersSchema]):
         filename = (
             "discharge_norm_monthly_template.xlsx"
-            if norm_types.norm_type.value == NormType.MONTHLY
+            if norm_type.norm_type.value == NormType.MONTHLY
             else "discharge_norm_decadal_template.xlsx"
         )
         file_path = static(f"templates/{filename}")
@@ -159,29 +166,29 @@ class DischargeNormsAPIController:
         else:
             return 404, {"detail": "Could not retrieve the file", "code": "file_not_found"}
 
-    @route.get("{station_uuid}", response=list[DischargeNormOutputSchema], permissions=regular_permissions)
-    def get_station_discharge_norm(self, station_uuid: str, norm_types: Query[DischargeNormTypeFiltersSchema]):
-        return DischargeNorm.objects.for_station(station_uuid).filter(norm_type=norm_types.norm_type.value)
+    @route.get("{station_uuid}", response=list[HydrologicalNormOutputSchema], permissions=regular_permissions)
+    def get_station_discharge_norm(self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema]):
+        return HydrologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value)
 
-    @route.post(
-        "{station_uuid}/monthly", response={201: list[DischargeNormOutputSchema]}, permissions=regular_permissions
-    )
-    def upload_monthly_discharge_norm(self, station_uuid: str, file: UploadedFile = File(...)):
-        parser = MonthlyDischargeNormFileParser(file)
+    @route.post("{station_uuid}", response={201: list[HydrologicalNormOutputSchema]}, permissions=regular_permissions)
+    def upload_discharge_norm(
+        self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema], file: UploadedFile = File(...)
+    ):
+        parser_class = (
+            DecadalDischargeNormFileParser
+            if norm_type.norm_type == NormType.DECADAL
+            else MonthlyDischargeNormFileParser
+        )
+        data = parser_class(file).parse()
+        _ = HydrologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value).delete()
 
-        data = parser.parse()
-
-        # first delete the existing records
-        _ = DischargeNorm.objects.filter(station=station_uuid, norm_type=NormType.MONTHLY).delete()
-
-        # will not call the .save method, thus the pre_save and post_save signals won't be emitted
-        norms = DischargeNorm.objects.bulk_create(
+        norms = HydrologicalNorm.objects.bulk_create(
             [
-                DischargeNorm(
+                HydrologicalNorm(
                     station_id=station_uuid,
                     value=point["value"],
                     ordinal_number=point["ordinal_number"],
-                    norm_type=NormType.MONTHLY,
+                    norm_type=norm_type.norm_type.value,
                 )
                 for point in data["discharge"]
             ]
@@ -189,31 +196,72 @@ class DischargeNormsAPIController:
 
         return 201, norms
 
+
+@api_controller("meteorological-norms", tags=["Meteorological norms"], auth=JWTAuth())
+class MeteorologicalNormsAPIController:
+    @route.get("download-template", response={200: None, 404: Message})
+    def download_template_file(self, norm_types: Query[HydrologicalNormTypeFiltersSchema]):
+        filename = (
+            "meteo_norm_monthly_template.xlsx"
+            if norm_types.norm_type.value == NormType.MONTHLY
+            else "meteo_norm_decadal_template.xlsx"
+        )
+        file_path = static(f"templates/{filename}")
+        absolute_path = os.path.join(settings.APPS_DIR, file_path.strip("/"))
+        if os.path.exists(absolute_path):
+            response = FileResponse(open(absolute_path, "rb"), as_attachment=True, filename=filename)
+            return response
+        else:
+            return 404, {"detail": "Could not retrieve the file", "code": "file_not_found"}
+
+    @route.get("{station_uuid}", response=list[MeteorologicalNormOutputSchema], permissions=regular_permissions)
+    def get_station_meteorological_norm(
+        self, station_uuid: str, norm_filters: Query[MeteorologicalNormTypeFiltersSchema]
+    ):
+        return MeteorologicalNorm.objects.for_station(station_uuid).filter(
+            norm_type=norm_filters.norm_type.value, norm_metric=norm_filters.norm_metric.value
+        )
+
     @route.post(
-        "{station_uuid}/decadal", response={201: list[DischargeNormOutputSchema]}, permissions=regular_permissions
+        "{station_uuid}",
+        response={201: dict[str, list[MeteorologicalNormOutputSchema]]},
+        permissions=regular_permissions,
     )
-    def upload_decadal_discharge_norm(self, station_uuid: str, file: UploadedFile = File(...)):
-        parser = DecadalDischargeNormFileParser(file)
+    def upload_meteorological_norm(
+        self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema], file: UploadedFile = File(...)
+    ):
+        parser_class = (
+            DecadalMeteoNormFileParser if norm_type.norm_type == NormType.DECADAL else MonthlyMeteoNormFileParser
+        )
+        data = parser_class(file).parse()
+        _ = MeteorologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value).delete()
 
-        data = parser.parse()
-
-        # first delete the existing records
-        _ = DischargeNorm.objects.filter(station=station_uuid, norm_type=NormType.DECADAL).delete()
-
-        # will not call the .save method, thus the pre_save and post_save signals won't be emitted
-        norms = DischargeNorm.objects.bulk_create(
+        precipitation_norms = MeteorologicalNorm.objects.bulk_create(
             [
-                DischargeNorm(
+                MeteorologicalNorm(
                     station_id=station_uuid,
                     value=point["value"],
                     ordinal_number=point["ordinal_number"],
-                    norm_type=NormType.DECADAL,
+                    norm_type=norm_type.norm_type.value,
+                    norm_metric=MeteorologicalNormMetric.PRECIPITATION,
                 )
-                for point in data["discharge"]
+                for point in data["precipitation"]
+            ]
+        )
+        temperature_norms = MeteorologicalNorm.objects.bulk_create(
+            [
+                MeteorologicalNorm(
+                    station_id=station_uuid,
+                    value=point["value"],
+                    ordinal_number=point["ordinal_number"],
+                    norm_type=norm_type.norm_type.value,
+                    norm_metric=MeteorologicalNormMetric.TEMPERATURE,
+                )
+                for point in data["temperature"]
             ]
         )
 
-        return 201, norms
+        return 201, {"precipitation": precipitation_norms, "temperature": temperature_norms}
 
 
 @api_controller(
