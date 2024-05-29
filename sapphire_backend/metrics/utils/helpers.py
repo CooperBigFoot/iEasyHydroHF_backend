@@ -114,7 +114,7 @@ class OperationalJournalDataTransformer:
             if not daily_precipitation_data.empty:
                 value = daily_precipitation_data[["avg_value", "value_code"]].iloc[0].to_dict()
                 description = DailyPrecipitationCodeMapper(value["value_code"]).get_description()
-                output_string = f"{value['avg_value']} ({description})"
+                output_string = f"{round(value['avg_value'], 1)} ({description})"
 
         return output_string
 
