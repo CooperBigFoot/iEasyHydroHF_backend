@@ -84,8 +84,8 @@ class TestHydroMetricsAPI:
         response = authenticated_regular_user_api_client.get(
             self.endpoint.format(organization.uuid),
             {
-                "metric_name__in": HydrologicalMetricName.WATER_LEVEL_DAILY.value,
-                "value_type__in": HydrologicalMeasurementType.MANUAL.value,
+                "metric_name__in": HydrologicalMetricName.WATER_LEVEL_DAILY,
+                "value_type__in": HydrologicalMeasurementType.MANUAL,
                 "station__station_code": manual_hydro_station.station_code,
             },
         )
@@ -98,6 +98,7 @@ class TestHydroMetricsAPI:
                 "value_type": water_level_manual_other.value_type,
                 "sensor_identifier": water_level_manual_other.sensor_identifier,
                 "station_id": manual_hydro_station.id,
+                "value_code": None,
             },
             {
                 "avg_value": water_level_manual.avg_value,
@@ -106,6 +107,7 @@ class TestHydroMetricsAPI:
                 "value_type": water_level_manual.value_type,
                 "sensor_identifier": water_level_manual.sensor_identifier,
                 "station_id": manual_hydro_station.id,
+                "value_code": None,
             },
         ]
 
@@ -126,10 +128,13 @@ class TestHydroMetricsAPI:
             {"timestamp_local__gte": (dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=50)).isoformat()},
         )
 
-        assert response.json() == [
-            {"metric_name": HydrologicalMetricName.WATER_DISCHARGE_DAILY, "metric_count": 1},
-            {"metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY, "metric_count": 2},
-        ]
+        assert sorted(response.json(), key=lambda d: d["metric_name"]) == sorted(
+            [
+                {"metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY, "metric_count": 2},
+                {"metric_name": HydrologicalMetricName.WATER_DISCHARGE_DAILY, "metric_count": 1},
+            ],
+            key=lambda d: d["metric_name"],
+        )
 
     def test_get_hydro_metric_count_total_only(
         self,
