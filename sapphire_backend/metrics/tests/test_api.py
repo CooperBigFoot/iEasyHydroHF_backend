@@ -128,10 +128,13 @@ class TestHydroMetricsAPI:
             {"timestamp_local__gte": (dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(hours=50)).isoformat()},
         )
 
-        assert response.json() == [
-            {"metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY, "metric_count": 2},
-            {"metric_name": HydrologicalMetricName.WATER_DISCHARGE_DAILY, "metric_count": 1},
-        ]
+        assert sorted(response.json(), key=lambda d: d["metric_name"]) == sorted(
+            [
+                {"metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY, "metric_count": 2},
+                {"metric_name": HydrologicalMetricName.WATER_DISCHARGE_DAILY, "metric_count": 1},
+            ],
+            key=lambda d: d["metric_name"],
+        )
 
     def test_get_hydro_metric_count_total_only(
         self,
