@@ -16,7 +16,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         include_processed = options["include_processed"]
-        no_renaming = options["no_renaming"]
         ingestion_ftp_client_class = os.environ.get("INGESTION_FTP_CLIENT_CLASS", "")
         ingester_class = os.environ.get("INGESTION_CLASS", "")
 
@@ -31,7 +30,7 @@ class Command(BaseCommand):
                 ftp_port=int(os.environ["INGESTION_FTP_PORT"]),
                 ftp_user=os.environ["INGESTION_FTP_USER"],
                 ftp_password=os.environ["INGESTION_FTP_PASSWORD"],
-                ftp_chunk_size=10,
+                ftp_chunk_size=2,
             )
         elif ingestion_ftp_client_class == "filemanager.FTPClient":
             ftp_client = FTPClient(
@@ -52,8 +51,8 @@ class Command(BaseCommand):
                 source_dir="/stream1",
                 parser=XMLParser,
                 include_processed=include_processed,
-                no_renaming=no_renaming,
-                # chunk_size=10
+                offline_storage_dir=os.environ.get("INGESTION_LOCAL_STORAGE_DIR", None),
+                chunk_size=20
             )
         else:
             logging.error("env INGESTION_CLASS not set or not supported. Supported values: ingester.ImomoIngester")

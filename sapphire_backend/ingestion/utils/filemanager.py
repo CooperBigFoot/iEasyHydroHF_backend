@@ -231,13 +231,17 @@ class ImomoStagingFTPClient(FTPClient):
             self._exec_shell_command(bash_command)
         logging.info("Done.")
 
-    def get_files(self, ftp_file_path: str, dest_folder_local: str) -> list[str]:
+    def get_files(self, ftp_file_path: list[str], dest_folder_local: str, gzip=True) -> list[str]:
         """
         Download FTP files to the SSH machine and then transfer to the local machine.
         Cleanup the temporary files on the SSH machine.
         :return paths to the downloaded files as a list
         """
         ssh_file_path = self._ftp_get_files(ftp_file_path, self.ssh_remote_dest_dir)
+        if gzip:
+           gzip_cmd = f"gzip {self.ssh_remote_dest_dir}/*"
+           self._exec_shell_command(gzip_cmd)
+           ssh_file_path = list(map(lambda filename: f"{filename}.gz", ssh_file_path))
         local_files = self._scp_get_files(ssh_file_path, dest_folder_local)
         self._cleanup_ssh_files(ssh_file_path)
         return local_files
