@@ -69,7 +69,7 @@ def water_level_automatic(db, automatic_hydro_station):
 def water_level_manual_other_organization(db, manual_hydro_station_other_organization):
     return HydrologicalMetricFactory(
         station=manual_hydro_station_other_organization,
-        timestamp=dt.datetime.now(tz=dt.timezone.utc) + dt.timedelta(minutes=10),
+        timestamp=dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(minutes=10),
         avg_value=10.0,
         value_type=HydrologicalMeasurementType.MANUAL,
         metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,

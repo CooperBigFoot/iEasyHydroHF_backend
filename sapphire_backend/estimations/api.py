@@ -120,7 +120,6 @@ class EstimationsAPIController:
     ):
         return EstimationsViewQueryManager(
             "estimations_water_discharge_daily_average",
-            organization_uuid,
             filters.dict(exclude_none=True),
             order.order_param,
             order.order_direction,

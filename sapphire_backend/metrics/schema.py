@@ -21,8 +21,8 @@ class BaseTimeseriesFilterSchema(FilterSchema):
     timestamp_local__gte: datetime = None
     timestamp_local__lt: datetime = None
     timestamp_local__lte: datetime = None
-    station_id: int = None
-    station_id__in: list[int] = None
+    station: int = None
+    station__in: list[int] = None
     station__station_code: str = None
     station__station_code__in: list[str] = None
 
@@ -32,8 +32,8 @@ class HydroMetricFilterSchema(BaseTimeseriesFilterSchema):
     avg_value__gte: float = None
     avg_value__lt: float = None
     avg_value__lte: float = None
-    metric_name: HydrologicalMetricName = None
-    value_type: HydrologicalMeasurementType = None
+    metric_name__in: list[HydrologicalMetricName] = None
+    value_type__in: list[HydrologicalMeasurementType] = None
     sensor_identifier: str = None
 
 
@@ -58,6 +58,38 @@ class HydrologicalMetricOutputSchema(Schema):
     value_type: str
     sensor_identifier: str
     station_id: int
+    value_code: int | None
+
+
+class OperationalJournalDailyDataSchema(Schema):
+    id: str
+    date: str
+    water_level_morning: int | str
+    water_discharge_morning: float | str
+    trend: int | str | None = "--"
+    water_level_evening: int | str
+    water_discharge_evening: float | str
+    water_level_average: int | str
+    water_discharge_average: float | str
+    ice_phenomena: str | None = "--"
+    daily_precipitation: str | None = "--"
+    water_temperature: float | str
+    air_temperature: float | str
+
+
+class OperationalJournalDischargeDataSchema(Schema):
+    id: str
+    date: str
+    water_level: int | str
+    water_discharge: float | str
+    cross_section: float | str
+
+
+class OperationalJournalDecadalDataSchema(Schema):
+    id: str
+    decade: int | str
+    water_level: int | str
+    water_discharge: float | str
 
 
 class MeteorologicalMetricOutputSchema(Schema):

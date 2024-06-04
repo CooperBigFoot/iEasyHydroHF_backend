@@ -14,19 +14,17 @@ class TimeseriesQueryManager:
     def __init__(
         self,
         model: type[HydrologicalMetric] | type[MeteorologicalMetric],
-        organization_uuid: str,
         filter_dict: dict[str, str | list[str]] = None,
         order_param: str = "timestamp",
         order_direction: str = "DESC",
     ):
         self.model = self._set_model(model)
         self.filter_fields = self._add_filter_fields()
-        self.organization = self._set_organization(organization_uuid)
-        self.filter_dict = filter_dict
+        self.filter_dict = filter_dict if filter_dict else {}
+        self._validate_filter_dict()
         self.order_param = order_param
         self.order_direction = order_direction
         self.order = self._construct_order()
-        self.filter = self._construct_filter(organization_uuid)
 
     @staticmethod
     def _set_model(model: HydrologicalMetric | MeteorologicalMetric):
@@ -39,13 +37,6 @@ class TimeseriesQueryManager:
 
     def _add_filter_fields(self):
         return [field.name for field in self.model._meta.get_fields()]
-
-    @staticmethod
-    def _set_organization(organization_uuid: str):
-        try:
-            return Organization.objects.get(uuid=organization_uuid)
-        except Organization.DoesNotExist:
-            raise ValueError("Organization with the given UUID does not exist.")
 
     def _validate_filter_dict(self):
         for key in self.filter_dict.keys():
@@ -60,15 +51,11 @@ class TimeseriesQueryManager:
     def _construct_order(self) -> str:
         return f"{self._resolve_order_direction(self.order_direction)}{self.order_param}"
 
-    def _construct_filter(self, organization_uuid: str) -> dict[str, Any]:
+    def _construct_filter(self) -> dict[str, Any]:
         if self.filter_dict:
             self._validate_filter_dict()
-        filter_dict = {"station__site__organization": organization_uuid}
 
-        if self.filter_dict:
-            filter_dict.update(self.filter_dict)
-
-        return filter_dict
+        return self.filter_dict
 
     def _construct_organization_sql_join_string(self):
         db_table = self.model._meta.db_table
@@ -87,10 +74,10 @@ class TimeseriesQueryManager:
         """
 
     def _construct_sql_filter_string(self):
-        where_clauses = [f"o.uuid='{self.organization.uuid}'"]
+        where_clauses = []
         params = []
 
-        if self.filter_dict is not None:
+        if self.filter_dict:
             for field, value in self.filter_dict.items():
                 match field:
                     case "timestamp_local":
@@ -111,6 +98,9 @@ class TimeseriesQueryManager:
                     case "avg_value":
                         where_clauses.append("avg_value = %s")
                         params.append(value)
+                    case "station__site__organization":
+                        where_clauses.append("o.uuid = %s")
+                        params.append(value)
                     case "avg_value__gt":
                         where_clauses.append("avg_value > %s")
                         params.append(value)
@@ -123,26 +113,28 @@ class TimeseriesQueryManager:
                     case "avg_value__lte":
                         where_clauses.append("avg_value <= %s")
                         params.append(value)
-                    case "station_id":
-                        where_clauses.append("st.id = %s")
+                    case "station":
+                        where_clauses.append("station_id = %s")
                         params.append(value)
                     case "station__station_code":
                         where_clauses.append("st.station_code = %s")
                         params.append(value)
-                    case "station_id__in":
+                    case "station__in":
                         placeholders = ", ".join(["%s"] * len(value))
-                        where_clauses.append(f"st.id IN ({placeholders})")
+                        where_clauses.append(f"station_id IN ({placeholders})")
                         params.extend(value)
                     case "station__station_code__in":
                         placeholders = ", ".join(["%s"] * len(value))
                         where_clauses.append(f"st.station_code IN ({placeholders})")
                         params.extend(value)
-                    case "metric_name":
-                        where_clauses.append("metric_name = %s")
-                        params.append(value)
-                    case "value_type":
-                        where_clauses.append("value_type = %s")
-                        params.append(value)
+                    case "metric_name__in":
+                        placeholders = ", ".join(["%s"] * len(value))
+                        where_clauses.append(f"metric_name IN ({placeholders})")
+                        params.extend(value)
+                    case "value_type__in":
+                        placeholders = ", ".join(["%s"] * len(value))
+                        where_clauses.append(f"value_type IN ({placeholders})")
+                        params.extend(value)
                     case "sensor_identifier":
                         where_clauses.append("sensor_identifier = %s")
                         params.append(value)
@@ -153,27 +145,34 @@ class TimeseriesQueryManager:
         return where_clause, params
 
     def execute_query(self):
-        return self.model.objects.filter(**self.filter).order_by(self.order)
+        return self.model.objects.filter(**self.filter_dict).order_by(self.order)
 
     def get_total(self):
-        return self.model.objects.filter(**self.filter).count()
+        return self.model.objects.filter(**self.filter_dict).count()
 
     def get_metric_distribution(self):
         return (
-            self.model.objects.filter(**self.filter).values("metric_name").annotate(metric_count=Count("metric_name"))
+            self.model.objects.filter(**self.filter_dict)
+            .values("metric_name")
+            .annotate(metric_count=Count("metric_name"))
         )
 
     def get_value_type_distribution(self):
         return (
-            self.model.objects.filter(**self.filter)
+            self.model.objects.filter(**self.filter_dict)
             .values("value_type")
             .annotate(value_type_count=Count("value_type"))
         )
 
     def time_bucket(self, interval: str, agg_func: str, limit: int = 100):
         db_table = self.model._meta.db_table
-        join_string = self._construct_organization_sql_join_string()
+        join_string = (
+            self._construct_organization_sql_join_string()
+            if "station__site__organization" or "station__station_code" in self.filter_dict
+            else ""
+        )
         where_string, params = self._construct_sql_filter_string()
+        where_clause = f"WHERE {where_string}" if where_string else ""
 
         query = f"""
             SELECT
@@ -181,7 +180,7 @@ class TimeseriesQueryManager:
             {agg_func}(avg_value)
             FROM {db_table}
             {join_string}
-            WHERE {where_string}
+            {where_clause}
             GROUP BY bucket
             ORDER BY bucket {self.order_direction}
             LIMIT %s
