@@ -14,4 +14,3 @@ def custom_average(values: list[int | float | None]) -> float | None:
 
     # Calculate the average
     return sum(filtered_values) / len(filtered_values)
-
