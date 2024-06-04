@@ -226,8 +226,9 @@ class ImomoStagingFTPClient(FTPClient):
         Remove downloaded temporary files from the SSH server
         """
         logging.info("Cleaning up downloaded files on the SSH server...")
-        for f in ssh_file_path:
-            bash_command = f"rm {f}"
+        for idx in range(0, len(ssh_file_path), self.ftp_chunk_size):
+            filepaths_chunk = " ".join(ssh_file_path[idx : idx + self.ftp_chunk_size])
+            bash_command = f"rm {filepaths_chunk}"
             self._exec_shell_command(bash_command)
         logging.info("Done.")
 
@@ -239,9 +240,9 @@ class ImomoStagingFTPClient(FTPClient):
         """
         ssh_file_path = self._ftp_get_files(ftp_file_path, self.ssh_remote_dest_dir)
         if gzip:
-           gzip_cmd = f"gzip {self.ssh_remote_dest_dir}/*"
-           self._exec_shell_command(gzip_cmd)
-           ssh_file_path = list(map(lambda filename: f"{filename}.gz", ssh_file_path))
+            gzip_cmd = f"gzip {self.ssh_remote_dest_dir}/*"
+            self._exec_shell_command(gzip_cmd)
+            ssh_file_path = [f"{filename}.gz" for filename in ssh_file_path]
         local_files = self._scp_get_files(ssh_file_path, dest_folder_local)
         self._cleanup_ssh_files(ssh_file_path)
         return local_files
