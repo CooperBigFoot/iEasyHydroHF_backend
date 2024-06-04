@@ -1,9 +1,9 @@
 from typing import Any
 
 from django.db import connection
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.metrics.timeseries.query import TimeseriesQueryManager
-from sapphire_backend.stations.models import HydrologicalStation
 
 from .schema import EstimationsViewSchema
 
@@ -12,12 +12,11 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
     def __init__(
         self,
         model: EstimationsViewSchema,
-        organization_uuid: str,
         filter_dict: dict[str, str | list[str]] = None,
         order_param: str = "timestamp_local",
         order_direction: str = "DESC",
     ):
-        super().__init__(model, organization_uuid, filter_dict, order_param, order_direction)
+        super().__init__(model, filter_dict, order_param, order_direction)
 
     @staticmethod
     def _set_model(
@@ -25,6 +24,7 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
     ):
         if model not in [
             "estimations_water_level_daily_average",
+            "estimations_water_level_decade_average",
             "estimations_water_discharge_daily",
             "estimations_water_discharge_daily_average",
             "estimations_water_discharge_fiveday_average",
@@ -37,21 +37,15 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
         return ["avg_value", "timestamp_local", "station_id"]
 
     def _validate_filter_dict(self):
-        if "station_id" not in self.filter_dict and "station_id__uuid" not in self.filter_dict:
+        if "station_id" not in self.filter_dict:
             raise ValueError("EstimationsViewQueryManager requires filtering by station ID")
-
-        if not HydrologicalStation.objects.filter(
-            site_id__in=[*self.organization.site_related.values_list("uuid", flat=True)],
-            id=self.filter_dict["station_id"],
-        ).exists():
-            raise ValueError(f"Station with the ID {self.filter_dict['station_id']} does not exist.")
 
         for key in self.filter_dict.keys():
             cleaned_key = key.split("__")[0]
             if cleaned_key not in self.filter_fields:
                 raise ValueError(f"{cleaned_key} field does not exist on the {self.model} view.")
 
-    def _construct_filter(self, organization_uuid: str) -> dict[str, Any]:
+    def _construct_filter(self) -> dict[str, Any]:
         self._validate_filter_dict()
         return self.filter_dict
 
@@ -118,5 +112,5 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
             cursor.execute(query, [*params, limit])
             rows = cursor.fetchall()
 
-        results = [{"timestamp_local": row[0], "value": row[1]} for row in rows]
+        results = [{"timestamp_local": row[0].astimezone(ZoneInfo("UTC")), "avg_value": row[1]} for row in rows]
         return results

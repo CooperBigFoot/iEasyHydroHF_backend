@@ -1,6 +1,8 @@
 import os
+from datetime import datetime as dt
 from typing import Any
 
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Avg, Count, Max, Min, Sum
 from django.http import FileResponse
@@ -10,12 +12,15 @@ from ninja.files import UploadedFile
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
+from sapphire_backend.estimations.query import EstimationsViewQueryManager
+from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from .choices import NormType
+from .choices import HydrologicalMeasurementType, HydrologicalMetricName, NormType
 from .models import DischargeNorm, HydrologicalMetric, MeteorologicalMetric
 from .schema import (
     DischargeNormOutputSchema,
@@ -26,10 +31,14 @@ from .schema import (
     MeteorologicalMetricOutputSchema,
     MetricCountSchema,
     MetricTotalCountSchema,
+    OperationalJournalDailyDataSchema,
+    OperationalJournalDecadalDataSchema,
+    OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
     TimeBucketQueryParams,
 )
 from .timeseries.query import TimeseriesQueryManager
+from .utils.helpers import OperationalJournalDataTransformer
 from .utils.parser import DecadalDischargeNormFileParser, MonthlyDischargeNormFileParser
 
 agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": Sum}
@@ -47,10 +56,10 @@ class HydroMetricsAPIController:
         filters: Query[HydroMetricFilterSchema] = None,
     ):
         filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
         order_param, order_direction = order.order_param, order.order_direction
         return TimeseriesQueryManager(
             model=HydrologicalMetric,
-            organization_uuid=organization_uuid,
             order_param=order_param,
             order_direction=order_direction,
             filter_dict=filter_dict,
@@ -61,9 +70,8 @@ class HydroMetricsAPIController:
         self, organization_uuid: str, filters: Query[HydroMetricFilterSchema], total_only: bool = False
     ):
         filter_dict = filters.dict(exclude_none=True)
-        manager = TimeseriesQueryManager(
-            model=HydrologicalMetric, organization_uuid=organization_uuid, filter_dict=filter_dict
-        )
+        filter_dict["station__site__organization"] = organization_uuid
+        manager = TimeseriesQueryManager(model=HydrologicalMetric, filter_dict=filter_dict)
 
         if total_only:
             return {"total": manager.get_total()}
@@ -79,12 +87,12 @@ class HydroMetricsAPIController:
         filters: Query[HydroMetricFilterSchema],
     ):
         filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
         time_bucket_dict = time_bucket.dict()
         time_bucket_dict["agg_func"] = time_bucket_dict["agg_func"].value
         order_param, order_direction = order.order_param, order.order_direction
         query_manager = TimeseriesQueryManager(
             model=HydrologicalMetric,
-            organization_uuid=organization_uuid,
             filter_dict=filter_dict,
             order_param=order_param,
             order_direction=order_direction,
@@ -111,10 +119,10 @@ class MeteoMetricsAPIController:
         filters: Query[MeteoMetricFilterSchema] = None,
     ):
         filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
         order_param, order_direction = order.order_param, order.order_direction
         return TimeseriesQueryManager(
             model=MeteorologicalMetric,
-            organization_uuid=organization_uuid,
             order_param=order_param,
             order_direction=order_direction,
             filter_dict=filter_dict,
@@ -125,9 +133,8 @@ class MeteoMetricsAPIController:
         self, organization_uuid: str, filters: Query[MeteoMetricFilterSchema], total_only: bool = False
     ):
         filter_dict = filters.dict(exclude_none=True)
-        manager = TimeseriesQueryManager(
-            model=MeteorologicalMetric, organization_uuid=organization_uuid, filter_dict=filter_dict
-        )
+        filter_dict["station__site__organization"] = organization_uuid
+        manager = TimeseriesQueryManager(model=MeteorologicalMetric, filter_dict=filter_dict)
 
         if total_only:
             return {"total": manager.get_total()}
@@ -207,3 +214,128 @@ class DischargeNormsAPIController:
         )
 
         return 201, norms
+
+
+@api_controller(
+    "metrics/operational-journal/{station_uuid}/{year}/{month}",
+    tags=["Operational journal"],
+    auth=JWTAuth(),
+    permissions=regular_permissions,
+)
+class OperationalJournalAPIController:
+    @route.get("daily-data", response={200: list[OperationalJournalDailyDataSchema]})
+    def get_daily_data(self, station_uuid: str, year: int, month: int):
+        station = HydrologicalStation.objects.get(uuid=station_uuid)
+        first_day_current_month = dt(year, month, 1)
+        last_day_previous_month = first_day_current_month - relativedelta(days=1)
+        first_day_next_month = first_day_current_month + relativedelta(months=1)
+        dt_start = SmartDatetime(last_day_previous_month, station).day_beginning_local.isoformat()
+        dt_end = SmartDatetime(first_day_next_month, station).day_beginning_local.isoformat()
+        common_filter_dict = {"timestamp_local__gte": dt_start, "timestamp_local__lt": dt_end}
+        estimations_filter_dict = {"station_id": station.id, **common_filter_dict}
+        daily_data_filter_dict = {
+            **common_filter_dict,
+            "station": station.id,
+            "value_type__in": [HydrologicalMeasurementType.MANUAL.value],
+            "metric_name__in": [
+                HydrologicalMetricName.WATER_LEVEL_DAILY.value,
+                HydrologicalMetricName.PRECIPITATION_DAILY.value,
+                HydrologicalMetricName.WATER_TEMPERATURE.value,
+                HydrologicalMetricName.AIR_TEMPERATURE.value,
+                HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION.value,
+            ],
+        }
+
+        operational_journal_data = []
+
+        daily_hydro_metric_data = TimeseriesQueryManager(
+            model=HydrologicalMetric,
+            order_param="timestamp_local",
+            order_direction="ASC",
+            filter_dict=daily_data_filter_dict,
+        ).execute_query()
+
+        operational_journal_data.extend(
+            daily_hydro_metric_data.values("timestamp_local", "avg_value", "metric_name", "value_code")
+        )
+
+        estimated_data_queries = [
+            ("estimations_water_discharge_daily", HydrologicalMetricName.WATER_DISCHARGE_DAILY),
+            ("estimations_water_level_daily_average", HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE),
+            ("estimations_water_discharge_daily_average", HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE),
+        ]
+
+        for view_name, metric_name in estimated_data_queries:
+            estimation_data = EstimationsViewQueryManager(
+                view_name, order_param="timestamp_local", order_direction="ASC", filter_dict=estimations_filter_dict
+            ).execute_query()
+
+            operational_journal_data.extend({**d, "metric_name": metric_name} for d in estimation_data)
+
+        prepared_data = OperationalJournalDataTransformer(operational_journal_data).get_daily_data()
+
+        return prepared_data
+
+    @route.get("discharge-data", response=list[OperationalJournalDischargeDataSchema])
+    def get_discharge_data(self, station_uuid: str, year: int, month: int):
+        station = HydrologicalStation.objects.get(uuid=station_uuid)
+        first_day_current_month = dt(year, month, 1)
+        dt_start = SmartDatetime(first_day_current_month, station).day_beginning_local.isoformat()
+        first_day_next_month = first_day_current_month + relativedelta(months=1)
+        dt_end = SmartDatetime(first_day_next_month, station).day_beginning_local.isoformat()
+
+        discharge_data = TimeseriesQueryManager(
+            model=HydrologicalMetric,
+            order_param="timestamp_local",
+            order_direction="ASC",
+            filter_dict={
+                "timestamp_local__gte": dt_start,
+                "timestamp_local__lt": dt_end,
+                "station": station.id,
+                "value_type__in": [HydrologicalMeasurementType.MANUAL.value],
+                "metric_name__in": [
+                    HydrologicalMetricName.WATER_LEVEL_DECADAL,
+                    HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+                    HydrologicalMetricName.RIVER_CROSS_SECTION_AREA,
+                ],
+            },
+        ).execute_query()
+
+        prepared_data = OperationalJournalDataTransformer(
+            discharge_data.values("timestamp_local", "avg_value", "metric_name")
+        ).get_discharge_data()
+
+        return prepared_data
+
+    @route.get("decadal-data", response=list[OperationalJournalDecadalDataSchema])
+    def get_decadal_data(self, station_uuid: str, year: int, month: int):
+        station = HydrologicalStation.objects.get(uuid=station_uuid)
+        first_day_current_month = dt(year, month, 1)
+        dt_start = SmartDatetime(first_day_current_month, station).day_beginning_local.isoformat()
+        first_day_next_month = first_day_current_month + relativedelta(months=1)
+        dt_end = SmartDatetime(first_day_next_month, station).day_beginning_local.isoformat()
+
+        decadal_data = []
+
+        querying_views = [
+            ("estimations_water_level_decade_average", HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE),
+            ("estimations_water_discharge_decade_average", HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE),
+        ]
+
+        for view_name, metric_name in querying_views:
+            view_data = EstimationsViewQueryManager(
+                view_name,
+                order_param="timestamp_local",
+                order_direction="ASC",
+                filter_dict={
+                    "timestamp_local__gte": dt_start,
+                    "timestamp_local__lt": dt_end,
+                    "station_id": station.id,
+                },
+            ).execute_query()
+
+            decadal_data.extend({**d, "metric_name": metric_name} for d in view_data)
+
+        prepared_data = OperationalJournalDataTransformer(decadal_data).get_decadal_data()
+
+        return prepared_data
