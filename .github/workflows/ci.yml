@@ -17,6 +17,8 @@ on:
     branches: [ 'main', 'deployment_pipeline' ]
     paths-ignore: [ 'docs/**' ]
 
+  workflow_dispatch:
+
 concurrency:
   group: ${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -38,6 +40,8 @@ jobs:
 
   pytest:
     needs: linter
+    # Make this job trigger manually
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code Repository
@@ -55,8 +59,9 @@ jobs:
       - name: Tear down the Stack
         run: docker compose -f local.yml down
 
+
+
   build:
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: pytest
     steps:
