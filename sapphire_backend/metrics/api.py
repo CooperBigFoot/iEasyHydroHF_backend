@@ -1,3 +1,4 @@
+import math
 import os
 from datetime import datetime as dt
 from typing import Any
@@ -191,6 +192,7 @@ class HydrologicalNormsAPIController:
                     norm_type=norm_type.norm_type.value,
                 )
                 for point in data["discharge"]
+                if not math.isnan(point["value"])
             ]
         )
 
@@ -246,6 +248,7 @@ class MeteorologicalNormsAPIController:
                     norm_metric=MeteorologicalNormMetric.PRECIPITATION,
                 )
                 for point in data["precipitation"]
+                if not math.isnan(point["value"])
             ]
         )
         temperature_norms = MeteorologicalNorm.objects.bulk_create(
@@ -258,6 +261,7 @@ class MeteorologicalNormsAPIController:
                     norm_metric=MeteorologicalNormMetric.TEMPERATURE,
                 )
                 for point in data["temperature"]
+                if not math.isnan(point["value"])
             ]
         )
 
