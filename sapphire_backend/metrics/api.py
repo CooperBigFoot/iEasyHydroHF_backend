@@ -14,14 +14,22 @@ from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
 from sapphire_backend.estimations.query import EstimationsViewQueryManager
-from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from .choices import HydrologicalMeasurementType, HydrologicalMetricName, MeteorologicalNormMetric, NormType
+from .choices import (
+    HydrologicalMeasurementType,
+    HydrologicalMetricName,
+    MeteorologicalMeasurementType,
+    MeteorologicalMetricName,
+    MeteorologicalNormMetric,
+    MetricUnit,
+    NormType,
+)
 from .models import HydrologicalMetric, HydrologicalNorm, MeteorologicalMetric, MeteorologicalNorm
 from .schema import (
     HydrologicalMetricOutputSchema,
@@ -29,6 +37,7 @@ from .schema import (
     HydrologicalNormTypeFiltersSchema,
     HydroMetricFilterSchema,
     MeteoMetricFilterSchema,
+    MeteorologicalManualInputSchema,
     MeteorologicalMetricOutputSchema,
     MeteorologicalNormOutputSchema,
     MeteorologicalNormTypeFiltersSchema,
@@ -41,7 +50,7 @@ from .schema import (
     TimeBucketQueryParams,
 )
 from .timeseries.query import TimeseriesQueryManager
-from .utils.helpers import OperationalJournalDataTransformer
+from .utils.helpers import OperationalJournalDataTransformer, calculate_date_from_month_and_decade_number
 from .utils.parser import (
     DecadalDischargeNormFileParser,
     DecadalMeteoNormFileParser,
@@ -148,6 +157,33 @@ class MeteoMetricsAPIController:
             return {"total": manager.get_total()}
         else:
             return manager.get_metric_distribution()
+
+    @route.post("{station_uuid}/manual-input", response={201: dict})
+    def save_decadal_meteo_data(
+        self, organization_uuid: str, station_uuid: str, meteo_data: MeteorologicalManualInputSchema
+    ):
+        meteo_station = MeteorologicalStation.objects.get(uuid=station_uuid)
+        ts = calculate_date_from_month_and_decade_number(meteo_data.month, meteo_data.decade)
+        _ = MeteorologicalMetric(
+            timestamp_local=ts,
+            value=meteo_data.precipitation,
+            metric_name=MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE
+            if meteo_data.decade == 4
+            else MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE,
+            station=meteo_station,
+            value_type=MeteorologicalMeasurementType.MANUAL,
+            unit=MetricUnit.PRECIPITATION,
+        )
+        _ = MeteorologicalMetric(
+            value=meteo_data.precipitation,
+            timestamp_local=ts,
+            metric_name=MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE
+            if meteo_data.decade == 4
+            else MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
+            station=meteo_station,
+            value_type=MeteorologicalMeasurementType.MANUAL,
+            unit=MetricUnit.TEMPERATURE,
+        )
 
 
 @api_controller("hydrological-norms", tags=["Hydrological norms"], auth=JWTAuth())

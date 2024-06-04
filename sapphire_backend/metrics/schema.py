@@ -100,6 +100,13 @@ class MeteorologicalMetricOutputSchema(Schema):
     station_id: int
 
 
+class MeteorologicalManualInputSchema(Schema):
+    month: int
+    decade: int
+    precipitation: float
+    temperature: float
+
+
 class MetricCountSchema(Schema):
     metric_name: HydrologicalMetricName | MeteorologicalMetricName | Literal["total"]
     metric_count: int
