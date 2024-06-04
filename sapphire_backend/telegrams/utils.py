@@ -19,23 +19,6 @@ from sapphire_backend.telegrams.schema import NewOldMetrics, TelegramBulkWithDat
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.rounding import custom_ceil, custom_round
 
-def custom_average(values: list[int | float | None]) -> float | None:
-    """
-    Calculate the average of the elements in the list, ignoring None values.
-
-    :param values: List of numbers (int or float), possibly containing None.
-    :return: The average of the non-None numbers, or None if there are no such numbers.
-    """
-    # Filter out None values
-    filtered_values = [value for value in values if value is not None]
-
-    # Check if there are any valid numbers to calculate the average
-    if len(filtered_values) == 0:
-        return None
-
-    # Calculate the average
-    return sum(filtered_values) / len(filtered_values)
-
 
 def get_parsed_telegrams_data(
     encoded_telegrams_dates: TelegramBulkWithDatesInputSchema, organization_uuid: str, save_telegrams: bool = True
@@ -325,7 +308,7 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
 
             water_level_average_old = None
             if len(water_level_average_old_query_result) > 0:
-                water_level_average_old = water_level_average_old_query_result[0].get("value")
+                water_level_average_old = water_level_average_old_query_result[0].get("avg_value")
 
             result[station_code][date]["average"] = NewOldMetrics(
                 water_level_new=None, water_level_old=None, discharge_new=None, discharge_old=None
@@ -341,7 +324,7 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
 
             discharge_morning_old = None
             if len(discharge_morning_old_query_result) > 0:
-                discharge_morning_old = discharge_morning_old_query_result[0].get("value")
+                discharge_morning_old = discharge_morning_old_query_result[0].get("avg_value")
 
             result[station_code][date]["morning"].discharge_old = custom_round(discharge_morning_old, 1)
             result[station_code][date]["morning"].discharge_new = custom_round(discharge_morning_old, 1)
@@ -353,7 +336,7 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
 
             discharge_evening_old = None
             if len(discharge_evening_old_query_result) > 0:
-                discharge_evening_old = discharge_evening_old_query_result[0].get("value")
+                discharge_evening_old = discharge_evening_old_query_result[0].get("avg_value")
 
             result[station_code][date]["evening"].discharge_old = custom_round(discharge_evening_old, 1)
             result[station_code][date]["evening"].discharge_new = custom_round(discharge_evening_old, 1)
@@ -365,7 +348,7 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
 
             discharge_average_old = None
             if len(discharge_average_old_query_result) > 0:
-                discharge_average_old = discharge_average_old_query_result[0].get("value")
+                discharge_average_old = discharge_average_old_query_result[0].get("avg_value")
 
             result[station_code][date]["average"].discharge_old = custom_round(discharge_average_old, 1)
             result[station_code][date]["average"].discharge_new = custom_round(discharge_average_old, 1)

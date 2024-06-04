@@ -13,7 +13,8 @@ from sapphire_backend.metrics.choices import (
 )
 from sapphire_backend.metrics.models import HydrologicalMetric
 from sapphire_backend.telegrams.parser import KN15TelegramParser
-from sapphire_backend.telegrams.utils import custom_average, custom_ceil, custom_round
+from sapphire_backend.telegrams.utils import custom_ceil, custom_round
+from sapphire_backend.utils.aggregations import custom_average
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 
 
@@ -555,43 +556,39 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
 
                 wl_average_old_query_result = EstimationsViewQueryManager(
                     model="estimations_water_level_daily_average",
-                    organization_uuid=organization_kyrgyz.uuid,
                     filter_dict={"station_id": station.id, "timestamp_local": smart_dt.midday_local},
                 ).execute_query()
 
                 expected_average_water_level_old = None
                 if len(wl_average_old_query_result) > 0:
-                    expected_average_water_level_old = wl_average_old_query_result[0].get("value")
+                    expected_average_water_level_old = wl_average_old_query_result[0].get("avg_value")
 
                 discharge_morning_old_query_result = EstimationsViewQueryManager(
                     model="estimations_water_discharge_daily",
-                    organization_uuid=organization_kyrgyz.uuid,
                     filter_dict={"station_id": station.id, "timestamp_local": smart_dt.morning_local},
                 ).execute_query()
 
                 expected_morning_discharge_old = None
                 if len(discharge_morning_old_query_result) > 0:
-                    expected_morning_discharge_old = discharge_morning_old_query_result[0].get("value")
+                    expected_morning_discharge_old = discharge_morning_old_query_result[0].get("avg_value")
 
                 discharge_evening_old_query_result = EstimationsViewQueryManager(
                     model="estimations_water_discharge_daily",
-                    organization_uuid=organization_kyrgyz.uuid,
                     filter_dict={"station_id": station.id, "timestamp_local": smart_dt.evening_local},
                 ).execute_query()
 
                 expected_evening_discharge_old = None
                 if len(discharge_evening_old_query_result) > 0:
-                    expected_evening_discharge_old = discharge_evening_old_query_result[0].get("value")
+                    expected_evening_discharge_old = discharge_evening_old_query_result[0].get("avg_value")
 
                 discharge_average_old_query_result = EstimationsViewQueryManager(
                     model="estimations_water_discharge_daily_average",
-                    organization_uuid=organization_kyrgyz.uuid,
                     filter_dict={"station_id": station.id, "timestamp_local": smart_dt.midday_local},
                 ).execute_query()
 
                 expected_average_discharge_old = None
                 if len(discharge_average_old_query_result) > 0:
-                    expected_average_discharge_old = discharge_average_old_query_result[0].get("value")
+                    expected_average_discharge_old = discharge_average_old_query_result[0].get("avg_value")
 
                 assert metrics["morning"]["water_level_old"] == expected_morning_water_level_old
                 assert metrics["morning"]["discharge_old"] == custom_round(expected_morning_discharge_old, 1)
