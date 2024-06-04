@@ -1,7 +1,7 @@
 -r base.txt
 -r imomo_old.txt
 
-Werkzeug[watchdog]==3.0.2 # https://github.com/pallets/werkzeug
+Werkzeug[watchdog]==3.0.3 # https://github.com/pallets/werkzeug
 ipdb==0.13.13  # https://github.com/gotcha/ipdb
 psycopg==3.1.19 # https://github.com/psycopg/psycopg
 watchfiles==0.21.0  # https://github.com/samuelcolvin/watchfiles
@@ -10,7 +10,7 @@ watchfiles==0.21.0  # https://github.com/samuelcolvin/watchfiles
 # ------------------------------------------------------------------------------
 mypy==1.10.0  # https://github.com/python/mypy
 django-stubs==5.0.0  # https://github.com/typeddjango/django-stubs
-pytest==8.1.1  # https://github.com/pytest-dev/pytest
+pytest==8.2.1  # https://github.com/pytest-dev/pytest
 pytest-sugar==1.0.0  # https://github.com/Frozenball/pytest-sugar
 pytest-factoryboy==2.7.0  # https://github.com/pytest-dev/pytest-factoryboy
 tqdm==4.66.4  # https://tqdm.github.io/
@@ -22,7 +22,7 @@ sphinx-autobuild==2024.4.16 # https://github.com/GaretJax/sphinx-autobuild
 
 # Code quality
 # ------------------------------------------------------------------------------
-ruff==0.4.3  # https://github.com/astral-sh/ruff
+ruff==0.4.7  # https://github.com/astral-sh/ruff
 coverage==7.5.1  # https://github.com/nedbat/coveragepy
 black==24.4.2  # https://github.com/psf/black
 pylint-django==2.5.5  # https://github.com/PyCQA/pylint-django

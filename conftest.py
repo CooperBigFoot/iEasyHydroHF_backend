@@ -61,6 +61,11 @@ def regular_user(db, organization):
 
 
 @pytest.fixture
+def regular_user_kyrgyz(db, organization_kyrgyz):
+    return UserFactory(username="regular_user", organization=organization_kyrgyz)
+
+
+@pytest.fixture
 def backup_organization(db, organization_factory=OrganizationFactory):
     return organization_factory.create(
         name="Kazakh Hydromet",
@@ -118,6 +123,16 @@ def manual_hydro_station_kyrgyz(db, site_kyrgyz):
 
 
 @pytest.fixture
+def manual_second_hydro_station_kyrgyz(db, site_kyrgyz):
+    return HydrologicalStationFactory(
+        site=site_kyrgyz,
+        station_type=HydrologicalStation.StationType.MANUAL,
+        station_code="12346",
+        name="Manual Kyrgyz Hydro Station number two",
+    )
+
+
+@pytest.fixture
 def manual_hydro_station_uzbek(db, site_uzbek):
     return HydrologicalStationFactory(
         site=site_uzbek,
@@ -135,6 +150,13 @@ def manual_meteo_station(db, site_one):
 @pytest.fixture
 def manual_meteo_station_kyrgyz(db, site_kyrgyz):
     return MeteorologicalStationFactory(site=site_kyrgyz, station_code="12345", name="Manual Meteorological Station")
+
+
+@pytest.fixture
+def manual_second_meteo_station_kyrgyz(db, site_kyrgyz):
+    return MeteorologicalStationFactory(
+        site=site_kyrgyz, station_code="12346", name="Manual Meteorological Station number two"
+    )
 
 
 @pytest.fixture
@@ -218,5 +240,12 @@ def authenticated_superadmin_user_api_client(superadmin):
 @pytest.fixture
 def authenticated_regular_user_other_organization_api_client(other_organization_user):
     token = AccessToken.for_user(other_organization_user)
+    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
+    return client
+
+
+@pytest.fixture
+def authenticated_regular_user_kyrgyz_api_client(regular_user_kyrgyz):
+    token = AccessToken.for_user(regular_user_kyrgyz)
     client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
     return client
