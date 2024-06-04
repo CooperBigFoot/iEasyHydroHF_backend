@@ -37,7 +37,6 @@ jobs:
         uses: pre-commit/action@v3.0.1
 
   pytest:
-    if: github.event_name == 'push'
     needs: linter
     runs-on: ubuntu-latest
     steps:
@@ -57,6 +56,7 @@ jobs:
         run: docker compose -f local.yml down
 
   build:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: pytest
     steps:
