@@ -103,6 +103,32 @@ class ImomoIngester(BaseIngester):
         if self.files_failed.exists():
             logging.warning(f"Flagged {self.files_failed.count()} as failed.")
 
+    def _sync_offline_files(self):
+        """
+        Discover files from
+        """
+        logging.info(f"Syncing offline files...")
+        already_downloaded_files = []
+
+        for i in range(0, len(self.files_to_download), self._ingestion_chunk_size):
+
+            logging.info(f"Downloading {i + 1}/{len(self.files_to_download)}")
+
+            remote_files_chunk = self.files_to_download[i: i + self._ingestion_chunk_size].values_list(
+                'remote_path',
+                flat=True)
+            files_downloaded_chunk = self.client.get_files(remote_files_chunk, self.local_dest_dir)
+
+            for remote_path, local_path in zip(remote_files_chunk, files_downloaded_chunk):
+                filestate_obj = FileState.objects.get(remote_path=remote_path,
+                                                      state=FileState.States.DISCOVERED)
+                filestate_obj.state = FileState.States.DOWNLOADED
+                filestate_obj.local_path = local_path
+                filestate_obj.state_timestamp = datetime.now(tz=ZoneInfo("UTC"))
+                filestate_obj.save()
+
+        logging.info(f"Synced {self.files_downloaded.count()} files.")
+
     def _discover_new_files(self):
         """
         Filter files which are eliglible for ingestion from the _source_dir and save the FileState objects
@@ -157,7 +183,7 @@ class ImomoIngester(BaseIngester):
             logging.info(
                 f"Ingestion started for folder {self._source_dir}, (include_processed = {self._include_processed})"
             )
-            self._sync_local_storage_with_db()
+            self._discover_offline_files()
             self._discover_new_files()
             self._download_discovered_files()
             self._run_parser()
