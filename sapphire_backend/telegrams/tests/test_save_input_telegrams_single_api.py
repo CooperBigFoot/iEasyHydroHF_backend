@@ -1,6 +1,3 @@
-import datetime as dt
-from unittest.mock import patch
-
 from sapphire_backend.metrics.choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
@@ -20,18 +17,13 @@ INPUT_SINGLE_TELEGRAM = (
 
 
 class TestSingleTelegramSaveGeneralAPI:
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_save_input_telegrams_status_code(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         authenticated_regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
     ):
-        dt_now = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.now.return_value = dt_now
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
-
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_SINGLE_TELEGRAM.format(station_code=station_code)
@@ -49,19 +41,14 @@ class TestSingleTelegramSaveGeneralAPI:
 
 
 class TestSingleTelegramSaveSectionOneAPI:
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_save_input_telegrams_section_one_metrics(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         authenticated_regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
     ):
-        dt_now = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.now.return_value = dt_now
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
-
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_SINGLE_TELEGRAM.format(station_code=station_code)
@@ -134,19 +121,15 @@ class TestSingleTelegramSaveSectionOneAPI:
             is True
         )
 
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_save_input_telegrams_section_one_metrics_override_date(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         authenticated_regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
     ):
         override_date = "2019-06-01"
-        dt_now = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.now.return_value = dt_now
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
 
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
         station_code = manual_hydro_station_kyrgyz.station_code
@@ -220,19 +203,14 @@ class TestSingleTelegramSaveSectionOneAPI:
 
 
 class TestSingleTelegramSaveSectionOneIcePhenomenaAPI:
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_save_input_telegrams_section_one_ice_phenomena_metrics(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         authenticated_regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
     ):
-        dt_now = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.now.return_value = dt_now
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
-
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
         station1_code = manual_hydro_station_kyrgyz.station_code
 
@@ -268,19 +246,15 @@ class TestSingleTelegramSaveSectionOneIcePhenomenaAPI:
                 is True
             )
 
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_save_input_telegrams_section_one_ice_phenomena_metrics_override_date(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         authenticated_regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
     ):
         override_date = "2019-06-01"
-        dt_now = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.now.return_value = dt_now
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
 
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
         station_code = manual_hydro_station_kyrgyz.station_code
@@ -310,19 +284,14 @@ class TestSingleTelegramSaveSectionOneIcePhenomenaAPI:
 
 
 class TestSingleTelegramSaveSectionSixAPI:
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_save_input_telegrams_section_six_metrics(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         authenticated_regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
     ):
-        dt_now = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.now.return_value = dt_now
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
-
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_SINGLE_TELEGRAM.format(station_code=station_code)
@@ -383,19 +352,14 @@ class TestSingleTelegramSaveSectionSixAPI:
 
 
 class TestSingleTelegramSaveSectionEightAPI:
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_save_input_telegrams_section_eight_metrics(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         authenticated_regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
     ):
-        dt_now = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.now.return_value = dt_now
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
-
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_SINGLE_TELEGRAM.format(station_code=station_code)

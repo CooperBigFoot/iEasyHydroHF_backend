@@ -1,5 +1,4 @@
 import datetime as dt
-from unittest.mock import patch
 
 import pytest
 from django.db import connection
@@ -49,17 +48,14 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
 
         assert set(dp_overview.keys()) == {station_code1, station_code2}
 
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_multi_telegram_consecutive_dates_single_station(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
         authenticated_regular_user_kyrgyz_api_client,
     ):
-        mock_datetime.now.return_value = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
         station_code = manual_hydro_station_kyrgyz.station_code
 
         telegrams = [
@@ -87,17 +83,14 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         assert dp_overview[station_code][2][0] == EXPECTED_DATES[2]
         assert dp_overview[station_code][3][0] == EXPECTED_DATES[3]
 
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_multi_telegram_non_consecutive_dates_single_station(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
         authenticated_regular_user_kyrgyz_api_client,
     ):
-        mock_datetime.now.return_value = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
         station_code = manual_hydro_station_kyrgyz.station_code
 
         telegrams = [
@@ -123,10 +116,9 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         assert dp_overview[station_code][2][0] == EXPECTED_DATES[2]
         assert dp_overview[station_code][3][0] == EXPECTED_DATES[3]
 
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_multi_telegram_mix_dates_multi_station(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -134,8 +126,6 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         manual_second_meteo_station_kyrgyz,
         authenticated_regular_user_kyrgyz_api_client,
     ):
-        mock_datetime.now.return_value = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
         station_code1 = manual_hydro_station_kyrgyz.station_code
         station_code2 = manual_second_meteo_station_kyrgyz.station_code
 
@@ -179,17 +169,14 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         for idx, expected_date in enumerate(EXPECTED_DATES_STATION_2):
             assert dp_overview[station_code2][idx][0] == expected_date
 
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_single_telegram_morning_evening_new_metrics(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
         authenticated_regular_user_kyrgyz_api_client,
     ):
-        mock_datetime.now.return_value = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
         station_code = manual_hydro_station_kyrgyz.station_code
 
         telegram = f"{station_code} 01082 10251 20022 30249="
@@ -241,17 +228,14 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
             discharge_model.estimate_discharge(decoded_data["section_one"]["morning_water_level"]), 1
         )
 
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_multi_telegram_single_station_new_metrics(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
         authenticated_regular_user_kyrgyz_api_client,
     ):
-        mock_datetime.now.return_value = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
         station_code = manual_hydro_station_kyrgyz.station_code
 
         discharge_model = DischargeModel(
@@ -328,10 +312,9 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
             assert metrics["average"]["water_level_new"] == expected_average_water_level_new
             assert metrics["average"]["discharge_new"] == expected_average_discharge_new
 
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_multi_telegram_multi_station_check_new_metrics(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -342,8 +325,6 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         """
         Test data processing overview _new metrics for new telegram candidates.
         """
-        mock_datetime.now.return_value = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
 
         station_code1 = manual_hydro_station_kyrgyz.station_code
         station_code2 = manual_second_meteo_station_kyrgyz.station_code
@@ -453,10 +434,9 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
                 assert metrics["average"]["discharge_new"] == expected_average_discharge_new
 
     @pytest.mark.django_db(transaction=True)
-    @patch("sapphire_backend.telegrams.parser.dt")
     def test_multi_telegram_multi_station_check_old_metrics(
         self,
-        mock_datetime,
+        datetime_kyrgyz_mock,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -467,8 +447,6 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         """
         Test saving telegrams and seeing them as old values in the data processing overview afterwards.
         """
-        mock_datetime.now.return_value = dt.datetime(2020, 4, 15, tzinfo=manual_hydro_station_kyrgyz.timezone)
-        mock_datetime.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
 
         station_code1 = manual_hydro_station_kyrgyz.station_code
         station_code2 = manual_second_meteo_station_kyrgyz.station_code
