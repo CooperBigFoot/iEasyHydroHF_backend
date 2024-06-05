@@ -147,7 +147,7 @@ class FTPClient(BaseFileManager):
                 partial_commands = f"{partial_commands}\nren {old_name} {new_name}"
             ftp_commands = self.ftp_cmd_wrapper.format(partial_commands=partial_commands)
             self._exec_shell_command(ftp_commands)
-
+            logging.info(f"Renaming {i+1}/{len(old_new_names)}")
 
 class ImomoStagingFTPClient(FTPClient):
     def __init__(
