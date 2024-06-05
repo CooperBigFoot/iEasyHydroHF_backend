@@ -149,6 +149,7 @@ class FTPClient(BaseFileManager):
             self._exec_shell_command(ftp_commands)
             logging.info(f"Renaming {i+1}/{len(old_new_names)}")
 
+
 class ImomoStagingFTPClient(FTPClient):
     def __init__(
         self,
