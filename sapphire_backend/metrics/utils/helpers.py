@@ -21,11 +21,6 @@ def calculate_decade_date(ordinal_number: int):
     return datetime(datetime.utcnow().year, month, day, 12, tzinfo=timezone.utc)
 
 
-def calculate_date_from_month_and_decade_number(month: int, ordinal_number: int):
-    decade_to_day_mapping = {1: 5, 2: 15, 3: 25, 4: 15}
-    return datetime(datetime.utcnow().year, month, decade_to_day_mapping[ordinal_number], 12, tzinfo=timezone.utc)
-
-
 def calculate_decade_from_day_in_month(day: int) -> int:
     if 1 <= day <= 10:
         decade = 1

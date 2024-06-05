@@ -12,6 +12,7 @@ from ninja import File, Query
 from ninja.files import UploadedFile
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.estimations.query import EstimationsViewQueryManager
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
@@ -50,7 +51,7 @@ from .schema import (
     TimeBucketQueryParams,
 )
 from .timeseries.query import TimeseriesQueryManager
-from .utils.helpers import OperationalJournalDataTransformer, calculate_date_from_month_and_decade_number
+from .utils.helpers import OperationalJournalDataTransformer
 from .utils.parser import (
     DecadalDischargeNormFileParser,
     DecadalMeteoNormFileParser,
@@ -158,13 +159,20 @@ class MeteoMetricsAPIController:
         else:
             return manager.get_metric_distribution()
 
-    @route.post("{station_uuid}/manual-input", response={201: dict})
+    @route.post("{station_uuid}/manual-input", response={201: list[MeteorologicalMetricOutputSchema]})
     def save_decadal_meteo_data(
         self, organization_uuid: str, station_uuid: str, meteo_data: MeteorologicalManualInputSchema
     ):
         meteo_station = MeteorologicalStation.objects.get(uuid=station_uuid)
-        ts = calculate_date_from_month_and_decade_number(meteo_data.month, meteo_data.decade)
-        _ = MeteorologicalMetric(
+        decade_to_day_mapping = {1: 5, 2: 15, 3: 25, 4: 15}
+        ts = dt(
+            year=meteo_data.year,
+            month=meteo_data.month,
+            day=decade_to_day_mapping[meteo_data.decade],
+            hour=12,
+            tzinfo=ZoneInfo("UTC"),
+        )
+        precipitation_metric = MeteorologicalMetric(
             timestamp_local=ts,
             value=meteo_data.precipitation,
             metric_name=MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE
@@ -174,8 +182,9 @@ class MeteoMetricsAPIController:
             value_type=MeteorologicalMeasurementType.MANUAL,
             unit=MetricUnit.PRECIPITATION,
         )
-        _ = MeteorologicalMetric(
-            value=meteo_data.precipitation,
+        precipitation_metric.save()
+        air_temperature_metric = MeteorologicalMetric(
+            value=meteo_data.temperature,
             timestamp_local=ts,
             metric_name=MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE
             if meteo_data.decade == 4
@@ -184,6 +193,9 @@ class MeteoMetricsAPIController:
             value_type=MeteorologicalMeasurementType.MANUAL,
             unit=MetricUnit.TEMPERATURE,
         )
+        air_temperature_metric.save()
+
+        return 201, [precipitation_metric, air_temperature_metric]
 
 
 @api_controller("hydrological-norms", tags=["Hydrological norms"], auth=JWTAuth())

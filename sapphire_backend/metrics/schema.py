@@ -43,8 +43,8 @@ class MeteoMetricFilterSchema(BaseTimeseriesFilterSchema):
     value__gte: float = None
     value__lt: float = None
     value__lte: float = None
-    metric_name: MeteorologicalMetricName = None
-    value_type: MeteorologicalMeasurementType = None
+    metric_name__in: list[MeteorologicalMetricName] = None
+    value_type__in: list[MeteorologicalMeasurementType] = None
 
 
 class OrderQueryParamSchema(Schema):
@@ -102,6 +102,7 @@ class MeteorologicalMetricOutputSchema(Schema):
 
 class MeteorologicalManualInputSchema(Schema):
     month: int
+    year: int
     decade: int
     precipitation: float
     temperature: float
