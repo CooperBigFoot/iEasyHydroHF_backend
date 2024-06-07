@@ -1,16 +1,14 @@
 import os
-from datetime import datetime
 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from zoneinfo import ZoneInfo
 
 
 class FileState(models.Model):
     filename = models.TextField(unique=True, verbose_name=_("Original remote filename"))
     remote_path = models.TextField(verbose_name=_("File path on the remote location"))
-    local_path = models.TextField(blank=True, null=True, verbose_name=_("Local file path"))
-    state_timestamp = models.DateTimeField(verbose_name=_("Timestamp with timezone"))
+    local_path = models.TextField(blank=True, verbose_name=_("Local file path"))
+    state_timestamp = models.DateTimeField(auto_now=True, verbose_name=_("Timestamp of last state update"))
 
     class States(models.TextChoices):
         DISCOVERED = "discovered", _("Discovered")
@@ -33,10 +31,6 @@ class FileState(models.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.filename = os.path.basename(self.remote_path)
-
-    def change_state(self, new_state):
-        self.state = new_state
-        self.state_timestamp = datetime.now(tz=ZoneInfo("UTC"))
 
     def __str__(self):
         return self.filename

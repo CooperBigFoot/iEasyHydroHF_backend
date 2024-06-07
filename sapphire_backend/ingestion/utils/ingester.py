@@ -41,17 +41,19 @@ class BaseIngester(ABC):
         return FileState.objects.filter(state=FileState.States.FAILED)
 
     def _run_parser(self):
-        for filestate in self.files_to_process:
+        for idx, filestate in enumerate(self.files_to_process):
             try:
-                filestate.change_state(FileState.States.PROCESSING)
+                if (idx + 1) % 10 == 0:
+                    logging.info(f"Parsing file {idx + 1}/{len(self.files_to_process)}")
+                filestate.state = FileState.States.PROCESSING
                 filestate.save()
                 parser = self.parser(file_path=filestate.local_path)
                 parser.run()
-                filestate.change_state(FileState.States.PROCESSED)
+                filestate.state = FileState.States.PROCESSED
                 filestate.save()
             except Exception as e:
                 logging.exception(e)
-                filestate.change_state(FileState.States.FAILED)
+                filestate.state = FileState.States.FAILED
                 filestate.save()
 
     @abstractmethod
@@ -131,13 +133,11 @@ class ImomoIngester(BaseIngester):
                 new_filestate_objs.append(
                     FileState(
                         remote_path=fullpath,
-                        state_timestamp=datetime.now(tz=ZoneInfo("UTC")),
                         state=FileState.States.DISCOVERED,
                     )
                 )
-
-        FileState.objects.bulk_create(new_filestate_objs)
-        logging.info(f"Discovered {FileState.objects.filter(state=FileState.States.DISCOVERED).count()} new xml files")
+        new_discovered = FileState.objects.bulk_create(new_filestate_objs)
+        logging.info(f"Discovered {len(new_discovered)} new xml files")
 
     def _include_offline_files(self):
         """
@@ -152,11 +152,11 @@ class ImomoIngester(BaseIngester):
         for filestate_obj in FileState.objects.filter(
             filename__in=filenames_to_mark_as_downloaded, state=FileState.States.DISCOVERED
         ):
-            filestate_obj.change_state(FileState.States.DOWNLOADED)
-            filestate_obj.local_path = os.path.join(self.local_dest_dir, filestate_obj.filename, ".gz")
+            filestate_obj.state = FileState.States.DOWNLOADED
+            filestate_obj.local_path = os.path.join(self.local_dest_dir, f"{filestate_obj.filename}.gz")
             filestate_obj.save()
 
-        logging.info(f"Synced {len(filenames_to_mark_as_downloaded)} offline files.")
+            logging.info(f"Synced {len(filenames_to_mark_as_downloaded)} offline files.")
 
     def _download_discovered_files(self):
         """
@@ -173,31 +173,37 @@ class ImomoIngester(BaseIngester):
 
             for remote_path, local_path in zip(remote_files_chunk, files_downloaded_chunk):
                 filestate_obj = FileState.objects.get(remote_path=remote_path, state=FileState.States.DISCOVERED)
-                filestate_obj.change_state(FileState.States.DOWNLOADED)
+                filestate_obj.state = FileState.States.DOWNLOADED
                 filestate_obj.local_path = local_path
                 filestate_obj.save()
 
         logging.info(f"Downloaded {self.files_downloaded.count()} files.")
 
     def _post_cleanup(self):
+        logging.info("Post cleanup...")
         if not self.flag_save_offline:
             # if files are not stored permanently, remove their local_path from the table
             file_states_with_local_path = FileState.objects.filter(local_path__contains=self.local_dest_dir)
-            file_states_with_local_path.update(local_path=None)
+            # here we don't need to run post save signals since the state is not changed, we can use .update()
+            file_states_with_local_path.update(local_path="")
 
             # in this case everything that's not PROCESSED should be FAILED
             self.files_unprocessed.update(
                 state=FileState.States.FAILED, state_timestamp=datetime.now(tz=ZoneInfo("UTC"))
             )
+
             self._temp_dir.cleanup()
             logging.info("Temporary directory cleaned up")
         else:
             # if files are stored permanently, only states PROCESSING are marked as FAILED
             filtered_file_states = FileState.objects.filter(state=FileState.States.PROCESSING)
-            filtered_file_states.update(state=FileState.States.FAILED)
+            filtered_file_states.update(
+                state=FileState.States.FAILED, state_timestamp=datetime.now(tz=ZoneInfo("UTC"))
+            )
 
         if self.files_failed.exists():
             logging.warning(f"Flagged {self.files_failed.count()} as failed.")
+        logging.info("Post cleanup done.")
 
     def run(self):
         try:
