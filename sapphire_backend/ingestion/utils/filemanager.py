@@ -147,6 +147,7 @@ class FTPClient(BaseFileManager):
                 partial_commands = f"{partial_commands}\nren {old_name} {new_name}"
             ftp_commands = self.ftp_cmd_wrapper.format(partial_commands=partial_commands)
             self._exec_shell_command(ftp_commands)
+            logging.info(f"Renaming {i+1}/{len(old_new_names)}")
 
 
 class ImomoStagingFTPClient(FTPClient):
@@ -226,18 +227,23 @@ class ImomoStagingFTPClient(FTPClient):
         Remove downloaded temporary files from the SSH server
         """
         logging.info("Cleaning up downloaded files on the SSH server...")
-        for f in ssh_file_path:
-            bash_command = f"rm {f}"
+        for idx in range(0, len(ssh_file_path), self.ftp_chunk_size):
+            filepaths_chunk = " ".join(ssh_file_path[idx : idx + self.ftp_chunk_size])
+            bash_command = f"rm {filepaths_chunk}"
             self._exec_shell_command(bash_command)
         logging.info("Done.")
 
-    def get_files(self, ftp_file_path: str, dest_folder_local: str) -> list[str]:
+    def get_files(self, ftp_file_path: list[str], dest_folder_local: str, gzip=True) -> list[str]:
         """
         Download FTP files to the SSH machine and then transfer to the local machine.
         Cleanup the temporary files on the SSH machine.
         :return paths to the downloaded files as a list
         """
         ssh_file_path = self._ftp_get_files(ftp_file_path, self.ssh_remote_dest_dir)
+        if gzip:
+            gzip_cmd = f"gzip {self.ssh_remote_dest_dir}/*"
+            self._exec_shell_command(gzip_cmd)
+            ssh_file_path = [f"{filename}.gz" for filename in ssh_file_path]
         local_files = self._scp_get_files(ssh_file_path, dest_folder_local)
         self._cleanup_ssh_files(ssh_file_path)
         return local_files
