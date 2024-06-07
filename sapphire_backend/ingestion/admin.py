@@ -9,5 +9,4 @@ class FileStateAdmin(admin.ModelAdmin):
     list_filter = [
         "state_timestamp",
         "state",
-        "filename",
     ]

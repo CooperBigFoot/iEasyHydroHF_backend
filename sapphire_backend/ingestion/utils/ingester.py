@@ -156,19 +156,18 @@ class ImomoIngester(BaseIngester):
             filestate_obj.local_path = os.path.join(self.local_dest_dir, f"{filestate_obj.filename}.gz")
             filestate_obj.save()
 
-            logging.info(f"Synced {len(filenames_to_mark_as_downloaded)} offline files.")
+        logging.info(f"Synced {len(filenames_to_mark_as_downloaded)} offline files.")
 
     def _download_discovered_files(self):
         """
         Download all the files with state DISCOVERED
         """
         logging.info("Downloading discovered files...")
-        for i in range(0, len(self.files_to_download), self._ingestion_chunk_size):
-            logging.info(f"Downloading {i + 1}/{len(self.files_to_download)}")
+        remote_files_to_download = self.files_to_download.values_list("remote_path", flat=True)
+        for i in range(0, len(remote_files_to_download), self._ingestion_chunk_size):
+            logging.info(f"Downloading {i + 1}/{len(remote_files_to_download)}")
 
-            remote_files_chunk = self.files_to_download[i : i + self._ingestion_chunk_size].values_list(
-                "remote_path", flat=True
-            )
+            remote_files_chunk = remote_files_to_download[i : i + self._ingestion_chunk_size]
             files_downloaded_chunk = self.client.get_files(remote_files_chunk, self.local_dest_dir)
 
             for remote_path, local_path in zip(remote_files_chunk, files_downloaded_chunk):
