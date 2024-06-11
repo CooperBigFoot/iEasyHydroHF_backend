@@ -45,7 +45,9 @@ from .schema import (
     MetricCountSchema,
     MetricTotalCountSchema,
     OperationalJournalDailyDataSchema,
-    OperationalJournalDecadalDataSchema,
+    OperationalJournalDecadalDataStationType,
+    OperationalJournalDecadalHydroDataSchema,
+    OperationalJournalDecadalMeteoDataSchema,
     OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
     TimeBucketQueryParams,
@@ -407,9 +409,17 @@ class OperationalJournalAPIController:
 
         return prepared_data
 
-    @route.get("decadal-data", response=list[OperationalJournalDecadalDataSchema])
-    def get_decadal_data(self, station_uuid: str, year: int, month: int):
-        station = HydrologicalStation.objects.get(uuid=station_uuid)
+    @route.get(
+        "decadal-data/{station_type}",
+        response=list[OperationalJournalDecadalHydroDataSchema | OperationalJournalDecadalMeteoDataSchema],
+    )
+    def get_decadal_data(
+        self, station_uuid: str, year: int, month: int, station_type: OperationalJournalDecadalDataStationType
+    ):
+        if station_type.station_type == "hydro":
+            station = HydrologicalStation.objects.get(uuid=station_uuid)
+        else:
+            station = MeteorologicalStation.objects.get(uuid=station_uuid)
         first_day_current_month = dt(year, month, 1)
         dt_start = SmartDatetime(first_day_current_month, station).day_beginning_local.isoformat()
         first_day_next_month = first_day_current_month + relativedelta(months=1)
@@ -417,25 +427,45 @@ class OperationalJournalAPIController:
 
         decadal_data = []
 
-        querying_views = [
-            ("estimations_water_level_decade_average", HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE),
-            ("estimations_water_discharge_decade_average", HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE),
-        ]
+        if station_type.station_type == "hydro":
+            querying_views = [
+                ("estimations_water_level_decade_average", HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE),
+                ("estimations_water_discharge_decade_average", HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE),
+            ]
+            for view_name, metric_name in querying_views:
+                view_data = EstimationsViewQueryManager(
+                    view_name,
+                    order_param="timestamp_local",
+                    order_direction="ASC",
+                    filter_dict={
+                        "timestamp_local__gte": dt_start,
+                        "timestamp_local__lt": dt_end,
+                        "station_id": station.id,
+                    },
+                ).execute_query()
 
-        for view_name, metric_name in querying_views:
-            view_data = EstimationsViewQueryManager(
-                view_name,
+                decadal_data.extend({**d, "metric_name": metric_name} for d in view_data)
+        else:
+            meteo_data = TimeseriesQueryManager(
+                model=MeteorologicalMetric,
                 order_param="timestamp_local",
                 order_direction="ASC",
                 filter_dict={
                     "timestamp_local__gte": dt_start,
                     "timestamp_local__lt": dt_end,
-                    "station_id": station.id,
+                    "station": station.id,
+                    "metric_name__in": [
+                        MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
+                        MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE,
+                    ],
                 },
             ).execute_query()
 
-            decadal_data.extend({**d, "metric_name": metric_name} for d in view_data)
+            decadal_data.extend(meteo_data.values("timestamp_local", "value", "metric_name"))
 
-        prepared_data = OperationalJournalDataTransformer(decadal_data).get_decadal_data()
+        if station_type.station_type == "hydro":
+            prepared_data = OperationalJournalDataTransformer(decadal_data).get_hydro_decadal_data()
+        else:
+            prepared_data = OperationalJournalDataTransformer(decadal_data).get_meteo_decadal_data()
 
         return prepared_data

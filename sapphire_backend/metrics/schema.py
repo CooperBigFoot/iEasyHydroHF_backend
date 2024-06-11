@@ -86,11 +86,23 @@ class OperationalJournalDischargeDataSchema(Schema):
     cross_section: float | str
 
 
-class OperationalJournalDecadalDataSchema(Schema):
+class OperationalJournalDecadalBaseSchema(Schema):
     id: str
     decade: int | str
+
+
+class OperationalJournalDecadalHydroDataSchema(OperationalJournalDecadalBaseSchema):
     water_level: int | str
     water_discharge: float | str
+
+
+class OperationalJournalDecadalMeteoDataSchema(OperationalJournalDecadalBaseSchema):
+    precipitation: float | str
+    temperature: float | str
+
+
+class OperationalJournalDecadalDataStationType(Schema):
+    station_type: Literal["hydro", "meteo"]
 
 
 class MeteorologicalMetricOutputSchema(Schema):
