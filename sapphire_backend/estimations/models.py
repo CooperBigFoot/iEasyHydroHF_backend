@@ -5,7 +5,7 @@ from sapphire_backend.utils.mixins.models import UUIDMixin
 
 
 class DischargeModel(UUIDMixin, models.Model):
-    name = models.CharField(verbose_name=_("Organization name"), max_length=100, blank=False)
+    name = models.CharField(verbose_name=_("name"), max_length=100, blank=False)
     param_a = models.DecimalField(verbose_name=_("Parameter a"), max_digits=50, decimal_places=30)
     param_b = models.DecimalField(verbose_name=_("Parameter b"), max_digits=50, decimal_places=30)
     param_c = models.DecimalField(verbose_name=_("Parameter c"), max_digits=50, decimal_places=30)
