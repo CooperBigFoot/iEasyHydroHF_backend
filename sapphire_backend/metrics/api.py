@@ -3,6 +3,7 @@ import os
 from datetime import datetime as dt
 from typing import Any
 
+import pandas as pd
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Avg, Count, Max, Min, Sum
@@ -247,6 +248,32 @@ class HydrologicalNormsAPIController:
         )
 
         return 201, norms
+
+    @route.get("{station_uuid}/download", response={200: None, 404: Message})
+    def download_discharge_norm(self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema]):
+        station = HydrologicalStation.objects.get(uuid=station_uuid)
+        norm_data = HydrologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value)
+        df = pd.DataFrame(norm_data.values("ordinal_number", "value")).set_index("ordinal_number")
+        df["value"] = df["value"].astype(float)
+        df = df.transpose()
+
+        decade_end = 36 if norm_type.norm_type == NormType.DECADAL else 12
+        columns = ["Period"] + [str(i) for i in range(1, decade_end + 1)]
+        output_df = pd.DataFrame(columns=columns)
+        output_df.loc[0, "Period"] = "Value"
+
+        for col in output_df.columns[1:]:
+            if int(col) in df.columns:
+                output_df.at[0, col] = df[int(col)].values[0]
+            else:
+                output_df.at[0, col] = None
+
+        output_filename = f"historic-data-discharge-{station.station_code}.xlsx"
+        output_df.to_excel(output_filename, index=False, sheet_name="discharge")
+
+        response = FileResponse(open(output_filename, "rb"), as_attachment=True, filename=output_filename)
+
+        return response
 
 
 @api_controller("meteorological-norms", tags=["Meteorological norms"], auth=JWTAuth())
