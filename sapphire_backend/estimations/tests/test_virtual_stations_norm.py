@@ -1,10 +1,10 @@
 from decimal import Decimal
 
-from sapphire_backend.estimations.models import DischargeNormVirtual
+from sapphire_backend.estimations.models import HydrologicalNormVirtual
 from sapphire_backend.metrics.choices import NormType
 
 
-class TestVirtualStationDischargeNorm:
+class TestVirtualStationHydrologicalNorm:
     def test_discharge_norm_decadal_two_virtual_associations(
         self,
         organization,
@@ -23,7 +23,7 @@ class TestVirtualStationDischargeNorm:
             * decadal_discharge_norm_manual_second_hydro_station_kyrgyz.value
         )
 
-        virtual_norm_estimated = DischargeNormVirtual.objects.get(
+        virtual_norm_estimated = HydrologicalNormVirtual.objects.get(
             ordinal_number=decadal_discharge_norm_manual_hydro_station_kyrgyz.ordinal_number,
             norm_type=NormType.DECADAL,
             station_id=virtual_station.uuid,
@@ -54,7 +54,7 @@ class TestVirtualStationDischargeNorm:
             * decadal_discharge_norm_manual_third_hydro_station_kyrgyz.value
         )
 
-        virtual_norm_estimated = DischargeNormVirtual.objects.get(
+        virtual_norm_estimated = HydrologicalNormVirtual.objects.get(
             ordinal_number=decadal_discharge_norm_manual_hydro_station_kyrgyz.ordinal_number,
             norm_type=NormType.DECADAL,
             station_id=virtual_station.uuid,
@@ -80,7 +80,7 @@ class TestVirtualStationDischargeNorm:
             * monthly_discharge_norm_manual_second_hydro_station_kyrgyz.value
         )
 
-        virtual_norm_estimated = DischargeNormVirtual.objects.get(
+        virtual_norm_estimated = HydrologicalNormVirtual.objects.get(
             ordinal_number=monthly_discharge_norm_manual_hydro_station_kyrgyz.ordinal_number,
             norm_type=NormType.MONTHLY,
             station_id=virtual_station.uuid,

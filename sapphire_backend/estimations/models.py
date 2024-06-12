@@ -2,7 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from sapphire_backend.metrics.choices import NormType
-from sapphire_backend.metrics.managers import DischargeNormQuerySet
+from sapphire_backend.metrics.managers import HydrologicalNormQuerySet
 from sapphire_backend.utils.mixins.models import UUIDMixin
 
 
@@ -26,7 +26,7 @@ class DischargeModel(UUIDMixin, models.Model):
         return float(self.param_c) * (float(water_level) + float(self.param_a)) ** float(self.param_b)
 
 
-class DischargeNormVirtual(models.Model):
+class HydrologicalNormVirtual(models.Model):
     ordinal_number = models.PositiveIntegerField(verbose_name=_("Ordinal number"))
     value = models.DecimalField(verbose_name=_("Value"), max_digits=10, decimal_places=5)
     norm_type = models.CharField(
@@ -38,8 +38,8 @@ class DischargeNormVirtual(models.Model):
         verbose_name=_("Hydrological station"),
         on_delete=models.CASCADE,
     )
-    objects = DischargeNormQuerySet.as_manager()
+    objects = HydrologicalNormQuerySet.as_manager()
 
     class Meta:
         managed = False
-        db_table = "estimations_dischargenorm_virtual"
+        db_table = "estimations_hydrologicalnorm_virtual"

@@ -108,32 +108,5 @@ class Migration(migrations.Migration):
             )],
             reverse_sql=[("drop view if exists estimations_water_discharge_decade_average_virtual;")],
         ),
-        migrations.RunSQL(
-            sql=[(
-                """
-                create or replace view estimations_dischargenorm_virtual
-                as
-                WITH cte AS
-                (
-                SELECT dn.ordinal_number,
-                        SUM(dn.value * (vsa.weight / 100.0)) AS value,
-                        dn.norm_type,
-                        vs.uuid                              as station_id
-                 FROM metrics_dischargenorm dn
-                          join stations_hydrologicalstation sh on dn.station_id = sh.uuid
-                          join stations_virtualstationassociation vsa on sh.id = vsa.hydro_station_id
-                          join stations_virtualstation vs on vsa.virtual_station_id = vs.id
-                 group by dn.ordinal_number,
-                          dn.norm_type,
-                          vs.uuid
-                )
-                select
-                    ROW_NUMBER()
-                    OVER (ORDER BY ordinal_number) AS id,
-                    cte.*
-                FROM cte;
-              """
-            )],
-            reverse_sql=[("drop view if exists estimations_dischargenorm_virtual;")],
-        )
+
     ]
