@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, NormType
 from sapphire_backend.metrics.exceptions import FileTooBigException
-from sapphire_backend.metrics.models import DischargeNorm
+from sapphire_backend.metrics.models import HydrologicalNorm
 
 
 class TestHydroMetricsAPI:
@@ -229,16 +229,16 @@ class TestHydroMetricsAPI:
 
 
 class TestDischargeNormsAPI:
-    endpoint = "/api/v1/discharge-norms"
-    decadal_test_file = os.path.join(Path(__file__).parent, "data", "decadal_norm_example.xlsx")
-    monthly_test_file = os.path.join(Path(__file__).parent, "data", "monthly_norm_example.xlsx")
+    endpoint = "/api/v1/hydrological-norms"
+    decadal_test_file = os.path.join(Path(__file__).parent, "data", "decadal_hydro_norm_example.xlsx")
+    monthly_test_file = os.path.join(Path(__file__).parent, "data", "monthly_hydro_norm_example.xlsx")
 
     def _get_decadal_test_file(self):
         with open(self.decadal_test_file, "rb") as f:
             file_content = f.read()
 
         file = SimpleUploadedFile(
-            "decadal_norm_example.xlsx",
+            self.decadal_test_file,
             file_content,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
@@ -250,7 +250,7 @@ class TestDischargeNormsAPI:
             file_content = f.read()
 
         file = SimpleUploadedFile(
-            "monthly_norm_example.xlsx",
+            self.monthly_test_file,
             file_content,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
@@ -294,7 +294,7 @@ class TestDischargeNormsAPI:
             )
         }
 
-        response = api_client.post(f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", files=files)
+        response = api_client.post(f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", files=files)
         assert response.status_code == 401
 
     def test_upload_decadal_norm_file_for_unauthorized_user(
@@ -303,7 +303,7 @@ class TestDischargeNormsAPI:
         file = self._get_decadal_test_file()
 
         response = authenticated_regular_user_other_organization_api_client.post(
-            f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", {"file": file}, format="multipart"
         )
         assert response.status_code == 403
 
@@ -315,7 +315,7 @@ class TestDischargeNormsAPI:
         )
 
         response = authenticated_regular_user_api_client.post(
-            f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", {"file": file}, format="multipart"
         )
         assert response.status_code == 400
         assert response.json() == {"detail": "Invalid file extension: .wrongext", "code": "invalid_norm_file"}
@@ -331,7 +331,7 @@ class TestDischargeNormsAPI:
 
             mock_validate.side_effect = side_effect
             response = authenticated_regular_user_api_client.post(
-                f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+                f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", {"file": file}, format="multipart"
             )
 
             assert response.status_code == 400
@@ -348,7 +348,7 @@ class TestDischargeNormsAPI:
             return_value=["test"],
         ):
             response = authenticated_regular_user_api_client.post(
-                f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+                f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", {"file": file}, format="multipart"
             )
 
             assert response.status_code == 400
@@ -360,7 +360,7 @@ class TestDischargeNormsAPI:
     def test_incomplete_decadal_norm_upload(self, authenticated_regular_user_api_client, manual_hydro_station):
         file = self._get_monthly_test_file()
         response = authenticated_regular_user_api_client.post(
-            f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", {"file": file}, format="multipart"
         )
 
         assert response.status_code == 400
@@ -370,31 +370,31 @@ class TestDischargeNormsAPI:
         }
 
     def test_upload_decadal_norm(self, authenticated_regular_user_api_client, manual_hydro_station):
-        assert DischargeNorm.objects.for_station(manual_hydro_station).decadal().count() == 0
+        assert HydrologicalNorm.objects.for_station(manual_hydro_station).decadal().count() == 0
 
         file = self._get_decadal_test_file()
         response = authenticated_regular_user_api_client.post(
-            f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", {"file": file}, format="multipart"
         )
 
         assert response.status_code == 201
-        assert DischargeNorm.objects.for_station(manual_hydro_station).decadal().count() == 36
+        assert HydrologicalNorm.objects.for_station(manual_hydro_station).decadal().count() == 36
 
     def test_upload_monthly_norm(self, authenticated_regular_user_api_client, manual_hydro_station):
-        assert DischargeNorm.objects.for_station(manual_hydro_station).monthly().count() == 0
+        assert HydrologicalNorm.objects.for_station(manual_hydro_station).monthly().count() == 0
 
         file = self._get_monthly_test_file()
         response = authenticated_regular_user_api_client.post(
-            f"{self.endpoint}/{manual_hydro_station.uuid}/monthly", {"file": file}, format="multipart"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m", {"file": file}, format="multipart"
         )
 
         assert response.status_code == 201
-        assert DischargeNorm.objects.for_station(manual_hydro_station).monthly().count() == 12
+        assert HydrologicalNorm.objects.for_station(manual_hydro_station).monthly().count() == 12
 
     def test_upload_monthly_norm_api_response(self, authenticated_regular_user_api_client, manual_hydro_station):
         file = self._get_monthly_test_file()
         response = authenticated_regular_user_api_client.post(
-            f"{self.endpoint}/{manual_hydro_station.uuid}/monthly", {"file": file}, format="multipart"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m", {"file": file}, format="multipart"
         )
 
         assert response.json() == [
@@ -417,7 +417,7 @@ class TestDischargeNormsAPI:
     ):
         file = self._get_decadal_test_file()
         response = authenticated_regular_user_api_client.post(
-            f"{self.endpoint}/{manual_hydro_station.uuid}/decadal", {"file": file}, format="multipart"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", {"file": file}, format="multipart"
         )
 
         assert response.json()[:12] == [
@@ -439,11 +439,11 @@ class TestDischargeNormsAPI:
         self, authenticated_regular_user_api_client, manual_hydro_station
     ):
         for i in range(1, 13):
-            _ = DischargeNorm.objects.create(
+            _ = HydrologicalNorm.objects.create(
                 station=manual_hydro_station, norm_type=NormType.MONTHLY, value=i + 10, ordinal_number=i
             )
 
-        norms = DischargeNorm.objects.for_station(manual_hydro_station).monthly()
+        norms = HydrologicalNorm.objects.for_station(manual_hydro_station).monthly()
 
         assert norms.count() == 12
         assert list(norms.values_list("value", flat=True)) == [
@@ -463,7 +463,7 @@ class TestDischargeNormsAPI:
 
         file = self._get_monthly_test_file()
         _ = authenticated_regular_user_api_client.post(
-            f"{self.endpoint}/{manual_hydro_station.uuid}/monthly", {"file": file}, format="multipart"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m", {"file": file}, format="multipart"
         )
 
         assert norms.count() == 12

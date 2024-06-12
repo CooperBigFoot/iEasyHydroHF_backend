@@ -56,3 +56,8 @@ class MetricUnit(models.TextChoices):
 class NormType(models.TextChoices):
     MONTHLY = "m", _("Monthly")
     DECADAL = "d", _("Decadal")
+
+
+class MeteorologicalNormMetric(models.TextChoices):
+    PRECIPITATION = "p", _("Precipitation")
+    TEMPERATURE = "t", _("Temperature")

@@ -3,11 +3,13 @@ from math import ceil
 
 import pandas as pd
 
+from sapphire_backend.metrics.choices import NormType
+from sapphire_backend.metrics.managers import HydrologicalNormQuerySet, MeteorologicalNormQuerySet
 from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitationCodeMapper
 from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
 from sapphire_backend.utils.rounding import hydrological_round
 
-from ..choices import HydrologicalMetricName
+from ..choices import HydrologicalMetricName, MeteorologicalMetricName
 
 
 def calculate_decade_date(ordinal_number: int):
@@ -71,7 +73,10 @@ class OperationalJournalDataTransformer:
     @staticmethod
     def _get_metric_value(data: pd.DataFrame | pd.Series, metric: str) -> int | float | str:
         if not data.empty:
-            metric_value = data[data["metric_name"] == metric]["avg_value"]
+            try:
+                metric_value = data[data["metric_name"] == metric]["avg_value"]
+            except KeyError:
+                metric_value = data[data["metric_name"] == metric]["value"]
             if metric_value.empty:
                 return "--"
             if metric in [
@@ -155,6 +160,24 @@ class OperationalJournalDataTransformer:
                 avg_row[metric] = hydrological_round(avg_value) if metric == "water_discharge" else ceil(avg_value)
             else:
                 avg_row[metric] = "--"
+
+        return avg_row
+
+    @staticmethod
+    def _get_meteo_decade_aggregation_data(decadal_data: list[dict[int | str, int | float | str]]):
+        avg_row = {"id": "agg", "decade": "values"}
+        temperature_values = [row["temperature"] for row in decadal_data if row["temperature"] != "--"]
+        if temperature_values:
+            avg_value = sum(temperature_values) / len(temperature_values)
+            avg_row["temperature"] = round(avg_value, 1)
+        else:
+            avg_row["temperature"] = "--"
+        precipitation_values = [row["precipitation"] for row in decadal_data if row["precipitation"] != "--"]
+        if precipitation_values:
+            sum_value = sum(precipitation_values)
+            avg_row["precipitation"] = round(sum_value, 1)
+        else:
+            avg_row["precipitation"] = "--"
 
         return avg_row
 
@@ -257,7 +280,31 @@ class OperationalJournalDataTransformer:
 
         return results
 
-    def get_decadal_data(self) -> list[dict[int | str, int | float | str]]:
+    def get_meteo_decadal_data(self) -> list[dict[int | str, int | float | str]]:
+        results = []
+        df = self.df
+
+        if self.is_empty:
+            return results
+
+        for date in df["date"].unique():
+            decade_dict = {}
+            decade_data = df[df["date"] == date]
+            for metric_name, metric_code in {
+                "temperature": MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
+                "precipitation": MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE,
+            }.items():
+                decade_dict[metric_name] = self._get_metric_value(decade_data, metric_code)
+
+            decade_dict["decade"] = calculate_decade_from_day_in_month(date.day)
+            decade_dict["id"] = date.strftime("%Y-%m-%d")
+            results.append(decade_dict)
+
+        results.append(self._get_meteo_decade_aggregation_data(results))
+
+        return results
+
+    def get_hydro_decadal_data(self) -> list[dict[int | str, int | float | str]]:
         results = []
         df = self.df
 
@@ -281,3 +328,31 @@ class OperationalJournalDataTransformer:
         results.append(self._get_monthly_averages_from_decadal_data(results))
 
         return results
+
+
+def create_norm_dataframe(norm_data: HydrologicalNormQuerySet | MeteorologicalNormQuerySet, norm_type: NormType):
+    decade_end = 36 if norm_type == norm_type.DECADAL else 12
+    if norm_data.exists():
+        df = pd.DataFrame(norm_data.values("ordinal_number", "value")).set_index("ordinal_number")
+        df["value"] = df["value"].astype(float)
+        df = df.transpose()
+    else:
+        df = pd.DataFrame(columns=range(1, decade_end + 1))
+
+    columns = ["Period"] + list(range(1, decade_end + 1))
+    output_df = pd.DataFrame(columns=columns)
+    output_df.loc[0, "Period"] = "Value"
+
+    for col in output_df.columns[1:]:
+        col_num = int(col)
+        if col_num in df.columns:
+            value = df.at["value", col_num] if not df.empty else None
+            if value is None:
+                continue
+            output_df.at[0, col] = (
+                hydrological_round(value) if isinstance(norm_data, HydrologicalNormQuerySet) else round(value, 2)
+            )
+        else:
+            output_df.at[0, col] = None
+
+    return output_df
