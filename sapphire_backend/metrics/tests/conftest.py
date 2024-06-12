@@ -98,7 +98,7 @@ def decadal_discharge_norm_first(db, manual_hydro_station):
 
 @pytest.fixture
 def decadal_discharge_norm_second(db, manual_hydro_station):
-    return HydrologicalMetricFactory(
+    return HydrologicalNormFactory(
         station=manual_hydro_station, value=2.0, norm_type=NormType.DECADAL, ordinal_number=2
     )
 
@@ -112,7 +112,7 @@ def monthly_discharge_norm_first(db, manual_hydro_station):
 
 @pytest.fixture
 def monthly_discharge_norm_second(db, manual_hydro_station):
-    return HydrologicalMetricFactory(
+    return HydrologicalNormFactory(
         station=manual_hydro_station, value=2.0, norm_type=NormType.MONTHLY, ordinal_number=2
     )
 

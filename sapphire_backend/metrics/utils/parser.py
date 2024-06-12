@@ -58,7 +58,7 @@ class MonthlyDischargeNormFileParser(BaseNormFileParser):
                 raise InvalidFileStructureException("Invalid number of columns, need to have 12 values.")
             parsed_data[sheet] = []
             for col in df.columns[1:]:
-                parsed_data[sheet].append({"ordinal_number": col, "value": float(df[col].iloc[0])})
+                parsed_data[sheet].append({"ordinal_number": int(col), "value": float(df[col].iloc[0])})
 
         return parsed_data
 
