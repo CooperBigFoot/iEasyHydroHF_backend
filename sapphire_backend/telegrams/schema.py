@@ -113,6 +113,12 @@ class ReportedDischargePointsOutputSchema(Schema):
     q: float
 
 
+class TelegramOverviewErrorOutputSchema(Schema):
+    index: int
+    telegram: str
+    error: str
+
+
 class TelegramOverviewOutputSchema(Schema):
     daily_overview: list[DailyOverviewSingleSchema]
     data_processing_overview: dict[str, list[tuple[str, DataProcessingDayTimes]]]
@@ -120,4 +126,4 @@ class TelegramOverviewOutputSchema(Schema):
     save_data_overview: list[SaveDataOverviewSingleSchema]
     discharge_codes: list[tuple[str, str]]
     meteo_codes: list[tuple[str, str]]
-    errors: list[str]
+    errors: list[TelegramOverviewErrorOutputSchema]

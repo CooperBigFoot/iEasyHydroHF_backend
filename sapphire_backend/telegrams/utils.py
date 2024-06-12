@@ -67,8 +67,8 @@ def get_parsed_telegrams_data(
             parsed_data["errors"].append({"index": idx, "telegram": telegram, "error": str(e)})
             logging.exception(e)
 
-    parsed_data["hydro_station_codes"] = list(hydro_station_codes)
-    parsed_data["meteo_station_codes"] = list(meteo_station_codes)
+    parsed_data["hydro_station_codes"] = sorted(hydro_station_codes, key=lambda pair: pair[0])
+    parsed_data["meteo_station_codes"] = sorted(meteo_station_codes, key=lambda pair: pair[0])
     return parsed_data
 
 
@@ -301,16 +301,14 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
             result[station_code][date]["evening"].water_level_old = custom_ceil(water_level_evening_old)
             result[station_code][date]["evening"].water_level_new = custom_ceil(water_level_evening_old)
 
-            water_level_average_old = getattr(
-                HydrologicalMetric.objects.filter(
-                    timestamp_local=smart_date.midday_local,
-                    metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
-                    station=hydro_station,
-                    value_type=HydrologicalMeasurementType.ESTIMATED,
-                ).first(),
-                "avg_value",
-                None,
-            )
+            water_level_average_old_query_result = EstimationsViewQueryManager(
+                model="estimations_water_level_daily_average",
+                filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.midday_local},
+            ).execute_query()
+
+            water_level_average_old = None
+            if len(water_level_average_old_query_result) > 0:
+                water_level_average_old = water_level_average_old_query_result[0].get("avg_value")
 
             result[station_code][date]["average"] = NewOldMetrics(
                 water_level_new=None, water_level_old=None, discharge_new=None, discharge_old=None
@@ -326,34 +324,34 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
 
             discharge_morning_old = None
             if len(discharge_morning_old_query_result) > 0:
-                discharge_morning_old = discharge_morning_old_query_result[0].get("value")
+                discharge_morning_old = discharge_morning_old_query_result[0].get("avg_value")
 
-        result[station_code][date]["morning"].discharge_old = custom_round(discharge_morning_old, 1)
-        result[station_code][date]["morning"].discharge_new = custom_round(discharge_morning_old, 1)
+            result[station_code][date]["morning"].discharge_old = custom_round(discharge_morning_old, 1)
+            result[station_code][date]["morning"].discharge_new = custom_round(discharge_morning_old, 1)
 
-        discharge_evening_old_query_result = EstimationsViewQueryManager(
-            model="estimations_water_discharge_daily",
-            filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.evening_local},
-        ).execute_query()
+            discharge_evening_old_query_result = EstimationsViewQueryManager(
+                model="estimations_water_discharge_daily",
+                filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.evening_local},
+            ).execute_query()
 
-        discharge_evening_old = None
-        if len(discharge_evening_old_query_result) > 0:
-            discharge_evening_old = discharge_evening_old_query_result[0].get("value")
+            discharge_evening_old = None
+            if len(discharge_evening_old_query_result) > 0:
+                discharge_evening_old = discharge_evening_old_query_result[0].get("avg_value")
 
-        result[station_code][date]["evening"].discharge_old = custom_round(discharge_evening_old, 1)
-        result[station_code][date]["evening"].discharge_new = custom_round(discharge_evening_old, 1)
+            result[station_code][date]["evening"].discharge_old = custom_round(discharge_evening_old, 1)
+            result[station_code][date]["evening"].discharge_new = custom_round(discharge_evening_old, 1)
 
-        discharge_average_old_query_result = EstimationsViewQueryManager(
-            model="estimations_water_discharge_daily_average",
-            filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.midday_local},
-        ).execute_query()
+            discharge_average_old_query_result = EstimationsViewQueryManager(
+                model="estimations_water_discharge_daily_average",
+                filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.midday_local},
+            ).execute_query()
 
-        discharge_average_old = None
-        if len(discharge_average_old_query_result) > 0:
-            discharge_average_old = discharge_average_old_query_result[0].get("value")
+            discharge_average_old = None
+            if len(discharge_average_old_query_result) > 0:
+                discharge_average_old = discharge_average_old_query_result[0].get("avg_value")
 
-        result[station_code][date]["average"].discharge_old = custom_round(discharge_average_old, 1)
-        result[station_code][date]["average"].discharge_new = custom_round(discharge_average_old, 1)
+            result[station_code][date]["average"].discharge_old = custom_round(discharge_average_old, 1)
+            result[station_code][date]["average"].discharge_new = custom_round(discharge_average_old, 1)
 
     return result
 
@@ -372,7 +370,9 @@ def insert_template_with_new_metrics(data_template: dict, parsed_data: dict) -> 
             discharge_model_morning = get_discharge_model_from_timestamp_local(
                 station=hydro_station, timestamp_local=smart_datetime.morning_local
             )
-            discharge_morning_new = discharge_model_morning.estimate_discharge(wl_morning_new)
+            discharge_morning_new = None
+            if discharge_model_morning is not None:
+                discharge_morning_new = discharge_model_morning.estimate_discharge(wl_morning_new)
 
             result[station_code][telegram_day_date]["morning"].water_level_new = custom_ceil(wl_morning_new)
             result[station_code][telegram_day_date]["morning"].discharge_new = custom_round(discharge_morning_new, 1)
@@ -383,9 +383,11 @@ def insert_template_with_new_metrics(data_template: dict, parsed_data: dict) -> 
             discharge_model_previous_evening = get_discharge_model_from_timestamp_local(
                 station=hydro_station, timestamp_local=smart_datetime.previous_evening_local
             )
-            discharge_previous_evening_new = discharge_model_previous_evening.estimate_discharge(
-                wl_previous_evening_new
-            )
+            discharge_previous_evening_new = None
+            if discharge_model_previous_evening is not None:
+                discharge_previous_evening_new = discharge_model_previous_evening.estimate_discharge(
+                    wl_previous_evening_new
+                )
 
             result[station_code][previous_day_date]["evening"].water_level_new = custom_ceil(wl_previous_evening_new)
             result[station_code][previous_day_date]["evening"].discharge_new = custom_round(
@@ -418,12 +420,14 @@ def insert_new_averages(data_template: dict, parsed_data: dict) -> dict:
             )
             if None not in [wl_morning_new, wl_evening_new]:
                 wl_average_new = custom_ceil((wl_morning_new + wl_evening_new) / 2)
-                discharge_average_new = discharge_model.estimate_discharge(wl_average_new)
+                if discharge_model is not None:
+                    discharge_average_new = discharge_model.estimate_discharge(wl_average_new)
             elif wl_morning_new is None and wl_evening_new is None:
                 wl_average_new = None
             else:
                 wl_average_new = wl_morning_new or wl_evening_new
-                discharge_average_new = discharge_model.estimate_discharge(wl_average_new)
+                if discharge_model is not None:
+                    discharge_average_new = discharge_model.estimate_discharge(wl_average_new)
 
             result[station_code][date]["average"].water_level_new = wl_average_new
             result[station_code][date]["average"].discharge_new = custom_round(discharge_average_new, 1)

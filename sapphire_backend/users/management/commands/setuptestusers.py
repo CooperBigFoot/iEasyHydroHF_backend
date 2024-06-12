@@ -27,6 +27,7 @@ class Command(BaseCommand):
         if superuser_name is not None:
             superuser = User.objects.get(username=superuser_name)
             superuser.organization = kgz_org
+            superuser.user_role = User.UserRoles.SUPER_ADMIN
             superuser.save()
 
         for username in super_admins:
