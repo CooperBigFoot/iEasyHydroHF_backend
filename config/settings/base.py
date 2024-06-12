@@ -72,6 +72,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = ["ninja", "ninja_extra", "ninja_jwt", "ninja_jwt.token_blacklist", "corsheaders"]
 
 LOCAL_APPS = [
+    "sapphire_backend.bulletins",
     "sapphire_backend.organizations",
     "sapphire_backend.stations",
     "sapphire_backend.users",
