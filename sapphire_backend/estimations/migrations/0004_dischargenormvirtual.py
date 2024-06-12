@@ -37,19 +37,5 @@ class Migration(migrations.Migration):
               """
             )],
             reverse_sql=[("drop view if exists estimations_dischargenorm_virtual;")],
-        ),
-
-        migrations.CreateModel(
-            name='DischargeNormVirtual',
-            fields=[
-                ('dischargenorm_ptr',
-                 models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True,
-                                      primary_key=True, serialize=False, to='metrics.dischargenorm')),
-            ],
-            options={
-                'db_table': 'estimations_dischargenorm_virtual',
-                'managed': False,
-            },
-            bases=('metrics.dischargenorm',),
-        ),
+        )
     ]
