@@ -48,4 +48,4 @@ class MeteorologicalMetricFactory(factory.django.DjangoModelFactory):
 class DischargeNormFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DischargeNorm
-        django_get_or_create = ("station", "norm_type", "ordinal_number")
+        django_get_or_create = ("station", "norm_type", "ordinal_number", "value")

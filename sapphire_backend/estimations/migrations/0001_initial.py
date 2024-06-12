@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('uuid', models.UUIDField(default=uuid.uuid4, editable=False, unique=True, verbose_name='UUID')),
-                ('name', models.CharField(max_length=100, verbose_name='Organization name')),
+                ('name', models.CharField(max_length=100, verbose_name='Discharge model name')),
                 ('param_a', models.DecimalField(decimal_places=30, max_digits=50, verbose_name='Parameter a')),
                 ('param_b', models.DecimalField(decimal_places=30, max_digits=50, verbose_name='Parameter b')),
                 ('param_c', models.DecimalField(decimal_places=30, max_digits=50, verbose_name='Parameter c')),
