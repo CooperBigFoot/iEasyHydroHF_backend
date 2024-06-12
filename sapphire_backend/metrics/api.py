@@ -1,7 +1,10 @@
+import io
+import math
 import os
 from datetime import datetime as dt
 from typing import Any
 
+import pandas as pd
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Avg, Count, Max, Min, Sum
@@ -11,35 +14,54 @@ from ninja import File, Query
 from ninja.files import UploadedFile
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.estimations.query import EstimationsViewQueryManager
-from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from .choices import HydrologicalMeasurementType, HydrologicalMetricName, NormType
-from .models import DischargeNorm, HydrologicalMetric, MeteorologicalMetric
+from .choices import (
+    HydrologicalMeasurementType,
+    HydrologicalMetricName,
+    MeteorologicalMeasurementType,
+    MeteorologicalMetricName,
+    MeteorologicalNormMetric,
+    MetricUnit,
+    NormType,
+)
+from .models import HydrologicalMetric, HydrologicalNorm, MeteorologicalMetric, MeteorologicalNorm
 from .schema import (
-    DischargeNormOutputSchema,
-    DischargeNormTypeFiltersSchema,
     HydrologicalMetricOutputSchema,
+    HydrologicalNormOutputSchema,
+    HydrologicalNormTypeFiltersSchema,
     HydroMetricFilterSchema,
     MeteoMetricFilterSchema,
+    MeteorologicalManualInputSchema,
     MeteorologicalMetricOutputSchema,
+    MeteorologicalNormOutputSchema,
+    MeteorologicalNormTypeFiltersSchema,
     MetricCountSchema,
     MetricTotalCountSchema,
     OperationalJournalDailyDataSchema,
-    OperationalJournalDecadalDataSchema,
+    OperationalJournalDecadalDataStationType,
+    OperationalJournalDecadalHydroDataSchema,
+    OperationalJournalDecadalMeteoDataSchema,
     OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
     TimeBucketQueryParams,
 )
 from .timeseries.query import TimeseriesQueryManager
-from .utils.helpers import OperationalJournalDataTransformer
-from .utils.parser import DecadalDischargeNormFileParser, MonthlyDischargeNormFileParser
+from .utils.helpers import OperationalJournalDataTransformer, create_norm_dataframe
+from .utils.parser import (
+    DecadalDischargeNormFileParser,
+    DecadalMeteoNormFileParser,
+    MonthlyDischargeNormFileParser,
+    MonthlyMeteoNormFileParser,
+)
 
 agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": Sum}
 
@@ -141,14 +163,52 @@ class MeteoMetricsAPIController:
         else:
             return manager.get_metric_distribution()
 
+    @route.post("{station_uuid}/manual-input", response={201: list[MeteorologicalMetricOutputSchema]})
+    def save_decadal_meteo_data(
+        self, organization_uuid: str, station_uuid: str, meteo_data: MeteorologicalManualInputSchema
+    ):
+        meteo_station = MeteorologicalStation.objects.get(uuid=station_uuid)
+        decade_to_day_mapping = {1: 5, 2: 15, 3: 25, 4: 15}
+        ts = dt(
+            year=meteo_data.year,
+            month=meteo_data.month,
+            day=decade_to_day_mapping[meteo_data.decade],
+            hour=12,
+            tzinfo=ZoneInfo("UTC"),
+        )
+        precipitation_metric = MeteorologicalMetric(
+            timestamp_local=ts,
+            value=meteo_data.precipitation,
+            metric_name=MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE
+            if meteo_data.decade == 4
+            else MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE,
+            station=meteo_station,
+            value_type=MeteorologicalMeasurementType.MANUAL,
+            unit=MetricUnit.PRECIPITATION,
+        )
+        precipitation_metric.save()
+        air_temperature_metric = MeteorologicalMetric(
+            value=meteo_data.temperature,
+            timestamp_local=ts,
+            metric_name=MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE
+            if meteo_data.decade == 4
+            else MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
+            station=meteo_station,
+            value_type=MeteorologicalMeasurementType.MANUAL,
+            unit=MetricUnit.TEMPERATURE,
+        )
+        air_temperature_metric.save()
 
-@api_controller("discharge-norms", tags=["Discharge norms"], auth=JWTAuth())
-class DischargeNormsAPIController:
+        return 201, [precipitation_metric, air_temperature_metric]
+
+
+@api_controller("hydrological-norms", tags=["Hydrological norms"], auth=JWTAuth())
+class HydrologicalNormsAPIController:
     @route.get("download-template", response={200: None, 404: Message})
-    def download_template_file(self, norm_types: Query[DischargeNormTypeFiltersSchema]):
+    def download_template_file(self, norm_type: Query[HydrologicalNormTypeFiltersSchema]):
         filename = (
             "discharge_norm_monthly_template.xlsx"
-            if norm_types.norm_type.value == NormType.MONTHLY
+            if norm_type.norm_type.value == NormType.MONTHLY
             else "discharge_norm_decadal_template.xlsx"
         )
         file_path = static(f"templates/{filename}")
@@ -159,61 +219,142 @@ class DischargeNormsAPIController:
         else:
             return 404, {"detail": "Could not retrieve the file", "code": "file_not_found"}
 
-    @route.get("{station_uuid}", response=list[DischargeNormOutputSchema], permissions=regular_permissions)
-    def get_station_discharge_norm(self, station_uuid: str, norm_types: Query[DischargeNormTypeFiltersSchema]):
-        return DischargeNorm.objects.for_station(station_uuid).filter(norm_type=norm_types.norm_type.value)
+    @route.get("{station_uuid}", response=list[HydrologicalNormOutputSchema], permissions=regular_permissions)
+    def get_station_discharge_norm(self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema]):
+        return HydrologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value)
 
-    @route.post(
-        "{station_uuid}/monthly", response={201: list[DischargeNormOutputSchema]}, permissions=regular_permissions
-    )
-    def upload_monthly_discharge_norm(self, station_uuid: str, file: UploadedFile = File(...)):
-        parser = MonthlyDischargeNormFileParser(file)
+    @route.post("{station_uuid}", response={201: list[HydrologicalNormOutputSchema]}, permissions=regular_permissions)
+    def upload_discharge_norm(
+        self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema], file: UploadedFile = File(...)
+    ):
+        parser_class = (
+            DecadalDischargeNormFileParser
+            if norm_type.norm_type == NormType.DECADAL
+            else MonthlyDischargeNormFileParser
+        )
+        data = parser_class(file).parse()
+        _ = HydrologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value).delete()
 
-        data = parser.parse()
-
-        # first delete the existing records
-        _ = DischargeNorm.objects.filter(station=station_uuid, norm_type=NormType.MONTHLY).delete()
-
-        # will not call the .save method, thus the pre_save and post_save signals won't be emitted
-        norms = DischargeNorm.objects.bulk_create(
+        norms = HydrologicalNorm.objects.bulk_create(
             [
-                DischargeNorm(
+                HydrologicalNorm(
                     station_id=station_uuid,
                     value=point["value"],
                     ordinal_number=point["ordinal_number"],
-                    norm_type=NormType.MONTHLY,
+                    norm_type=norm_type.norm_type.value,
                 )
                 for point in data["discharge"]
+                if not math.isnan(point["value"])
             ]
         )
 
         return 201, norms
 
+    @route.get("{station_uuid}/download", response={200: None, 404: Message})
+    def download_discharge_norm(self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema]):
+        station = HydrologicalStation.objects.get(uuid=station_uuid)
+        norm_data = HydrologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value)
+        output_df = create_norm_dataframe(norm_data, norm_type.norm_type)
+
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            output_df.to_excel(writer, index=False, sheet_name="discharge")
+
+        output_filename = f"historic-data-discharge-{station.station_code}.xlsx"
+        buffer.seek(0)
+        response = FileResponse(buffer, as_attachment=True, filename=output_filename)
+
+        return response
+
+
+@api_controller("meteorological-norms", tags=["Meteorological norms"], auth=JWTAuth())
+class MeteorologicalNormsAPIController:
+    @route.get("download-template", response={200: None, 404: Message})
+    def download_template_file(self, norm_types: Query[HydrologicalNormTypeFiltersSchema]):
+        filename = (
+            "meteo_norm_monthly_template.xlsx"
+            if norm_types.norm_type.value == NormType.MONTHLY
+            else "meteo_norm_decadal_template.xlsx"
+        )
+        file_path = static(f"templates/{filename}")
+        absolute_path = os.path.join(settings.APPS_DIR, file_path.strip("/"))
+        if os.path.exists(absolute_path):
+            response = FileResponse(open(absolute_path, "rb"), as_attachment=True, filename=filename)
+            return response
+        else:
+            return 404, {"detail": "Could not retrieve the file", "code": "file_not_found"}
+
+    @route.get("{station_uuid}", response=list[MeteorologicalNormOutputSchema], permissions=regular_permissions)
+    def get_station_meteorological_norm(
+        self, station_uuid: str, norm_filters: Query[MeteorologicalNormTypeFiltersSchema]
+    ):
+        return MeteorologicalNorm.objects.for_station(station_uuid).filter(
+            norm_type=norm_filters.norm_type.value, norm_metric=norm_filters.norm_metric.value
+        )
+
     @route.post(
-        "{station_uuid}/decadal", response={201: list[DischargeNormOutputSchema]}, permissions=regular_permissions
+        "{station_uuid}",
+        response={201: dict[str, list[MeteorologicalNormOutputSchema]]},
+        permissions=regular_permissions,
     )
-    def upload_decadal_discharge_norm(self, station_uuid: str, file: UploadedFile = File(...)):
-        parser = DecadalDischargeNormFileParser(file)
+    def upload_meteorological_norm(
+        self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema], file: UploadedFile = File(...)
+    ):
+        parser_class = (
+            DecadalMeteoNormFileParser if norm_type.norm_type == NormType.DECADAL else MonthlyMeteoNormFileParser
+        )
+        data = parser_class(file).parse()
+        _ = MeteorologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value).delete()
 
-        data = parser.parse()
-
-        # first delete the existing records
-        _ = DischargeNorm.objects.filter(station=station_uuid, norm_type=NormType.DECADAL).delete()
-
-        # will not call the .save method, thus the pre_save and post_save signals won't be emitted
-        norms = DischargeNorm.objects.bulk_create(
+        precipitation_norms = MeteorologicalNorm.objects.bulk_create(
             [
-                DischargeNorm(
+                MeteorologicalNorm(
                     station_id=station_uuid,
                     value=point["value"],
                     ordinal_number=point["ordinal_number"],
-                    norm_type=NormType.DECADAL,
+                    norm_type=norm_type.norm_type.value,
+                    norm_metric=MeteorologicalNormMetric.PRECIPITATION,
                 )
-                for point in data["discharge"]
+                for point in data["precipitation"]
+                if not math.isnan(point["value"])
+            ]
+        )
+        temperature_norms = MeteorologicalNorm.objects.bulk_create(
+            [
+                MeteorologicalNorm(
+                    station_id=station_uuid,
+                    value=point["value"],
+                    ordinal_number=point["ordinal_number"],
+                    norm_type=norm_type.norm_type.value,
+                    norm_metric=MeteorologicalNormMetric.TEMPERATURE,
+                )
+                for point in data["temperature"]
+                if not math.isnan(point["value"])
             ]
         )
 
-        return 201, norms
+        return 201, {"precipitation": precipitation_norms, "temperature": temperature_norms}
+
+    @route.get("{station_uuid}/download", response={200: None, 404: Message})
+    def download_meteo_norm(self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema]):
+        station = MeteorologicalStation.objects.get(uuid=station_uuid)
+        norm_data = MeteorologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value)
+        precipitation_df = create_norm_dataframe(
+            norm_data.filter(norm_metric=MeteorologicalNormMetric.PRECIPITATION), norm_type.norm_type
+        )
+        temperature_df = create_norm_dataframe(
+            norm_data.filter(norm_metric=MeteorologicalNormMetric.TEMPERATURE), norm_type.norm_type
+        )
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            precipitation_df.to_excel(writer, index=False, sheet_name="precipitation")
+            temperature_df.to_excel(writer, index=False, sheet_name="temperature")
+
+        output_filename = f"historic-data-meteo-{station.station_code}.xlsx"
+        buffer.seek(0)
+        response = FileResponse(buffer, as_attachment=True, filename=output_filename)
+
+        return response
 
 
 @api_controller(
@@ -307,9 +448,17 @@ class OperationalJournalAPIController:
 
         return prepared_data
 
-    @route.get("decadal-data", response=list[OperationalJournalDecadalDataSchema])
-    def get_decadal_data(self, station_uuid: str, year: int, month: int):
-        station = HydrologicalStation.objects.get(uuid=station_uuid)
+    @route.get(
+        "decadal-data/{station_type}",
+        response=list[OperationalJournalDecadalHydroDataSchema | OperationalJournalDecadalMeteoDataSchema],
+    )
+    def get_decadal_data(
+        self, station_uuid: str, year: int, month: int, station_type: OperationalJournalDecadalDataStationType
+    ):
+        if station_type.station_type == "hydro":
+            station = HydrologicalStation.objects.get(uuid=station_uuid)
+        else:
+            station = MeteorologicalStation.objects.get(uuid=station_uuid)
         first_day_current_month = dt(year, month, 1)
         dt_start = SmartDatetime(first_day_current_month, station).day_beginning_local.isoformat()
         first_day_next_month = first_day_current_month + relativedelta(months=1)
@@ -317,25 +466,45 @@ class OperationalJournalAPIController:
 
         decadal_data = []
 
-        querying_views = [
-            ("estimations_water_level_decade_average", HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE),
-            ("estimations_water_discharge_decade_average", HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE),
-        ]
+        if station_type.station_type == "hydro":
+            querying_views = [
+                ("estimations_water_level_decade_average", HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE),
+                ("estimations_water_discharge_decade_average", HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE),
+            ]
+            for view_name, metric_name in querying_views:
+                view_data = EstimationsViewQueryManager(
+                    view_name,
+                    order_param="timestamp_local",
+                    order_direction="ASC",
+                    filter_dict={
+                        "timestamp_local__gte": dt_start,
+                        "timestamp_local__lt": dt_end,
+                        "station_id": station.id,
+                    },
+                ).execute_query()
 
-        for view_name, metric_name in querying_views:
-            view_data = EstimationsViewQueryManager(
-                view_name,
+                decadal_data.extend({**d, "metric_name": metric_name} for d in view_data)
+        else:
+            meteo_data = TimeseriesQueryManager(
+                model=MeteorologicalMetric,
                 order_param="timestamp_local",
                 order_direction="ASC",
                 filter_dict={
                     "timestamp_local__gte": dt_start,
                     "timestamp_local__lt": dt_end,
-                    "station_id": station.id,
+                    "station": station.id,
+                    "metric_name__in": [
+                        MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
+                        MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE,
+                    ],
                 },
             ).execute_query()
 
-            decadal_data.extend({**d, "metric_name": metric_name} for d in view_data)
+            decadal_data.extend(meteo_data.values("timestamp_local", "value", "metric_name"))
 
-        prepared_data = OperationalJournalDataTransformer(decadal_data).get_decadal_data()
+        if station_type.station_type == "hydro":
+            prepared_data = OperationalJournalDataTransformer(decadal_data).get_hydro_decadal_data()
+        else:
+            prepared_data = OperationalJournalDataTransformer(decadal_data).get_meteo_decadal_data()
 
         return prepared_data

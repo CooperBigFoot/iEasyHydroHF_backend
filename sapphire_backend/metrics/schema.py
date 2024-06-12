@@ -9,9 +9,10 @@ from .choices import (
     HydrologicalMetricName,
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
+    MeteorologicalNormMetric,
     NormType,
 )
-from .models import DischargeNorm
+from .models import HydrologicalNorm, MeteorologicalNorm
 from .utils.helpers import calculate_decade_date
 
 
@@ -42,8 +43,8 @@ class MeteoMetricFilterSchema(BaseTimeseriesFilterSchema):
     value__gte: float = None
     value__lt: float = None
     value__lte: float = None
-    metric_name: MeteorologicalMetricName = None
-    value_type: MeteorologicalMeasurementType = None
+    metric_name__in: list[MeteorologicalMetricName] = None
+    value_type__in: list[MeteorologicalMeasurementType] = None
 
 
 class OrderQueryParamSchema(Schema):
@@ -85,11 +86,23 @@ class OperationalJournalDischargeDataSchema(Schema):
     cross_section: float | str
 
 
-class OperationalJournalDecadalDataSchema(Schema):
+class OperationalJournalDecadalBaseSchema(Schema):
     id: str
     decade: int | str
+
+
+class OperationalJournalDecadalHydroDataSchema(OperationalJournalDecadalBaseSchema):
     water_level: int | str
     water_discharge: float | str
+
+
+class OperationalJournalDecadalMeteoDataSchema(OperationalJournalDecadalBaseSchema):
+    precipitation: float | str
+    temperature: float | str
+
+
+class OperationalJournalDecadalDataStationType(Schema):
+    station_type: Literal["hydro", "meteo"]
 
 
 class MeteorologicalMetricOutputSchema(Schema):
@@ -97,6 +110,14 @@ class MeteorologicalMetricOutputSchema(Schema):
     timestamp_local: datetime
     metric_name: MeteorologicalMetricName
     station_id: int
+
+
+class MeteorologicalManualInputSchema(Schema):
+    month: int
+    year: int
+    decade: int
+    precipitation: float
+    temperature: float
 
 
 class MetricCountSchema(Schema):
@@ -122,15 +143,19 @@ class TimeBucketQueryParams(Schema):
     limit: int = 100
 
 
-class DischargeNormTypeFiltersSchema(FilterSchema):
+class HydrologicalNormTypeFiltersSchema(FilterSchema):
     norm_type: NormType
 
 
-class DischargeNormOutputSchema(ModelSchema):
+class MeteorologicalNormTypeFiltersSchema(HydrologicalNormTypeFiltersSchema):
+    norm_metric: MeteorologicalNormMetric
+
+
+class HydrologicalNormOutputSchema(ModelSchema):
     timestamp_local: datetime
 
     class Meta:
-        model = DischargeNorm
+        model = HydrologicalNorm
         fields = ["ordinal_number", "value"]
 
     @staticmethod
@@ -139,3 +164,8 @@ class DischargeNormOutputSchema(ModelSchema):
             return datetime(datetime.utcnow().year, obj.ordinal_number, 1, 12, tzinfo=timezone.utc)
         else:
             return calculate_decade_date(obj.ordinal_number)
+
+
+class MeteorologicalNormOutputSchema(HydrologicalNormOutputSchema):
+    class Meta(HydrologicalNormOutputSchema.Meta):
+        model = MeteorologicalNorm

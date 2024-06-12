@@ -262,6 +262,27 @@ class MeteoStationsAPIController:
         station.save()
         return 200, {"detail": _(f"{station.name} station successfully deleted"), "code": "success"}
 
+    @route.get("{station_uuid}/remarks", response={200: list[RemarkOutputSchema]})
+    def get_remarks(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
+        return Remark.objects.filter(meteo_station=station_uuid)
+
+    @route.post("{station_uuid}/remarks", response={200: RemarkOutputSchema})
+    def create_remark(
+        self, request: HttpRequest, organization_uuid: str, station_uuid: str, remark_data: RemarkInputSchema
+    ):
+        remark_dict = remark_data.dict()
+        remark_dict["user"] = request.user
+        remark_dict["meteo_station_id"] = station_uuid
+
+        remark = Remark.objects.create(**remark_dict)
+
+        return remark
+
+    @route.delete("remarks/{remark_uuid}", response={200: Message})
+    def delete_remark(self, request: HttpRequest, organization_uuid: str, remark_uuid: str):
+        Remark.objects.filter(uuid=remark_uuid).delete()
+        return 200, {"detail": _("Remark deleted successfully"), "code": "success"}
+
 
 @api_controller(
     "stations/{organization_uuid}/virtual", tags=["Virtual stations"], auth=JWTAuth(), permissions=regular_permissions
