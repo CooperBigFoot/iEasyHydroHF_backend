@@ -3,6 +3,8 @@ from math import ceil
 
 import pandas as pd
 
+from sapphire_backend.metrics.choices import NormType
+from sapphire_backend.metrics.managers import HydrologicalNormQuerySet, MeteorologicalNormQuerySet
 from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitationCodeMapper
 from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
 from sapphire_backend.utils.rounding import hydrological_round
@@ -326,3 +328,31 @@ class OperationalJournalDataTransformer:
         results.append(self._get_monthly_averages_from_decadal_data(results))
 
         return results
+
+
+def create_norm_dataframe(norm_data: HydrologicalNormQuerySet | MeteorologicalNormQuerySet, norm_type: NormType):
+    decade_end = 36 if norm_type == norm_type.DECADAL else 12
+    if norm_data.exists():
+        df = pd.DataFrame(norm_data.values("ordinal_number", "value")).set_index("ordinal_number")
+        df["value"] = df["value"].astype(float)
+        df = df.transpose()
+    else:
+        df = pd.DataFrame(columns=range(1, decade_end + 1))
+
+    columns = ["Period"] + list(range(1, decade_end + 1))
+    output_df = pd.DataFrame(columns=columns)
+    output_df.loc[0, "Period"] = "Value"
+
+    for col in output_df.columns[1:]:
+        col_num = int(col)
+        if col_num in df.columns:
+            value = df.at["value", col_num] if not df.empty else None
+            if value is None:
+                continue
+            output_df.at[0, col] = (
+                hydrological_round(value) if isinstance(norm_data, HydrologicalNormQuerySet) else round(value, 2)
+            )
+        else:
+            output_df.at[0, col] = None
+
+    return output_df
