@@ -1,12 +1,16 @@
-from ninja import FilterSchema, Schema
+from datetime import datetime
 
+from django.conf import settings
+from ninja import Field, FilterSchema, Schema
+
+from sapphire_backend.users.schema import UserOutputListSchema
 from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
 
 from .choices import BulletinType
 
 
 class BulletinTypeFilterSchema(FilterSchema):
-    type: BulletinType
+    type: BulletinType = None
 
 
 class BulletinBaseSchema(Schema):
@@ -26,3 +30,14 @@ class BulletinUpdateSchema(BulletinBaseSchema):
 
 class BulletinOutputSchema(UUIDSchemaMixin, BulletinBaseSchema):
     id: int
+    filename: str
+    user: UserOutputListSchema
+    last_modified: datetime
+    size: float = Field(..., alias="filename.size")
+
+    @staticmethod
+    def resolve_filename(obj):
+        if obj.filename.url.startswith("http"):
+            return obj.filename.url
+        else:
+            return f"{settings.BACKEND_URL}{obj.filename.url}"

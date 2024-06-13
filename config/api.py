@@ -9,6 +9,7 @@ from ninja.errors import ValidationError as NinjaValidationError
 from ninja_extra import NinjaExtraAPI
 from pydantic import ValidationError as PydanticValidationError
 
+from sapphire_backend.bulletins.api import BulletinsAPIController
 from sapphire_backend.estimations.api import DischargeModelsAPIController, EstimationsAPIController
 from sapphire_backend.metrics.api import (
     HydrologicalNormsAPIController,
@@ -39,6 +40,7 @@ api = NinjaExtraAPI(
 
 api.register_controllers(AuthController)
 api.register_controllers(BasinsAPIController)
+api.register_controllers(BulletinsAPIController)
 api.register_controllers(HydrologicalNormsAPIController)
 api.register_controllers(MeteorologicalNormsAPIController)
 api.register_controllers(HydroMetricsAPIController)

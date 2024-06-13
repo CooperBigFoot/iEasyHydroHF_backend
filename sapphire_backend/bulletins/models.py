@@ -8,7 +8,7 @@ from .managers import BulletinTemplateQuerySet
 
 
 def bulletin_upload_path(instance, filename):
-    return f"bulletins/{instance.organization.uuid}/{instance.type.name.lower()}/{filename}"
+    return f"bulletins/{instance.organization.uuid}/{instance.type}/{filename}"
 
 
 class BulletinTemplate(UUIDMixin, CreateLastModifiedDateMixin, models.Model):
