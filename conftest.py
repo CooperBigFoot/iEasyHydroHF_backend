@@ -98,6 +98,16 @@ def site_kyrgyz(db, organization_kyrgyz):
 
 
 @pytest.fixture
+def site_kyrgyz_second(db, organization_kyrgyz):
+    return SiteFactory(country="Kyrgyzstan", organization=organization_kyrgyz, timezone=ZoneInfo("Asia/Bishkek"))
+
+
+@pytest.fixture
+def site_kyrgyz_third(db, organization_kyrgyz):
+    return SiteFactory(country="Kyrgyzstan", organization=organization_kyrgyz, timezone=ZoneInfo("Asia/Bishkek"))
+
+
+@pytest.fixture
 def site_uzbek(db, organization_uzbek):
     return SiteFactory(country="Uzbekistan", organization=organization_uzbek, timezone=ZoneInfo("Asia/Tashkent"))
 
@@ -123,12 +133,22 @@ def manual_hydro_station_kyrgyz(db, site_kyrgyz):
 
 
 @pytest.fixture
-def manual_second_hydro_station_kyrgyz(db, site_kyrgyz):
+def manual_second_hydro_station_kyrgyz(db, site_kyrgyz_second):
     return HydrologicalStationFactory(
-        site=site_kyrgyz,
+        site=site_kyrgyz_second,
         station_type=HydrologicalStation.StationType.MANUAL,
         station_code="12346",
         name="Manual Kyrgyz Hydro Station number two",
+    )
+
+
+@pytest.fixture
+def manual_third_hydro_station_kyrgyz(db, site_kyrgyz_third):
+    return HydrologicalStationFactory(
+        site=site_kyrgyz_third,
+        station_type=HydrologicalStation.StationType.MANUAL,
+        station_code="12347",
+        name="Manual Kyrgyz Hydro Station number three",
     )
 
 

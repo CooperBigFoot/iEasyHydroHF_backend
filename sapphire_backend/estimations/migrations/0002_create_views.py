@@ -143,7 +143,7 @@ class Migration(migrations.Migration):
                         CAST(NULL AS NUMERIC) as max_value,
                         'm^3/s' as unit,
                         'E' as value_type,
-                        'WDDA' as metric_name,
+                        'WDDCA' as metric_name,
                         '' as sensor_identifier,
                         '' as sensor_type,
                         wdda.station_id

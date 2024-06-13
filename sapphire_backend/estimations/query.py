@@ -26,9 +26,13 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
             "estimations_water_level_daily_average",
             "estimations_water_level_decade_average",
             "estimations_water_discharge_daily",
+            "estimations_water_discharge_daily_virtual",
             "estimations_water_discharge_daily_average",
+            "estimations_water_discharge_daily_average_virtual",
             "estimations_water_discharge_fiveday_average",
+            "estimations_water_discharge_fiveday_average_virtual",
             "estimations_water_discharge_decade_average",
+            "estimations_water_discharge_decade_average_virtual",
         ]:
             raise ValueError("EstimationsViewQueryManager can only be instantiated with an existing view.")
         return model
