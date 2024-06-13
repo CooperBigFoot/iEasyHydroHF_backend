@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('estimations', '0003_virtual_views'),
         ('metrics', '0005_meteo_norm_model'),
@@ -46,7 +45,8 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('ordinal_number', models.PositiveIntegerField(verbose_name='Ordinal number')),
                 ('value', models.DecimalField(decimal_places=5, max_digits=10, verbose_name='Value')),
-                ('norm_type', models.CharField(choices=[('m', 'Monthly'), ('d', 'Decadal')], default='d', max_length=20, verbose_name='Norm type')),
+                ('norm_type', models.CharField(choices=[('m', 'Monthly'), ('d', 'Decadal')], default='d', max_length=20,
+                                               verbose_name='Norm type')),
             ],
             options={
                 'db_table': 'estimations_hydrologicalnorm_virtual',

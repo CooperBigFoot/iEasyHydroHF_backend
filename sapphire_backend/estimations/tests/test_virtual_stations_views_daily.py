@@ -80,7 +80,7 @@ class TestVirtualStationWaterDischargeDailyMetrics:
         virtual_station_association_two,
         virtual_station_association_three,
         discharge_model_manual_hydro_station_kyrgyz,
-        discharge_model_manual_second_hydro_station_kyrgyz,
+        discharge_model_manual_second_hydro_station_kyrgyz,  # needed indirectly
         discharge_model_manual_third_hydro_station_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
