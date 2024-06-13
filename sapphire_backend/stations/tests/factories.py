@@ -29,7 +29,7 @@ class SiteFactory(factory.django.DjangoModelFactory):
 class HydrologicalStationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = HydrologicalStation
-        django_get_or_create = ("site", "name", "station_code", "description", "station_type")
+        django_get_or_create = ("site", "station_code", "description", "station_type")
 
     site = factory.SubFactory(SiteFactory)
     description = fake.catch_phrase()
@@ -72,7 +72,7 @@ class VirtualStationFactory(factory.django.DjangoModelFactory):
 class VirtualStationAssociationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = VirtualStationAssociation
-        django_get_or_create = ("virtual_station", "hydro_station")
+        django_get_or_create = ("virtual_station", "hydro_station", "weight")
 
     virtual_station = factory.SubFactory(VirtualStationFactory)
     hydro_station = factory.SubFactory(HydrologicalStationFactory)

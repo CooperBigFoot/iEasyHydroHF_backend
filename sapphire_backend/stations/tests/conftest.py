@@ -51,12 +51,12 @@ def virtual_station_deleted(db, organization):
 @pytest.fixture
 def virtual_station_association_one(db, automatic_hydro_station, virtual_station):
     return VirtualStationAssociationFactory(
-        virtual_station=virtual_station, hydro_station=automatic_hydro_station, weight=0.5
+        virtual_station=virtual_station, hydro_station=automatic_hydro_station, weight=50
     )
 
 
 @pytest.fixture
 def virtual_station_association_two(db, manual_hydro_station, virtual_station):
     return VirtualStationAssociationFactory(
-        virtual_station=virtual_station, hydro_station=manual_hydro_station, weight=0.5
+        virtual_station=virtual_station, hydro_station=manual_hydro_station, weight=100
     )
