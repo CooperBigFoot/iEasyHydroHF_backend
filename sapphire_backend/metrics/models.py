@@ -22,7 +22,7 @@ from .managers import (
     MeteorologicalMetricQuerySet,
     MeteorologicalNormQuerySet,
 )
-from .mixins import NormModelMixin
+from .mixins import BaseHydroMetricMixin, MinMaxValueMixin, NormModelMixin, SensorInfoMixin
 
 
 def resolve_timestamp_local_tz_pair(
@@ -35,34 +35,9 @@ def resolve_timestamp_local_tz_pair(
     return timestamp_local, timestamp
 
 
-class HydrologicalMetric(models.Model):
-    timestamp_local = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp local without timezone"))
+class HydrologicalMetric(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
     timestamp = models.DateTimeField(verbose_name=_("Timestamp with timezone"))
-    min_value = models.DecimalField(
-        verbose_name=_("Minimum value"), max_digits=15, decimal_places=5, null=True, blank=True
-    )
-    avg_value = models.DecimalField(verbose_name=_("Average value"), max_digits=15, decimal_places=5)
-    max_value = models.DecimalField(
-        verbose_name=_("Maximum value"), max_digits=15, decimal_places=5, null=True, blank=True
-    )
-    unit = models.CharField(verbose_name=_("Unit"), choices=MetricUnit, blank=True, max_length=20)
-    value_type = models.CharField(
-        verbose_name=_("Value type"),
-        choices=HydrologicalMeasurementType,
-        default=HydrologicalMeasurementType.UNKNOWN,
-        max_length=2,
-        blank=False,
-    )
-    metric_name = models.CharField(
-        verbose_name=_("Metric name"),
-        choices=HydrologicalMetricName,
-        max_length=20,
-        blank=False,
-    )
     station = models.ForeignKey("stations.HydrologicalStation", verbose_name=_("Station"), on_delete=models.PROTECT)
-
-    sensor_identifier = models.CharField(verbose_name=_("Sensor identifier"), blank=True, max_length=50)
-    sensor_type = models.CharField(verbose_name=_("Sensor type"), blank=True, max_length=50)
     value_code = models.IntegerField(verbose_name=_("Value code"), blank=True, null=True)
 
     objects = HydrologicalMetricQuerySet.as_manager()
