@@ -1,15 +1,14 @@
-from datetime import datetime, timedelta
+from datetime import date
 
 import pytest
-from zoneinfo import ZoneInfo
 
 from sapphire_backend.estimations.models import EstimationsWaterDischargeDailyAverage
 from sapphire_backend.utils.rounding import custom_round
 
 
 class TestEstimationsApi:
-    start_date = datetime(2020, 2, 1, tzinfo=ZoneInfo("UTC"))
-    end_date = datetime(2020, 2, 29, tzinfo=ZoneInfo("UTC"))
+    start_date = date(2020, 2, 1)
+    end_date = date(2020, 2, 29)
 
     @pytest.mark.django_db(transaction=True)
     @pytest.mark.parametrize("water_level_metrics_daily_generator", [(start_date, end_date)], indirect=True)
@@ -38,7 +37,7 @@ class TestEstimationsApi:
 
         wdda_queryset = EstimationsWaterDischargeDailyAverage.objects.filter(
             station_id=manual_hydro_station_kyrgyz.id,
-            timestamp_local__range=(self.start_date, self.end_date + timedelta(days=1)),
+            timestamp_local__date__range=(self.start_date, self.end_date),
         ).order_by("timestamp_local")
 
         wdda_res_expected = wdda_queryset.values("timestamp_local", "avg_value")
