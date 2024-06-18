@@ -33,6 +33,7 @@ class BulletinOutputSchema(UUIDSchemaMixin, BulletinBaseSchema):
     filename: str
     user: UserOutputListSchema
     last_modified: datetime
+    created_date: datetime
     size: float = Field(..., alias="filename.size")
 
     @staticmethod

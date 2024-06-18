@@ -36,7 +36,9 @@ class BulletinsAPIController:
 
         if os.path.exists(bulletin.filename.path):
             response = FileResponse(
-                open(bulletin.filename, "rb"), as_attachment=True, filename=os.path.basename(bulletin.filename.name)
+                open(bulletin.filename.path, "rb"),
+                as_attachment=True,
+                filename=os.path.basename(bulletin.filename.name),
             )
             return response
         else:

@@ -250,4 +250,6 @@ CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 # corsheaders
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
+CORS_EXPOSE_HEADERS = ["Content-Disposition"]
+
 MAX_IMAGE_SIZE = env.int("MAX_IMAGE_SIZE", 10)  # MB
