@@ -12,5 +12,5 @@ class BulletinTemplateAdmin(admin.ModelAdmin):
 
 @admin.register(BulletinTemplateTag)
 class BulletinTemplateTagAdmin(admin.ModelAdmin):
-    list_display = ["name", "organization"]
-    list_filter = ["organization"]
+    list_display = ["name", "type", "description", "is_default"]
+    list_filter = ["bulletins", "type", "is_default"]

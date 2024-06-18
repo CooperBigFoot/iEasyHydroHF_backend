@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 
 from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, UUIDMixin
 
-from .choices import BulletinType
+from .choices import BulletinTagType, BulletinType
 from .managers import BulletinTemplateQuerySet
 
 
@@ -20,7 +20,13 @@ class BulletinTemplate(UUIDMixin, CreateLastModifiedDateMixin, models.Model):
         related_name="bulletin_templates",
     )
     user = models.ForeignKey(
-        "users.User", verbose_name=_("Uploader"), on_delete=models.PROTECT, related_name="uploaded_bulletin_templates"
+        "users.User",
+        to_field="uuid",
+        verbose_name=_("Uploader"),
+        on_delete=models.PROTECT,
+        related_name="uploaded_bulletin_templates",
+        null=True,
+        blank=True,
     )
     name = models.CharField(verbose_name=_("Name"), max_length=100)
     type = models.CharField(
@@ -50,15 +56,13 @@ class BulletinTemplate(UUIDMixin, CreateLastModifiedDateMixin, models.Model):
 
 
 class BulletinTemplateTag(UUIDMixin, models.Model):
-    organization = models.ForeignKey(
-        "organizations.Organization",
-        to_field="uuid",
-        verbose_name=_("Organization"),
-        on_delete=models.CASCADE,
-        related_name="bulletin_template_tags",
-    )
+    bulletins = models.ManyToManyField(BulletinTemplate, verbose_name=_("Bulletin"), related_name="tags")
     name = models.CharField(verbose_name=_("Tag name"), max_length=200)
     description = models.TextField(verbose_name=_("Tag description"))
+    type = models.CharField(
+        verbose_name=_("Tag type"), choices=BulletinTagType, default=BulletinTagType.DATA, max_length=2
+    )
+    is_default = models.BooleanField(verbose_name=_("Is default?"), default=True)
 
     def __str__(self):
         return self.name
