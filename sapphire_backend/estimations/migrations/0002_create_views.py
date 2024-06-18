@@ -107,33 +107,6 @@ class Migration(migrations.Migration):
         migrations.RunSQL(
             sql=[(
                 """
-                create or replace view estimations_water_discharge_fiveday_average as
-                WITH five_day_averages AS (
-                    SELECT
-                        wdda.timestamp_local AS timestamp_local,
-                        CAST(NULL AS NUMERIC) as min_value,
-                        AVG(wdda.avg_value) OVER (PARTITION BY wdda.station_id, EXTRACT(YEAR FROM wdda.timestamp_local), EXTRACT(MONTH FROM wdda.timestamp_local) ORDER BY wdda.timestamp_local ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) AS avg_value,
-                        CAST(NULL AS NUMERIC) as max_value,
-                        'm^3/s' as unit,
-                        'E' as value_type,
-                        'WDFA' as metric_name,
-                        '' as sensor_identifier,
-                        '' as sensor_type,
-                        wdda.station_id
-                    FROM
-                        public.estimations_water_discharge_daily_average wdda
-                )
-                SELECT *
-                FROM five_day_averages
-                WHERE EXTRACT(DAY FROM timestamp_local) IN (3, 8, 13, 18, 23, 28);
-                """
-            )],
-            reverse_sql=[("DROP VIEW IF EXISTS estimations_water_discharge_fiveday_average CASCADE;")],
-        ),
-
-        migrations.RunSQL(
-            sql=[(
-                """
                 CREATE OR REPLACE VIEW estimations_water_discharge_fiveday_average AS
                 WITH data_ranges AS
                  (SELECT wdda.timestamp_local AS timestamp_local,
@@ -254,5 +227,4 @@ class Migration(migrations.Migration):
             )],
             reverse_sql=[("DROP VIEW IF EXISTS estimations_water_level_decade_average CASCADE;")],
         ),
-
     ]

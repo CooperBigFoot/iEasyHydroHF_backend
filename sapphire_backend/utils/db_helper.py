@@ -12,5 +12,5 @@ def refresh_continuous_aggregate(start_date: str = None, end_date: str = None):
         end_date = (datetime.fromisoformat(end_date) + timedelta(days=1)).date().isoformat()
     with connection.cursor() as cursor:
         cursor.execute(
-            f"CALL refresh_continuous_aggregate('test_sapphire_backend.public.estimations_water_level_daily_average', '{start_date}', '{end_date}')"
+            f"CALL refresh_continuous_aggregate('public.estimations_water_level_daily_average', '{start_date}', '{end_date}')"
         )
