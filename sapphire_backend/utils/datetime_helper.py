@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from zoneinfo import ZoneInfo
 
@@ -7,7 +7,7 @@ from sapphire_backend.stations.models import HydrologicalStation, Meteorological
 
 class SmartDatetime:
     def __init__(
-        self, dt: [str | datetime], station: [HydrologicalStation | MeteorologicalStation], tz_included=False
+        self, dt: [str | datetime | date], station: [HydrologicalStation | MeteorologicalStation], tz_included=False
     ):
         self._local_timezone = station.timezone
         if isinstance(dt, str):
@@ -26,6 +26,12 @@ class SmartDatetime:
                 self._dt_tz = dt_tz
             else:
                 self._dt_tz = dt.replace(tzinfo=self._local_timezone)
+        elif isinstance(dt, date):
+            if tz_included:
+                raise ValueError(
+                    "Passing date() to SmartDatetime does not include a timezone, so tz_included must be False"
+                )
+            self._dt_tz = datetime.combine(dt, datetime.min.time()).replace(tzinfo=self._local_timezone)
 
     @property
     def local_timezone(self):
@@ -105,3 +111,30 @@ class SmartDatetime:
 
     def __str__(self):
         return f"SmartDatetime local {self.local.isoformat()}, with TZ: {self.tz.isoformat()}"
+
+
+class DateRange:
+    """
+    Date generator for a date range given start, end and delta params.
+    Includes end date. Only allows delta of days.
+    """
+
+    def __init__(self, start: date, end: date, delta: timedelta):
+        if end < start:
+            raise ValueError("End date must be greater than or equal to start date.")
+
+        if delta <= timedelta(days=0):
+            raise ValueError("Delta must be a positive number of days.")
+
+        if delta.days < 1 or delta != timedelta(days=delta.days):
+            raise ValueError("Delta must be specified in whole days.")
+
+        self.start = start
+        self.end = end
+        self.delta = delta
+
+    def __iter__(self):
+        current = self.start
+        while current <= self.end:
+            yield current
+            current += self.delta

@@ -1,7 +1,11 @@
 import logging
 from datetime import timedelta
 
-from sapphire_backend.estimations.query import EstimationsViewQueryManager
+from sapphire_backend.estimations.models import (
+    EstimationsWaterDischargeDaily,
+    EstimationsWaterDischargeDailyAverage,
+    EstimationsWaterLevelDailyAverage,
+)
 from sapphire_backend.estimations.utils import get_discharge_model_from_timestamp_local
 from sapphire_backend.metrics.choices import (
     HydrologicalMeasurementType,
@@ -301,14 +305,14 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
             result[station_code][date]["evening"].water_level_old = custom_ceil(water_level_evening_old)
             result[station_code][date]["evening"].water_level_new = custom_ceil(water_level_evening_old)
 
-            water_level_average_old_query_result = EstimationsViewQueryManager(
-                model="estimations_water_level_daily_average",
-                filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.midday_local},
-            ).execute_query()
-
-            water_level_average_old = None
-            if len(water_level_average_old_query_result) > 0:
-                water_level_average_old = water_level_average_old_query_result[0].get("avg_value")
+            water_level_average_old = getattr(
+                EstimationsWaterLevelDailyAverage.objects.filter(
+                    station=hydro_station,
+                    timestamp_local=smart_date.midday_local,
+                ).first(),
+                "avg_value",
+                None,
+            )
 
             result[station_code][date]["average"] = NewOldMetrics(
                 water_level_new=None, water_level_old=None, discharge_new=None, discharge_old=None
@@ -317,38 +321,38 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
             result[station_code][date]["average"].water_level_new = custom_ceil(water_level_average_old)
 
             # discharges
-            discharge_morning_old_query_result = EstimationsViewQueryManager(
-                model="estimations_water_discharge_daily",
-                filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.morning_local},
-            ).execute_query()
-
-            discharge_morning_old = None
-            if len(discharge_morning_old_query_result) > 0:
-                discharge_morning_old = discharge_morning_old_query_result[0].get("avg_value")
+            discharge_morning_old = getattr(
+                EstimationsWaterDischargeDaily.objects.filter(
+                    station=hydro_station,
+                    timestamp_local=smart_date.morning_local,
+                ).first(),
+                "avg_value",
+                None,
+            )
 
             result[station_code][date]["morning"].discharge_old = custom_round(discharge_morning_old, 1)
             result[station_code][date]["morning"].discharge_new = custom_round(discharge_morning_old, 1)
 
-            discharge_evening_old_query_result = EstimationsViewQueryManager(
-                model="estimations_water_discharge_daily",
-                filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.evening_local},
-            ).execute_query()
-
-            discharge_evening_old = None
-            if len(discharge_evening_old_query_result) > 0:
-                discharge_evening_old = discharge_evening_old_query_result[0].get("avg_value")
+            discharge_evening_old = getattr(
+                EstimationsWaterDischargeDaily.objects.filter(
+                    station=hydro_station,
+                    timestamp_local=smart_date.evening_local,
+                ).first(),
+                "avg_value",
+                None,
+            )
 
             result[station_code][date]["evening"].discharge_old = custom_round(discharge_evening_old, 1)
             result[station_code][date]["evening"].discharge_new = custom_round(discharge_evening_old, 1)
 
-            discharge_average_old_query_result = EstimationsViewQueryManager(
-                model="estimations_water_discharge_daily_average",
-                filter_dict={"station_id": hydro_station.id, "timestamp_local": smart_date.midday_local},
-            ).execute_query()
-
-            discharge_average_old = None
-            if len(discharge_average_old_query_result) > 0:
-                discharge_average_old = discharge_average_old_query_result[0].get("avg_value")
+            discharge_average_old = getattr(
+                EstimationsWaterDischargeDailyAverage.objects.filter(
+                    station=hydro_station,
+                    timestamp_local=smart_date.midday_local,
+                ).first(),
+                "avg_value",
+                None,
+            )
 
             result[station_code][date]["average"].discharge_old = custom_round(discharge_average_old, 1)
             result[station_code][date]["average"].discharge_new = custom_round(discharge_average_old, 1)

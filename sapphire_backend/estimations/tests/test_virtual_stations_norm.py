@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from sapphire_backend.estimations.models import HydrologicalNormVirtual
 from sapphire_backend.metrics.choices import NormType
+from sapphire_backend.utils.rounding import custom_round
 
 
 class TestVirtualStationHydrologicalNorm:
@@ -29,7 +30,7 @@ class TestVirtualStationHydrologicalNorm:
             station_id=virtual_station.uuid,
         ).value
 
-        assert round(float(virtual_norm_estimated), 6) == round(float(virtual_norm_expected), 6)
+        assert custom_round(virtual_norm_estimated, 6) == custom_round(virtual_norm_expected, 6)
 
     def test_discharge_norm_decadal_three_virtual_associations(
         self,
@@ -60,7 +61,7 @@ class TestVirtualStationHydrologicalNorm:
             station_id=virtual_station.uuid,
         ).value
 
-        assert round(float(virtual_norm_estimated), 6) == round(float(virtual_norm_expected), 6)
+        assert custom_round(virtual_norm_estimated, 6) == custom_round(virtual_norm_expected, 6)
 
     def test_discharge_norm_monthly(
         self,
@@ -86,4 +87,4 @@ class TestVirtualStationHydrologicalNorm:
             station_id=virtual_station.uuid,
         ).value
 
-        assert round(float(virtual_norm_estimated), 6) == round(float(virtual_norm_expected), 6)
+        assert custom_round(virtual_norm_estimated, 6) == custom_round(virtual_norm_expected, 6)

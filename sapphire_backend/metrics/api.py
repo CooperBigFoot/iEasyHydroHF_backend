@@ -16,7 +16,6 @@ from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.estimations.query import EstimationsViewQueryManager
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.mixins.schemas import Message
@@ -24,6 +23,13 @@ from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
+from ..estimations.models import (
+    EstimationsWaterDischargeDaily,
+    EstimationsWaterDischargeDailyAverage,
+    EstimationsWaterDischargeDecadeAverage,
+    EstimationsWaterLevelDailyAverage,
+    EstimationsWaterLevelDecadeAverage,
+)
 from .choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
@@ -400,18 +406,22 @@ class OperationalJournalAPIController:
             daily_hydro_metric_data.values("timestamp_local", "avg_value", "metric_name", "value_code")
         )
 
-        estimated_data_queries = [
-            ("estimations_water_discharge_daily", HydrologicalMetricName.WATER_DISCHARGE_DAILY),
-            ("estimations_water_level_daily_average", HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE),
-            ("estimations_water_discharge_daily_average", HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE),
+        cls_estimations_views = [
+            EstimationsWaterDischargeDaily,
+            EstimationsWaterLevelDailyAverage,
+            EstimationsWaterDischargeDailyAverage,
         ]
 
-        for view_name, metric_name in estimated_data_queries:
-            estimation_data = EstimationsViewQueryManager(
-                view_name, order_param="timestamp_local", order_direction="ASC", filter_dict=estimations_filter_dict
-            ).execute_query()
-
-            operational_journal_data.extend({**d, "metric_name": metric_name} for d in estimation_data)
+        for cls in cls_estimations_views:
+            estimation_data = cls.objects.filter(**estimations_filter_dict).order_by("timestamp_local")
+            operational_journal_data.extend(
+                {
+                    "timestamp_local": d.timestamp_local.replace(tzinfo=ZoneInfo("UTC")),
+                    "avg_value": d.avg_value,
+                    "metric_name": d.metric_name,
+                }
+                for d in estimation_data
+            )
 
         prepared_data = OperationalJournalDataTransformer(operational_journal_data).get_daily_data()
 
@@ -467,23 +477,22 @@ class OperationalJournalAPIController:
         decadal_data = []
 
         if station_type.station_type == "hydro":
-            querying_views = [
-                ("estimations_water_level_decade_average", HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE),
-                ("estimations_water_discharge_decade_average", HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE),
-            ]
-            for view_name, metric_name in querying_views:
-                view_data = EstimationsViewQueryManager(
-                    view_name,
-                    order_param="timestamp_local",
-                    order_direction="ASC",
-                    filter_dict={
-                        "timestamp_local__gte": dt_start,
-                        "timestamp_local__lt": dt_end,
-                        "station_id": station.id,
-                    },
-                ).execute_query()
+            cls_estimations_views = [EstimationsWaterLevelDecadeAverage, EstimationsWaterDischargeDecadeAverage]
 
-                decadal_data.extend({**d, "metric_name": metric_name} for d in view_data)
+            for cls in cls_estimations_views:
+                view_data = cls.objects.filter(
+                    timestamp_local__range=(first_day_current_month, first_day_next_month),
+                    station=station,
+                ).order_by("timestamp_local")
+
+                decadal_data.extend(
+                    {
+                        "timestamp_local": d.timestamp_local.replace(tzinfo=ZoneInfo("UTC")),
+                        "avg_value": d.avg_value,
+                        "metric_name": d.metric_name,
+                    }
+                    for d in view_data
+                )
         else:
             meteo_data = TimeseriesQueryManager(
                 model=MeteorologicalMetric,

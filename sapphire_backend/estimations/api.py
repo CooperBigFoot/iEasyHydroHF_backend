@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Any
 
+from django.db.models import F
 from django.utils.translation import gettext_lazy as _
 from ninja import Query
 from ninja_extra import api_controller, route
@@ -13,14 +13,14 @@ from sapphire_backend.utils.permissions import (
 )
 
 from ..stations.models import HydrologicalStation
-from .models import DischargeModel
-from .query import EstimationsViewQueryManager
+from .models import DischargeModel, EstimationsWaterDischargeDailyAverage
 from .schema import (
     DischargeModelBaseSchema,
     DischargeModelCreateInputDeltaSchema,
     DischargeModelCreateInputPointsSchema,
     DischargeModelDeleteOutputSchema,
     EstimationsFilterSchema,
+    EstimationsWaterDischargeDailyAverageOutputSchema,
     OrderQueryParamSchema,
 )
 from .utils import least_squares_fit
@@ -110,7 +110,10 @@ class DischargeModelsAPIController:
     "estimations/{organization_uuid}", tags=["Estimations"], auth=JWTAuth(), permissions=regular_permissions
 )
 class EstimationsAPIController:
-    @route.get("discharge-daily-average", response={200: list[dict[str, Any]], 400: Message})
+    @route.get(
+        "discharge-daily-average",
+        response={200: list[EstimationsWaterDischargeDailyAverageOutputSchema], 400: Message},
+    )
     def get_water_discharge_daily_average(
         self,
         organization_uuid: str,
@@ -118,9 +121,11 @@ class EstimationsAPIController:
         filters: Query[EstimationsFilterSchema],
         limit: int | None = 365,
     ):
-        return EstimationsViewQueryManager(
-            "estimations_water_discharge_daily_average",
-            filters.dict(exclude_none=True),
-            order.order_param,
-            order.order_direction,
-        ).execute_query(limit)
+        # Construct the order by clause
+        order_by_clause = F(order.order_param)
+        if order.order_direction.lower() == "desc":
+            order_by_clause = order_by_clause.desc()
+        queryset = EstimationsWaterDischargeDailyAverage.objects.filter(**filters.dict(exclude_none=True)).order_by(
+            order_by_clause
+        )[:limit]
+        return queryset
