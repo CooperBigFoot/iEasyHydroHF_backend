@@ -26,3 +26,6 @@ django-ninja-extra==0.20.7  # https://github.com/eadwinCode/django-ninja-extra
 
 # static files handling
 whitenoise==6.6.0  # https://github.com/evansd/whitenoise
+
+# reporting
+git+ssh://git@github-encode/hydrosolutions/ieasyreports.git
