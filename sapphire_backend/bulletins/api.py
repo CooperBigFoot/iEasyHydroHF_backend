@@ -1,5 +1,6 @@
 import os
 
+from django.db.models import Prefetch
 from django.http import FileResponse, HttpRequest
 from ninja import File, Form, Query, UploadedFile
 from ninja_extra import api_controller, route
@@ -10,8 +11,14 @@ from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from .models import BulletinTemplate
-from .schema import BulletinInputSchema, BulletinOutputSchema, BulletinTypeFilterSchema
+from .choices import BulletinTagType
+from .models import BulletinTemplate, BulletinTemplateTag
+from .schema import (
+    BulletinInputSchema,
+    BulletinOutputSchema,
+    BulletinTemplateTagOutputSchema,
+    BulletinTypeFilterSchema,
+)
 
 
 @api_controller("bulletins/{organization_uuid}", tags=["Bulletins"], auth=JWTAuth(), permissions=regular_permissions)
@@ -50,3 +57,22 @@ class BulletinsAPIController:
         bulletin.delete()
 
         return 200, {"detail": "Bulletin deleted successfully", "code": "success"}
+
+    @route.get("{bulletin_uuid}/tags", response={200: BulletinTemplateTagOutputSchema})
+    def get_bulletin_tags(self, organization_uuid: str, bulletin_uuid: str):
+        bulletin = BulletinTemplate.objects.prefetch_related(
+            Prefetch("tags", queryset=BulletinTemplateTag.objects.all())
+        ).get(organization_id=organization_uuid, uuid=bulletin_uuid)
+
+        tags = bulletin.tags.all()
+        response_data = {"general": [], "header": [], "data": []}
+
+        for tag in tags:
+            if tag.type == BulletinTagType.DATA:
+                response_data["data"].append(tag)
+            elif tag.type == BulletinTagType.HEADER:
+                response_data["header"].append(tag)
+            else:
+                response_data["general"].append(tag)
+
+        return response_data

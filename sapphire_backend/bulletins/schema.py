@@ -1,12 +1,13 @@
 from datetime import datetime
 
 from django.conf import settings
-from ninja import Field, FilterSchema, Schema
+from ninja import Field, FilterSchema, ModelSchema, Schema
 
 from sapphire_backend.users.schema import UserOutputListSchema
 from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
 
 from .choices import BulletinType
+from .models import BulletinTemplateTag
 
 
 class BulletinTypeFilterSchema(FilterSchema):
@@ -31,7 +32,7 @@ class BulletinUpdateSchema(BulletinBaseSchema):
 class BulletinOutputSchema(UUIDSchemaMixin, BulletinBaseSchema):
     id: int
     filename: str
-    user: UserOutputListSchema
+    user: UserOutputListSchema | None
     last_modified: datetime
     created_date: datetime
     size: float = Field(..., alias="filename.size")
@@ -42,3 +43,15 @@ class BulletinOutputSchema(UUIDSchemaMixin, BulletinBaseSchema):
             return obj.filename.url
         else:
             return f"{settings.BACKEND_URL}{obj.filename.url}"
+
+
+class BulletinTemplateTagSchema(ModelSchema):
+    class Meta:
+        model = BulletinTemplateTag
+        fields = ["id", "uuid", "name", "description", "is_default"]
+
+
+class BulletinTemplateTagOutputSchema(Schema):
+    general: list[BulletinTemplateTagSchema]
+    header: list[BulletinTemplateTagSchema]
+    data: list[BulletinTemplateTagSchema]
