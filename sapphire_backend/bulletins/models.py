@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, UUIDMixin
 
 from .choices import BulletinTagType, BulletinType
-from .managers import BulletinTemplateQuerySet
+from .managers import BulletinTemplateQuerySet, BulletinTemplateTagQuerySet
 
 
 def bulletin_upload_path(instance, filename):
@@ -63,6 +63,8 @@ class BulletinTemplateTag(UUIDMixin, models.Model):
         verbose_name=_("Tag type"), choices=BulletinTagType, default=BulletinTagType.DATA, max_length=2
     )
     is_default = models.BooleanField(verbose_name=_("Is default?"), default=True)
+
+    objects = BulletinTemplateTagQuerySet.as_manager()
 
     def __str__(self):
         return self.name

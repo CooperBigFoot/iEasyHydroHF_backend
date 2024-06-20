@@ -35,6 +35,9 @@ class BulletinsAPIController:
         bulletin = BulletinTemplate(filename=file, organization_id=organization_uuid, user=request.user, **data.dict())
         bulletin.save()
 
+        default_tags = BulletinTemplateTag.objects.default()
+        bulletin.tags.add(*default_tags)
+
         return bulletin
 
     @route.get("{bulletin_uuid}", response={200: None, 404: Message})
