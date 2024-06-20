@@ -1,11 +1,13 @@
 import os
 
+from django.conf import settings
 from django.db.models import Prefetch
 from django.http import FileResponse, HttpRequest
 from ninja import File, Form, Query, UploadedFile
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
+from sapphire_backend.stations.models import HydrologicalStation
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
@@ -14,11 +16,13 @@ from sapphire_backend.utils.permissions import (
 from .choices import BulletinTagType
 from .models import BulletinTemplate, BulletinTemplateTag
 from .schema import (
+    BulletinGenerateSchema,
     BulletinInputSchema,
     BulletinOutputSchema,
     BulletinTemplateTagOutputSchema,
     BulletinTypeFilterSchema,
 )
+from .tags import site_basin, site_code, site_name, site_region, today
 
 
 @api_controller("bulletins/{organization_uuid}", tags=["Bulletins"], auth=JWTAuth(), permissions=regular_permissions)
@@ -39,6 +43,20 @@ class BulletinsAPIController:
         bulletin.tags.add(*default_tags)
 
         return bulletin
+
+    @route.post("generate-daily-bulletin", response={200: str})
+    def generate_daily_bulletin(self, organization_uuid: str, bulletin_input_data: BulletinGenerateSchema):
+        print(bulletin_input_data)
+        templates = BulletinTemplate.objects.filter(uuid__in=bulletin_input_data.bulletins)
+        stations = HydrologicalStation.objects.filter(uuid__in=bulletin_input_data.stations).select_related(
+            "site", "site__basin", "site__region"
+        )
+        template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
+            tags=[site_code, site_basin, site_region, site_name, today], template=""
+        )
+        print(templates, stations, template_generator)
+
+        return 200, "received"
 
     @route.get("{bulletin_uuid}", response={200: None, 404: Message})
     def download_bulletin_template(self, organization_uuid: str, bulletin_uuid: str):

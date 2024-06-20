@@ -55,3 +55,9 @@ class BulletinTemplateTagOutputSchema(Schema):
     general: list[BulletinTemplateTagSchema]
     header: list[BulletinTemplateTagSchema]
     data: list[BulletinTemplateTagSchema]
+
+
+class BulletinGenerateSchema(Schema):
+    date: datetime
+    stations: list[str]
+    bulletins: list[str]
