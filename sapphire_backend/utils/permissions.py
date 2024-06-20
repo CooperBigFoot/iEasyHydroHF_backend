@@ -12,34 +12,33 @@ User = get_user_model()
 
 def get_station_from_kwargs(kwargs):
     station = None
-    if kwargs.get("discharge_model_id") is not None:
-        model_obj = DischargeModel.objects.filter(id=kwargs.get("discharge_model_id")).first()
+    if (discharge_model_id := kwargs.get("discharge_model_id")) is not None:
+        model_obj = DischargeModel.objects.filter(id=discharge_model_id).first()
         station = getattr(model_obj, "station", None)
-    if kwargs.get("discharge_model_uuid") is not None:
-        model_obj = DischargeModel.objects.filter(uuid=kwargs.get("discharge_model_uuid")).first()
+    if (discharge_model_uuid := kwargs.get("discharge_model_uuid")) is not None:
+        model_obj = DischargeModel.objects.filter(uuid=discharge_model_uuid).first()
         station = getattr(model_obj, "station", None)
-    elif kwargs.get("station_id") is not None:
+    elif (station_id := kwargs.get("station_id")) is not None:
         station = (
-            HydrologicalStation.objects.filter(id=kwargs.get("station_id")).first()
-            or MeteorologicalStation.objects.filter(id=kwargs.get("station_id")).first()
+            HydrologicalStation.objects.filter(id=station_id).first()
+            or MeteorologicalStation.objects.filter(id=station_id).first()
         )
-    elif kwargs.get("station_uuid") is not None:
+    elif (station_uuid := kwargs.get("station_uuid")) is not None:
         station = (
-            HydrologicalStation.objects.filter(uuid=kwargs.get("station_uuid")).first()
-            or MeteorologicalStation.objects.filter(uuid=kwargs.get("station_uuid")).first()
+            HydrologicalStation.objects.filter(uuid=station_uuid).first()
+            or MeteorologicalStation.objects.filter(uuid=station_uuid).first()
         )
     return station
 
 
 def get_organization_from_kwargs(kwargs):
     organization_obj = None
-    if kwargs.get("organization_id") is not None:
-        organization_obj = Organization.objects.filter(id=kwargs.get("organization_id")).first()
-    elif kwargs.get("organization_uuid") is not None:
-        organization_obj = Organization.objects.filter(uuid=kwargs.get("organization_uuid")).first()
+    if (organization_id := kwargs.get("organization_id")) is not None:
+        organization_obj = Organization.objects.filter(id=organization_id).first()
+    elif (organization_uuid := kwargs.get("organization_uuid")) is not None:
+        organization_obj = Organization.objects.filter(uuid=organization_uuid).first()
     else:
-        station = get_station_from_kwargs(kwargs)
-        if station is not None:
+        if (station := get_station_from_kwargs(kwargs)) is not None:
             organization_obj = station.site.organization
     return organization_obj
 

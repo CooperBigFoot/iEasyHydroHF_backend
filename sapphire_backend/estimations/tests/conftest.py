@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import pytest
 from pytest_factoryboy import register
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.estimations.tests.factories import DischargeModelFactory
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, MetricUnit, NormType
@@ -54,7 +55,18 @@ def discharge_model_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz)
         name="Discharge model station 1",
         param_a=-30,
         param_c=0.007,
-        valid_from_local=datetime(2020, 1, 15),
+        valid_from_local=datetime(2020, 1, 15, tzinfo=ZoneInfo("UTC")),  # must be 2020-01-15
+        station=manual_hydro_station_kyrgyz,
+    )
+
+
+@pytest.fixture
+def discharge_second_model_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz):
+    return DischargeModelFactory(
+        name="Second discharge model station 1",
+        param_a=20,
+        param_c=0.003,
+        valid_from_local=datetime(2020, 3, 1, tzinfo=ZoneInfo("UTC")),  # must be 2020-03-01
         station=manual_hydro_station_kyrgyz,
     )
 

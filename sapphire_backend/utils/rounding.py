@@ -18,8 +18,8 @@ def custom_round(value: float | Decimal | None, ndigits: int | None = None) -> f
     if value is None:
         return None
     if ndigits is not None:
-        if ndigits > 6:
-            raise ValueError("No need to round to more than 6 digits.")
+        if ndigits > 10:
+            raise ValueError("No need to round to more than 10 digits.")
     return round(float(value), ndigits)
 
 

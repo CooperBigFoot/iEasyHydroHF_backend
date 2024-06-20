@@ -138,3 +138,27 @@ class DateRange:
         while current <= self.end:
             yield current
             current += self.delta
+
+
+class DatetimeRange:
+    """
+    Datetime generator for a time range given start, end and delta params.
+    Includes end datetime.
+    """
+
+    def __init__(self, start: datetime, end: datetime, delta: timedelta):
+        if end < start:
+            raise ValueError("End datetime must be greater than or equal to start datetime.")
+
+        if delta.total_seconds() <= 0:
+            raise ValueError("Delta must be a positive time duration.")
+
+        self.start = start
+        self.end = end
+        self.delta = delta
+
+    def __iter__(self):
+        current = self.start
+        while current <= self.end:
+            yield current
+            current += self.delta
