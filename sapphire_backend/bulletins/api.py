@@ -51,10 +51,17 @@ class BulletinsAPIController:
         stations = HydrologicalStation.objects.filter(uuid__in=bulletin_input_data.stations).select_related(
             "site", "site__basin", "site__region"
         )
-        template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
-            tags=[site_code, site_basin, site_region, site_name, today], template=""
-        )
-        print(templates, stations, template_generator)
+        for template in templates:
+            template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
+                tags=[site_code, site_basin, site_region, site_name, today],
+                # already a full path so the templates directory path will basically be ignored
+                template=template.filename.path,
+                templates_directory_path=settings.IEASYREPORTS_CONF.templates_directory_path,
+                reports_directory_path=settings.IEASYREPORTS_CONF.report_output_path,
+                tag_settings=settings.IEASYREPORTS_TAG_CONF,
+            )
+            template_generator.validate()
+            template_generator.generate_report(list_objects=stations)
 
         return 200, "received"
 
