@@ -24,7 +24,7 @@ INPUT_MULTIPLE_TELEGRAMS = [
 class TestMultipleTelegramSaveGeneralAPI:
     def test_save_input_multi_telegrams_status_code(
         self,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -33,7 +33,7 @@ class TestMultipleTelegramSaveGeneralAPI:
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": INPUT_MULTIPLE_TELEGRAMS},
             content_type="application/json",
@@ -49,7 +49,7 @@ class TestMultipleTelegramSaveSectionOneAPI:
     def test_save_input_multi_telegrams_section_one_metrics(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -59,7 +59,7 @@ class TestMultipleTelegramSaveSectionOneAPI:
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
         telegrams = INPUT_MULTIPLE_TELEGRAMS
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": INPUT_MULTIPLE_TELEGRAMS},
             content_type="application/json",
@@ -131,7 +131,7 @@ class TestMultipleTelegramSaveSectionOneAPI:
     def test_save_input_multi_telegrams_section_one_metrics_override_date(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -159,7 +159,7 @@ class TestMultipleTelegramSaveSectionOneAPI:
             },
         ]
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -230,7 +230,7 @@ class TestMultipleTelegramSaveSectionOneIcePhenomenaAPI:
     def test_save_input_multi_telegrams_section_one_ice_phenomena_metrics(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -251,7 +251,7 @@ class TestMultipleTelegramSaveSectionOneIcePhenomenaAPI:
             {"raw": "12346 02082 10161 20010 30156 46822 52121 00100 " "98805 111// 20013 30300="},
         ]
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -279,7 +279,7 @@ class TestMultipleTelegramSaveSectionOneIcePhenomenaAPI:
     def test_save_input_multi_telegrams_section_one_ice_phenomena_metrics_override_date(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -307,7 +307,7 @@ class TestMultipleTelegramSaveSectionOneIcePhenomenaAPI:
             },
         ]
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -335,7 +335,7 @@ class TestMultipleTelegramSaveSectionSixAPI:
     def test_save_input_multi_telegrams_section_six_metrics(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -346,7 +346,7 @@ class TestMultipleTelegramSaveSectionSixAPI:
 
         telegrams = INPUT_MULTIPLE_TELEGRAMS
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -407,7 +407,7 @@ class TestMultipleTelegramSaveSectionEightAPI:
     def test_save_input_multi_telegrams_section_eight_metrics(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -418,7 +418,7 @@ class TestMultipleTelegramSaveSectionEightAPI:
 
         telegrams = INPUT_MULTIPLE_TELEGRAMS
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",

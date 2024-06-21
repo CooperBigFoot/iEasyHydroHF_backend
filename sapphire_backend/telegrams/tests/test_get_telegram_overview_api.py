@@ -15,14 +15,14 @@ class TestGetTelegramOverviewGeneralAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
 
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -36,7 +36,7 @@ class TestGetTelegramOverviewGeneralAPI:
         manual_second_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         telegrams = [
@@ -51,7 +51,7 @@ class TestGetTelegramOverviewGeneralAPI:
             {"raw": f"{manual_second_hydro_station_kyrgyz.station_code} 02082 10161 20010 30156 46822 51209 00100="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -64,14 +64,14 @@ class TestGetTelegramOverviewGeneralAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
 
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -97,13 +97,13 @@ class TestGetTelegramOverviewGeneralAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -119,7 +119,7 @@ class TestGetTelegramOverviewGeneralAPI:
         manual_second_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         telegrams = [
@@ -134,7 +134,7 @@ class TestGetTelegramOverviewGeneralAPI:
             {"raw": f"{manual_second_hydro_station_kyrgyz.station_code} 02082 10161 20010 30156 46822 51209 00100="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -144,7 +144,7 @@ class TestGetTelegramOverviewGeneralAPI:
         assert len(res["errors"]) == 0
 
     def test_get_telegram_overview_with_error(
-        self, organization_kyrgyz, manual_hydro_station_kyrgyz, authenticated_regular_user_kyrgyz_api_client
+        self, organization_kyrgyz, manual_hydro_station_kyrgyz, regular_user_kyrgyz_api_client
     ):
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = (
@@ -156,7 +156,7 @@ class TestGetTelegramOverviewGeneralAPI:
 
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -168,7 +168,7 @@ class TestGetTelegramOverviewGeneralAPI:
         assert res["errors"][0]["error"] == "Expected token starting with '3', got: 96603"
 
     def test_get_multi_telegram_overview_with_errors(
-        self, organization_kyrgyz, manual_hydro_station_kyrgyz, authenticated_regular_user_kyrgyz_api_client
+        self, organization_kyrgyz, manual_hydro_station_kyrgyz, regular_user_kyrgyz_api_client
     ):
         telegrams = [
             {
@@ -183,7 +183,7 @@ class TestGetTelegramOverviewGeneralAPI:
         ]
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -216,13 +216,13 @@ class TestGetTelegramOverviewDailyOverviewMetaAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -244,7 +244,7 @@ class TestGetTelegramOverviewDailyOverviewMetaAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -262,7 +262,7 @@ class TestGetTelegramOverviewDailyOverviewMetaAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 51209 00100="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -288,13 +288,13 @@ class TestGetTelegramOverviewDailyOverviewMetaAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram, "override_date": "2019-06-01"}]},
             content_type="application/json",
@@ -312,7 +312,7 @@ class TestGetTelegramOverviewDailyOverviewMetaAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
 
@@ -332,7 +332,7 @@ class TestGetTelegramOverviewDailyOverviewMetaAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 51209 00100=", "override_date": "2019-05-13"},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -355,13 +355,13 @@ class TestGetTelegramOverviewDailyOverviewSectionOneAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -403,7 +403,7 @@ class TestGetTelegramOverviewDailyOverviewSectionOneAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -421,7 +421,7 @@ class TestGetTelegramOverviewDailyOverviewSectionOneAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -455,7 +455,7 @@ class TestGetTelegramOverviewDailyOverviewSectionOneIcePhenomenaAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
@@ -466,7 +466,7 @@ class TestGetTelegramOverviewDailyOverviewSectionOneIcePhenomenaAPI:
             "98805 111// 20013 30200="
         )
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -489,7 +489,7 @@ class TestGetTelegramOverviewDailyOverviewSectionOneIcePhenomenaAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -507,7 +507,7 @@ class TestGetTelegramOverviewDailyOverviewSectionOneIcePhenomenaAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -531,13 +531,13 @@ class TestGetTelegramOverviewDailyOverviewSectionSixAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -553,13 +553,13 @@ class TestGetTelegramOverviewDailyOverviewSectionSixAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = f"{station_code} 01082 10251 20022 30249 45820 51209 00100 98805 111// 20013 30200="
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -577,7 +577,7 @@ class TestGetTelegramOverviewDailyOverviewSectionSixAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -598,7 +598,7 @@ class TestGetTelegramOverviewDailyOverviewSectionSixAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -614,7 +614,7 @@ class TestGetTelegramOverviewDailyOverviewSectionSixAPI:
 
 class TestGetTelegramOverviewDailyOverviewSectionEightAPI:
     def test_get_telegram_overview_daily_overview_section_eight_empty(
-        self, organization_kyrgyz, manual_hydro_station_kyrgyz, authenticated_regular_user_kyrgyz_api_client
+        self, organization_kyrgyz, manual_hydro_station_kyrgyz, regular_user_kyrgyz_api_client
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
@@ -624,7 +624,7 @@ class TestGetTelegramOverviewDailyOverviewSectionEightAPI:
             "96604 10250 22830 32436 52920 "
         )
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -640,13 +640,13 @@ class TestGetTelegramOverviewDailyOverviewSectionEightAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -666,7 +666,7 @@ class TestGetTelegramOverviewDailyOverviewSectionEightAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -687,7 +687,7 @@ class TestGetTelegramOverviewDailyOverviewSectionEightAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100 " f"98805 111// 20013 30300="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -708,13 +708,13 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:  # TODO DEVELOP MORE
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -744,7 +744,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:  # TODO DEVELOP MORE
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -766,7 +766,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:  # TODO DEVELOP MORE
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100 " f"98805 111// 20013 30300="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -784,13 +784,13 @@ class TestGetTelegramOverviewSaveDataOverviewMetaAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -813,7 +813,7 @@ class TestGetTelegramOverviewSaveDataOverviewMetaAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -835,7 +835,7 @@ class TestGetTelegramOverviewSaveDataOverviewMetaAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -867,13 +867,13 @@ class TestGetTelegramOverviewSaveDataOverviewSectionOneAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -915,7 +915,7 @@ class TestGetTelegramOverviewSaveDataOverviewSectionOneAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -937,7 +937,7 @@ class TestGetTelegramOverviewSaveDataOverviewSectionOneAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -970,13 +970,13 @@ class TestGetTelegramOverviewSaveDataOverviewSectionOneIcePhenomenaAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -1004,7 +1004,7 @@ class TestGetTelegramOverviewSaveDataOverviewSectionOneIcePhenomenaAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -1022,7 +1022,7 @@ class TestGetTelegramOverviewSaveDataOverviewSectionOneIcePhenomenaAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -1045,13 +1045,13 @@ class TestGetTelegramOverviewSaveDataOverviewSectionSixAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = f"{station_code} 01082 10251 20022 30249 45820 51209 00100"
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -1067,13 +1067,13 @@ class TestGetTelegramOverviewSaveDataOverviewSectionSixAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -1092,7 +1092,7 @@ class TestGetTelegramOverviewSaveDataOverviewSectionSixAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -1113,7 +1113,7 @@ class TestGetTelegramOverviewSaveDataOverviewSectionSixAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -1133,13 +1133,13 @@ class TestGetTelegramOverviewSaveDataOverviewSectionEightAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = f"{station_code} 01082 10251 20022 30249 45820 51209 00100 "
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -1155,13 +1155,13 @@ class TestGetTelegramOverviewSaveDataOverviewSectionEightAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -1180,7 +1180,7 @@ class TestGetTelegramOverviewSaveDataOverviewSectionEightAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -1201,7 +1201,7 @@ class TestGetTelegramOverviewSaveDataOverviewSectionEightAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100 " f"98805 111// 20013 30300="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -1221,14 +1221,14 @@ class TestGetTelegramOverviewReportedDischargePointsAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
 
         telegram = f"{station_code} 01082 10251 20022 30249 45820 51209 00100 " "98805 111// 20013 30200="
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -1245,13 +1245,13 @@ class TestGetTelegramOverviewReportedDischargePointsAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -1274,7 +1274,7 @@ class TestGetTelegramOverviewReportedDischargePointsAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -1293,7 +1293,7 @@ class TestGetTelegramOverviewReportedDischargePointsAPI:
             },
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -1331,13 +1331,13 @@ class TestGetTelegramOverviewReportedDischargeCodesAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -1358,7 +1358,7 @@ class TestGetTelegramOverviewReportedDischargeCodesAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -1377,7 +1377,7 @@ class TestGetTelegramOverviewReportedDischargeCodesAPI:
             },
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -1395,12 +1395,12 @@ class TestGetTelegramOverviewReportedDischargeCodesAPI:
 
 class TestGetTelegramOverviewReportedMeteoCodesAPI:
     def test_get_telegram_overview_meteo_codes_empty(
-        self, organization_kyrgyz, manual_hydro_station_kyrgyz, authenticated_regular_user_kyrgyz_api_client
+        self, organization_kyrgyz, manual_hydro_station_kyrgyz, regular_user_kyrgyz_api_client
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = f"{station_code} 01082 10251 20022 30249 45820 51209 00100 "
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -1415,13 +1415,13 @@ class TestGetTelegramOverviewReportedMeteoCodesAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -1442,7 +1442,7 @@ class TestGetTelegramOverviewReportedMeteoCodesAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station1_code = manual_hydro_station_kyrgyz.station_code
@@ -1458,7 +1458,7 @@ class TestGetTelegramOverviewReportedMeteoCodesAPI:
             {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100 " f"98805 111// 20013 30300="},
         ]
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",

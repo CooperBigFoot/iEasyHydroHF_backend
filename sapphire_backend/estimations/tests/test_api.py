@@ -6,7 +6,7 @@ from sapphire_backend.estimations.models import EstimationsWaterDischargeDailyAv
 from sapphire_backend.utils.rounding import custom_round
 
 
-class TestEstimationsApi:
+class TestEstimationsAPI:
     start_date = date(2020, 2, 1)
     end_date = date(2020, 2, 29)
 
@@ -16,13 +16,13 @@ class TestEstimationsApi:
         self,
         organization,
         manual_hydro_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         water_level_metrics_daily_generator,
         discharge_model_manual_hydro_station_kyrgyz,
     ):
         endpoint = f"/api/v1/estimations/{str(organization.uuid)}/discharge-daily-average"
 
-        response = authenticated_regular_user_kyrgyz_api_client.get(
+        response = regular_user_kyrgyz_api_client.get(
             endpoint,
             {
                 "station_id": manual_hydro_station_kyrgyz.id,

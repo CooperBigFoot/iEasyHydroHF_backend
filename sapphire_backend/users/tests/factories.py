@@ -15,7 +15,7 @@ fake = Faker()
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
-        django_get_or_create = ("username",)
+        django_get_or_create = ("username", "organization")
 
     first_name = fake.first_name()
     last_name = fake.last_name()

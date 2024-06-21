@@ -29,7 +29,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         station_code1 = manual_hydro_station_kyrgyz.station_code
         station_code2 = manual_second_hydro_station_kyrgyz.station_code
@@ -41,7 +41,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
 
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -58,7 +58,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         station_code = manual_hydro_station_kyrgyz.station_code
 
@@ -71,7 +71,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -93,7 +93,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         station_code = manual_hydro_station_kyrgyz.station_code
 
@@ -104,7 +104,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -128,7 +128,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         station_code1 = manual_hydro_station_kyrgyz.station_code
         station_code2 = manual_second_meteo_station_kyrgyz.station_code
@@ -158,7 +158,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
 
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -179,7 +179,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         station_code = manual_hydro_station_kyrgyz.station_code
 
@@ -204,7 +204,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
         station_code = manual_hydro_station_kyrgyz.station_code
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -238,7 +238,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         station_code = manual_hydro_station_kyrgyz.station_code
 
@@ -261,7 +261,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
 
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -324,7 +324,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         """
         Test data processing overview _new metrics for new telegram candidates.
@@ -368,7 +368,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         stations = [manual_hydro_station_kyrgyz, manual_second_hydro_station_kyrgyz]
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -446,7 +446,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
     ):
         """
         Test saving telegrams and seeing them as old values in the data processing overview afterwards.
@@ -489,7 +489,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         ]
 
         # first save telegrams
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams",
             data={"telegrams": telegrams},
             content_type="application/json",
@@ -497,7 +497,7 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
 
         refresh_continuous_aggregate()
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview",
             data={"telegrams": telegrams},
             content_type="application/json",

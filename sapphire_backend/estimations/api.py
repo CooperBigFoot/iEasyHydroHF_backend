@@ -34,9 +34,7 @@ class DischargeModelsAPIController:
             queryset = DischargeModel.objects.filter(station__uuid=station_uuid)
 
             if year is not None:
-                start_of_year_local = datetime(year, 1, 1, tzinfo=ZoneInfo("UTC"))
-                end_of_year_local = datetime(year, 12, 31, 23, 59, 59, tzinfo=ZoneInfo("UTC"))
-                queryset = queryset.filter(valid_from_local__range=(start_of_year_local, end_of_year_local))
+                queryset = queryset.filter(valid_from_local__year=year)
 
             queryset = queryset.order_by("-valid_from_local")
 
