@@ -1,8 +1,10 @@
 import os
+from time import time
 
 from django.conf import settings
 from django.db.models import Prefetch
 from django.http import FileResponse, HttpRequest
+from ieasyreports.core.tags import Tag
 from ninja import File, Form, Query, UploadedFile
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
@@ -22,7 +24,7 @@ from .schema import (
     BulletinTemplateTagOutputSchema,
     BulletinTypeFilterSchema,
 )
-from .tags import site_basin, site_code, site_name, site_region, today
+from .tags import alarm_level, historical_max, historical_min, site_code, site_name, site_region, today
 
 
 @api_controller("bulletins/{organization_uuid}", tags=["Bulletins"], auth=JWTAuth(), permissions=regular_permissions)
@@ -45,23 +47,40 @@ class BulletinsAPIController:
         return bulletin
 
     @route.post("generate-daily-bulletin", response={200: str})
-    def generate_daily_bulletin(self, organization_uuid: str, bulletin_input_data: BulletinGenerateSchema):
+    def generate_daily_bulletin(
+        self, request: HttpRequest, organization_uuid: str, bulletin_input_data: BulletinGenerateSchema
+    ):
         print(bulletin_input_data)
         templates = BulletinTemplate.objects.filter(uuid__in=bulletin_input_data.bulletins)
         stations = HydrologicalStation.objects.filter(uuid__in=bulletin_input_data.stations).select_related(
             "site", "site__basin", "site__region"
         )
+        print(stations)
+        print(templates)
+        username_tag = Tag("USERNAME", request.user.username, tag_settings=settings.IEASYREPORTS_TAG_CONF)
         for template in templates:
             template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
-                tags=[site_code, site_basin, site_region, site_name, today],
+                tags=[
+                    site_code,
+                    username_tag,
+                    site_region,
+                    site_name,
+                    today,
+                    alarm_level,
+                    historical_max,
+                    historical_min,
+                ],
                 # already a full path so the templates directory path will basically be ignored
                 template=template.filename.path,
                 templates_directory_path=settings.IEASYREPORTS_CONF.templates_directory_path,
                 reports_directory_path=settings.IEASYREPORTS_CONF.report_output_path,
                 tag_settings=settings.IEASYREPORTS_TAG_CONF,
+                requires_header=True,
             )
             template_generator.validate()
-            template_generator.generate_report(list_objects=stations)
+            template_generator.generate_report(
+                list_objects=stations, output_filename=f"daily_bulletin_{int(time())}.xslx"
+            )
 
         return 200, "received"
 
