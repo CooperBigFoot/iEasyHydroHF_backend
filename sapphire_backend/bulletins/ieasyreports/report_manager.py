@@ -18,5 +18,4 @@ class IEasyHydroReportGenerator(DefaultReportGenerator):
         if name is None:
             name = f"{self.template_filename.split('.xlsx')[0]}.xlsx"
 
-        print(self.template)
         self.template.save(os.path.join(output_path, name))

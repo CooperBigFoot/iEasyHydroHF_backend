@@ -16,6 +16,7 @@ from sapphire_backend.utils.permissions import (
 )
 
 from .choices import BulletinTagType
+from .ieasyreports.tags import alarm_level, historical_max, historical_min, site_code, site_name, site_region, today
 from .models import BulletinTemplate, BulletinTemplateTag
 from .schema import (
     BulletinGenerateSchema,
@@ -24,7 +25,6 @@ from .schema import (
     BulletinTemplateTagOutputSchema,
     BulletinTypeFilterSchema,
 )
-from .tags import alarm_level, historical_max, historical_min, site_code, site_name, site_region, today
 
 
 @api_controller("bulletins/{organization_uuid}", tags=["Bulletins"], auth=JWTAuth(), permissions=regular_permissions)
@@ -50,13 +50,10 @@ class BulletinsAPIController:
     def generate_daily_bulletin(
         self, request: HttpRequest, organization_uuid: str, bulletin_input_data: BulletinGenerateSchema
     ):
-        print(bulletin_input_data)
         templates = BulletinTemplate.objects.filter(uuid__in=bulletin_input_data.bulletins)
         stations = HydrologicalStation.objects.filter(uuid__in=bulletin_input_data.stations).select_related(
             "site", "site__basin", "site__region"
         )
-        print(stations)
-        print(templates)
         username_tag = Tag("USERNAME", request.user.username, tag_settings=settings.IEASYREPORTS_TAG_CONF)
         for template in templates:
             template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
@@ -79,7 +76,7 @@ class BulletinsAPIController:
             )
             template_generator.validate()
             template_generator.generate_report(
-                list_objects=stations, output_filename=f"daily_bulletin_{int(time())}.xslx"
+                list_objects=stations, output_filename=f"daily_bulletin_{int(time())}.xlsx"
             )
 
         return 200, "received"
