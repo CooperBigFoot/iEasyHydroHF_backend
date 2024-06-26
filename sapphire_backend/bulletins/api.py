@@ -4,7 +4,6 @@ from time import time
 from django.conf import settings
 from django.db.models import Prefetch
 from django.http import FileResponse, HttpRequest
-from ieasyreports.core.tags import Tag
 from ninja import File, Form, Query, UploadedFile
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
@@ -16,7 +15,7 @@ from sapphire_backend.utils.permissions import (
 )
 
 from .choices import BulletinTagType
-from .ieasyreports.tags import alarm_level, historical_max, historical_min, site_code, site_name, site_region, today
+from .ieasyreports.tags import daily_tags
 from .models import BulletinTemplate, BulletinTemplateTag
 from .schema import (
     BulletinGenerateSchema,
@@ -54,19 +53,13 @@ class BulletinsAPIController:
         stations = HydrologicalStation.objects.filter(uuid__in=bulletin_input_data.stations).select_related(
             "site", "site__basin", "site__region"
         )
-        username_tag = Tag("USERNAME", request.user.username, tag_settings=settings.IEASYREPORTS_TAG_CONF)
+        station_ids = stations.values_list("id", flat=True)
+
+        context = {"station_ids": station_ids, "target_date": bulletin_input_data.date}
+
         for template in templates:
             template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
-                tags=[
-                    site_code,
-                    username_tag,
-                    site_region,
-                    site_name,
-                    today,
-                    alarm_level,
-                    historical_max,
-                    historical_min,
-                ],
+                tags=daily_tags,
                 # already a full path so the templates directory path will basically be ignored
                 template=template.filename.path,
                 templates_directory_path=settings.IEASYREPORTS_CONF.templates_directory_path,
@@ -76,7 +69,7 @@ class BulletinsAPIController:
             )
             template_generator.validate()
             template_generator.generate_report(
-                list_objects=stations, output_filename=f"daily_bulletin_{int(time())}.xlsx"
+                list_objects=stations, output_filename=f"daily_bulletin_{int(time())}.xlsx", context=context
             )
 
         return 200, "received"
