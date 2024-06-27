@@ -6,67 +6,76 @@ from ieasyreports.core.tags import Tag
 # station related tags
 station_code = Tag(
     "SITE_CODE",
-    lambda **kwargs: kwargs["obj"].station_code,
+    lambda obj, **kwargs: obj.station_code,
     description="Site code",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
 station_name = Tag(
     "SITE_NAME",
-    lambda **kwargs: kwargs["obj"].name,
+    lambda obj, **kwargs: obj.name,
     description="Site name",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
 station_region = Tag(
     "SITE_REGION",
-    lambda **kwargs: kwargs["obj"].site.region.name,
+    lambda obj, **kwargs: obj.site.region.name,
     description="Site region",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
 station_basin = Tag(
     "SITE_BASIN",
-    lambda **kwargs: kwargs["obj"].site.basin.name,
+    lambda obj, **kwargs: obj.site.basin.name,
     description="Site basin",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
 discharge_level_alarm = Tag(
     "DISCHARGE_LEVEL_ALARM",
-    lambda **kwargs: kwargs["obj"].discharge_level_alarm or "-",
+    lambda obj, **kwargs: obj.discharge_level_alarm or "-",
     description="Dangerous level of discharge",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
 historical_minimum = Tag(
     "HISTORICAL_MINIMUM",
-    lambda **kwargs: kwargs["obj"].historical_discharge_minimum or "-",
+    lambda obj, **kwargs: obj.historical_discharge_minimum or "-",
     description="Historical minimum discharge value",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
 historical_maximum = Tag(
     "HISTORICAL_MAXIMUM",
-    lambda **kwargs: kwargs["obj"].historical_discharge_maximum or "-",
+    lambda obj, **kwargs: obj.historical_discharge_maximum or "-",
     description="Historical maximum discharge value",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
 
+
+def get_water_level_value(station_ids, station_id, target_date, day_offset, time_of_day):
+    return settings.IEASYREPORTS_CONF.data_manager_class.get_water_level_for_tag(
+        station_ids, station_id, target_date, day_offset, time_of_day
+    )
+
+
 # daily water level values
 water_level_morning = Tag(
     "WATER_LEVEL_MORNING",
-    lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_daily_water_level(
-        kwargs["context"]["station_ids"], kwargs["context"]["target_date"]
+    lambda **kwargs: get_water_level_value(
+        kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"], 0, "morning"
     ),
     description="Morning (8 AM at local time) water level measurement for the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
 water_level_morning_1 = Tag(
     "WATER_LEVEL_MORNING_1",
-    lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_daily_water_level(
-        kwargs["context"]["station_ids"], kwargs["context"]["target_date"]
+    lambda **kwargs: get_water_level_value(
+        kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"], 1, "morning"
     ),
     description="Morning (8 AM at local time) water level measurement for day before the selected day",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
 water_level_morning_2 = Tag(
     "WATER_LEVEL_MORNING_2",
-    lambda **kwargs: print(kwargs),
+    lambda **kwargs: get_water_level_value(
+        kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"], 2, "morning"
+    ),
     description="Morning (8 AM at local time) water level measurement for 2 days before the selected day",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
@@ -78,22 +87,24 @@ water_level_morning_trend = Tag(
 )
 water_level_evening = Tag(
     "WATER_LEVEL_EVENING",
-    lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_daily_water_level(
-        kwargs["context"]["station_ids"], kwargs["context"]["target_date"]
+    lambda **kwargs: get_water_level_value(
+        kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"], 0, "evening"
     ),
     description="Evening (8 PM at local time) water level measurement for the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
 water_level_evening_1 = Tag(
     "WATER_LEVEL_EVENING_1",
-    lambda **kwargs: print(kwargs),
+    lambda **kwargs: get_water_level_value(
+        kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"], 1, "evening"
+    ),
     description="Evening (8 PM at local time) water level measurement for day before the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
 water_level_evening_2 = Tag(
     "WATER_LEVEL_EVENING_2",
-    lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_daily_water_level(
-        kwargs["context"]["station_ids"], kwargs["context"]["target_date"]
+    lambda **kwargs: get_water_level_value(
+        kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"], 2, "evening"
     ),
     description="Evening (8 PM at local time) water level measurement for 2 days before the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
@@ -140,9 +151,7 @@ today = Tag(
 
 date = Tag(
     "DATE",
-    lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_localized_date(
-        date=kwargs["context"]["target_date"]
-    ),
+    lambda target_date, **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_localized_date(date=target_date),
     description="Formatted value of the given date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
