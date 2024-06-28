@@ -2,7 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from sapphire_backend.metrics.managers import HydrologicalNormQuerySet
-from sapphire_backend.metrics.mixins import NormModelMixin
+from sapphire_backend.metrics.mixins import BaseHydroMetricMixin, MinMaxValueMixin, NormModelMixin, SensorInfoMixin
 from sapphire_backend.utils.mixins.models import UUIDMixin
 
 
@@ -24,6 +24,106 @@ class DischargeModel(UUIDMixin, models.Model):
 
     def estimate_discharge(self, water_level):
         return float(self.param_c) * (float(water_level) + float(self.param_a)) ** float(self.param_b)
+
+
+class EstimationsWaterLevelDailyAverage(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_level_daily_average"
+
+
+class EstimationsWaterLevelDecadeAverage(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_level_decade_average"
+
+
+class EstimationsWaterDischargeDaily(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_daily"
+
+
+class EstimationsWaterDischargeDailyAverage(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_daily_average"
+
+
+class EstimationsWaterDischargeFivedayAverage(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_fiveday_average"
+
+
+class EstimationsWaterDischargeDecadeAverage(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_decade_average"
+
+
+class EstimationsWaterDischargeDailyVirtual(BaseHydroMetricMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.VirtualStation", verbose_name=_("Virtual station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_daily_virtual"
+
+
+class EstimationsWaterDischargeDailyAverageVirtual(BaseHydroMetricMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.VirtualStation", verbose_name=_("Virtual station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_daily_average_virtual"
+
+
+class EstimationsWaterDischargeFivedayAverageVirtual(BaseHydroMetricMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.VirtualStation", verbose_name=_("Virtual station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_fiveday_average_virtual"
+
+
+class EstimationsWaterDischargeDecadeAverageVirtual(BaseHydroMetricMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.VirtualStation", verbose_name=_("Virtual station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_decade_average_virtual"
 
 
 class HydrologicalNormVirtual(NormModelMixin, models.Model):

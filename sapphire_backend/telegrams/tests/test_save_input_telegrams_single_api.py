@@ -20,7 +20,7 @@ class TestSingleTelegramSaveGeneralAPI:
     def test_save_input_telegrams_status_code(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
     ):
@@ -28,7 +28,7 @@ class TestSingleTelegramSaveGeneralAPI:
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_SINGLE_TELEGRAM.format(station_code=station_code)
 
-        response = authenticated_regular_user_kyrgyz_api_client.post(
+        response = regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -44,7 +44,7 @@ class TestSingleTelegramSaveSectionOneAPI:
     def test_save_input_telegrams_section_one_metrics(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -53,7 +53,7 @@ class TestSingleTelegramSaveSectionOneAPI:
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_SINGLE_TELEGRAM.format(station_code=station_code)
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -124,7 +124,7 @@ class TestSingleTelegramSaveSectionOneAPI:
     def test_save_input_telegrams_section_one_metrics_override_date(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -135,7 +135,7 @@ class TestSingleTelegramSaveSectionOneAPI:
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_SINGLE_TELEGRAM.format(station_code=station_code)
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram, "override_date": override_date}]},
             content_type="application/json",
@@ -206,7 +206,7 @@ class TestSingleTelegramSaveSectionOneIcePhenomenaAPI:
     def test_save_input_telegrams_section_one_ice_phenomena_metrics(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -221,7 +221,7 @@ class TestSingleTelegramSaveSectionOneIcePhenomenaAPI:
             "98805 111// 20013 30200="
         }
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [telegram]},
             content_type="application/json",
@@ -249,7 +249,7 @@ class TestSingleTelegramSaveSectionOneIcePhenomenaAPI:
     def test_save_input_telegrams_section_one_ice_phenomena_metrics_override_date(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -260,7 +260,7 @@ class TestSingleTelegramSaveSectionOneIcePhenomenaAPI:
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_SINGLE_TELEGRAM.format(station_code=station_code)
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram, "override_date": override_date}]},
             content_type="application/json",
@@ -287,7 +287,7 @@ class TestSingleTelegramSaveSectionSixAPI:
     def test_save_input_telegrams_section_six_metrics(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -296,7 +296,7 @@ class TestSingleTelegramSaveSectionSixAPI:
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_SINGLE_TELEGRAM.format(station_code=station_code)
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",
@@ -355,7 +355,7 @@ class TestSingleTelegramSaveSectionEightAPI:
     def test_save_input_telegrams_section_eight_metrics(
         self,
         datetime_kyrgyz_mock,
-        authenticated_regular_user_kyrgyz_api_client,
+        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -364,7 +364,7 @@ class TestSingleTelegramSaveSectionEightAPI:
         station_code = manual_hydro_station_kyrgyz.station_code
         telegram = INPUT_SINGLE_TELEGRAM.format(station_code=station_code)
 
-        authenticated_regular_user_kyrgyz_api_client.post(
+        regular_user_kyrgyz_api_client.post(
             endpoint,
             data={"telegrams": [{"raw": telegram}]},
             content_type="application/json",

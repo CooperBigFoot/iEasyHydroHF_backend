@@ -1,3 +1,4 @@
+import warnings
 from typing import Any
 
 from django.db import connection
@@ -5,7 +6,32 @@ from zoneinfo import ZoneInfo
 
 from sapphire_backend.metrics.timeseries.query import TimeseriesQueryManager
 
+from .models import (
+    EstimationsWaterDischargeDaily,
+    EstimationsWaterDischargeDailyAverage,
+    EstimationsWaterDischargeDailyAverageVirtual,
+    EstimationsWaterDischargeDailyVirtual,
+    EstimationsWaterDischargeDecadeAverage,
+    EstimationsWaterDischargeDecadeAverageVirtual,
+    EstimationsWaterDischargeFivedayAverage,
+    EstimationsWaterDischargeFivedayAverageVirtual,
+    EstimationsWaterLevelDailyAverage,
+    EstimationsWaterLevelDecadeAverage,
+)
 from .schema import EstimationsViewSchema
+
+MODEL_MAPPING = {
+    "estimations_water_level_daily_average": EstimationsWaterLevelDailyAverage,
+    "estimations_water_level_decade_average": EstimationsWaterLevelDecadeAverage,
+    "estimations_water_discharge_daily": EstimationsWaterDischargeDaily,
+    "estimations_water_discharge_daily_virtual": EstimationsWaterDischargeDailyVirtual,
+    "estimations_water_discharge_daily_average": EstimationsWaterDischargeDailyAverage,
+    "estimations_water_discharge_daily_average_virtual": EstimationsWaterDischargeDailyAverageVirtual,
+    "estimations_water_discharge_fiveday_average": EstimationsWaterDischargeFivedayAverage,
+    "estimations_water_discharge_fiveday_average_virtual": EstimationsWaterDischargeFivedayAverageVirtual,
+    "estimations_water_discharge_decade_average": EstimationsWaterDischargeDecadeAverage,
+    "estimations_water_discharge_decade_average_virtual": EstimationsWaterDischargeDecadeAverageVirtual,
+}
 
 
 class EstimationsViewQueryManager(TimeseriesQueryManager):
@@ -16,24 +42,19 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
         order_param: str = "timestamp_local",
         order_direction: str = "DESC",
     ):
+        warnings.warn(
+            f"{self.__class__.__name__} is deprecated and will be removed in a future version. "
+            f"Please use {MODEL_MAPPING.get(model)!r} instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super().__init__(model, filter_dict, order_param, order_direction)
 
     @staticmethod
     def _set_model(
         model: EstimationsViewSchema,
     ):
-        if model not in [
-            "estimations_water_level_daily_average",
-            "estimations_water_level_decade_average",
-            "estimations_water_discharge_daily",
-            "estimations_water_discharge_daily_virtual",
-            "estimations_water_discharge_daily_average",
-            "estimations_water_discharge_daily_average_virtual",
-            "estimations_water_discharge_fiveday_average",
-            "estimations_water_discharge_fiveday_average_virtual",
-            "estimations_water_discharge_decade_average",
-            "estimations_water_discharge_decade_average_virtual",
-        ]:
+        if model not in MODEL_MAPPING.keys():
             raise ValueError("EstimationsViewQueryManager can only be instantiated with an existing view.")
         return model
 
@@ -116,5 +137,5 @@ class EstimationsViewQueryManager(TimeseriesQueryManager):
             cursor.execute(query, [*params, limit])
             rows = cursor.fetchall()
 
-        results = [{"timestamp_local": row[0].astimezone(ZoneInfo("UTC")), "avg_value": row[1]} for row in rows]
+        results = [{"timestamp_local": row[0].replace(tzinfo=ZoneInfo("UTC")), "avg_value": row[1]} for row in rows]
         return results
