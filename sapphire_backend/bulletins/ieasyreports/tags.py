@@ -54,6 +54,12 @@ def get_water_level_value(station_ids, station_id, target_date, day_offset, time
     )
 
 
+def get_trend_value(station_ids, station_id, target_date, time_of_day):
+    return settings.IEASYREPORTS_CONF.data_manager_class.get_water_level_trend_value(
+        station_ids, station_id, target_date, time_of_day
+    )
+
+
 # daily water level values
 water_level_morning = Tag(
     "WATER_LEVEL_MORNING",
@@ -81,7 +87,9 @@ water_level_morning_2 = Tag(
 )
 water_level_morning_trend = Tag(
     "WATER_LEVEL_MORNING_TREND",
-    lambda **kwargs: print(kwargs),
+    lambda **kwargs: get_trend_value(
+        kwargs["context"]["station_ids"], kwargs["obj"].station_id, kwargs["context"]["target_date"], "morning"
+    ),
     description="Water level morning (8 AM at local time) trend: selected date - previous day value",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )
@@ -111,7 +119,9 @@ water_level_evening_2 = Tag(
 )
 water_level_evening_trend = Tag(
     "WATER_LEVEL_EVENING_TREND",
-    lambda **kwargs: print(kwargs),
+    lambda **kwargs: get_trend_value(
+        kwargs["context"]["station_ids"], kwargs["obj"].station_id, kwargs["context"]["target_date"], "evening"
+    ),
     description="Water level evening (8 PM at local time) trend: selected date - previous day value",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
 )

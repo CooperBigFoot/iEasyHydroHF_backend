@@ -49,8 +49,6 @@ class IEasyHydroDataManager(DefaultDataManager):
                 organized_water_level_data[station_id] = {}
             organized_water_level_data[station_id][timestamp] = entry["avg_value"]
 
-        print(organized_water_level_data)
-
         cls.data_cache[cache_key] = organized_water_level_data
 
         return organized_water_level_data
@@ -75,9 +73,17 @@ class IEasyHydroDataManager(DefaultDataManager):
         return station_data.get(target_timestamp, "-")
 
     @classmethod
-    def get_trend_value(cls, station_ids: list[int], station_id: int, target_date: datetime, time_of_day: str) -> Any:
+    def get_water_level_trend_value(
+        cls, station_ids: list[int], station_id: int, target_date: datetime, time_of_day: str
+    ) -> Any:
         current_value = cls.get_water_level_for_tag(station_ids, station_id, target_date, 0, time_of_day)
         previous_value = cls.get_water_level_for_tag(station_ids, station_id, target_date, 1, time_of_day)
         if current_value == "-" or previous_value == "-":
             return "-"
         return current_value - previous_value
+
+    @classmethod
+    def get_daily_discharge(
+        cls, station_ids: list[int], start_date: datetime, end_date: datetime, **kwargs
+    ) -> dict[int, Any]:
+        pass
