@@ -1,5 +1,7 @@
-from datetime import datetime
+import re
+from datetime import date, datetime
 
+import pytest
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.utils.datetime_helper import SmartDatetime
@@ -39,6 +41,29 @@ class TestSmartDatetimeModel:
 
         assert smart_dt.local == datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC"))
         assert smart_dt.tz == datetime(2024, 1, 1, 0, 0, 0, tzinfo=tz_local)
+
+    def test_date_obj_to_smartdatetime(self, manual_hydro_station_kyrgyz):
+        # Test how for a given date object and tz_included=False,
+        # SmartDatetime returns local time with faked UTC timezone (at the day beginning)
+        # and .tz returns a proper datetime object with real timestamp and timezone
+        date_obj = date(2024, 1, 1)
+        smart_dt = SmartDatetime(dt=date_obj, station=manual_hydro_station_kyrgyz, tz_included=False)
+        tz_local = manual_hydro_station_kyrgyz.site.timezone
+
+        assert smart_dt.local == datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC"))
+        assert smart_dt.tz == datetime(2024, 1, 1, 0, 0, 0, tzinfo=tz_local)
+
+    def test_date_obj_tz_included_to_smartdatetime(self, manual_hydro_station_kyrgyz):
+        # Test how for a given date string object and tz_included=True,
+        # SmartDatetime raises ValueError because it is not supported, a date obj can't have timezone
+        date_obj = date(2024, 1, 1)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Passing date() to SmartDatetime does not include a timezone, so tz_included must be False"
+            ),
+        ):
+            SmartDatetime(dt=date_obj, station=manual_hydro_station_kyrgyz, tz_included=True)
 
     def test_datetime_isostr_to_smartdatetime(self, manual_hydro_station_kyrgyz):
         # Test how for a given ISO datetime string object, SmartDatetime uses the timezone of the string

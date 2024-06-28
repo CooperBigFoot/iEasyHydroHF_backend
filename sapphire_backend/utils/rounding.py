@@ -11,12 +11,15 @@ def custom_ceil(value: int | None) -> int | None:
     return math.ceil(value)
 
 
-def custom_round(value: float | None, ndigits: int | None = None) -> float | None:
+def custom_round(value: float | Decimal | None, ndigits: int | None = None) -> float | None:
     """
-    Custom round accepts float and None, returns None if so
+    Custom round accepts float, Decimal and None, returns float or None.
     """
     if value is None:
         return None
+    if ndigits is not None:
+        if ndigits > 10:
+            raise ValueError("No need to round to more than 10 digits.")
     return round(float(value), ndigits)
 
 
