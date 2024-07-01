@@ -15,7 +15,7 @@ from sapphire_backend.utils.permissions import (
 )
 
 from .choices import BulletinTagType
-from .ieasyreports.tags import daily_tags
+from .ieasyreports.tags import discharge_tags, general_tags, station_tags, water_level_tags
 from .models import BulletinTemplate, BulletinTemplateTag
 from .schema import (
     BulletinGenerateSchema,
@@ -59,7 +59,7 @@ class BulletinsAPIController:
 
         for template in templates:
             template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
-                tags=daily_tags,
+                tags=discharge_tags + general_tags + station_tags + water_level_tags,
                 # already a full path so the templates directory path will basically be ignored
                 template=template.filename.path,
                 templates_directory_path=settings.IEASYREPORTS_CONF.templates_directory_path,

@@ -27,8 +27,8 @@ from sapphire_backend.metrics.choices import (
     MetricUnit,
     NormType
 )
-from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric, DischargeNorm
-from sapphire_backend.metrics.utils.helpers import calculate_decade_number
+from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric, HydrologicalNorm
+from sapphire_backend.metrics.utils.helpers import PentadDecadeHelper
 from sapphire_backend.organizations.models import Basin, Organization, Region
 from sapphire_backend.stations.models import (
     HydrologicalStation,
@@ -409,7 +409,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                     # empty value for some reason
                     continue
 
-                decade = calculate_decade_number(smart_datetime.local)
+                decade = PentadDecadeHelper.calculate_decade_from_the_date_in_year(smart_datetime.local)
                 if decade not in station_decades:
                     station_decades[decade] = [data_value]
                 else:
@@ -470,12 +470,12 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
         for key, value in station_decades.items():
             if len(value) > 0:
                 avg = sum(value) / len(value)
-                DischargeNorm.objects.filter(
+                HydrologicalNorm.objects.filter(
                     station=hydro_station,
                     ordinal_number=key,
                     norm_type=NormType.DECADAL
                 ).delete()
-                DischargeNorm.objects.create(
+                HydrologicalNorm.objects.create(
                     station=hydro_station,
                     ordinal_number=key,
                     value=avg,
@@ -517,7 +517,7 @@ def cleanup_all():
     logging.info("Cleaning up meteo metrics")
     MeteorologicalMetric.objects.all().delete()
     logging.info("Cleaning up discharge norms")
-    DischargeNorm.objects.all().delete()
+    HydrologicalNorm.objects.all().delete()
     logging.info("Cleaning up hydro metrics")
     HydrologicalMetric.objects.all().delete()
     logging.info("Cleaning up hydro stations")

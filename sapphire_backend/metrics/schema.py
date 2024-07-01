@@ -13,7 +13,7 @@ from .choices import (
     NormType,
 )
 from .models import HydrologicalNorm, MeteorologicalNorm
-from .utils.helpers import calculate_decade_date
+from .utils.helpers import PentadDecadeHelper
 
 
 class BaseTimeseriesFilterSchema(FilterSchema):
@@ -163,7 +163,7 @@ class HydrologicalNormOutputSchema(ModelSchema):
         if obj.norm_type == NormType.MONTHLY:
             return datetime(datetime.utcnow().year, obj.ordinal_number, 1, 12, tzinfo=timezone.utc)
         else:
-            return calculate_decade_date(obj.ordinal_number)
+            return PentadDecadeHelper.calculate_decade_date(obj.ordinal_number)
 
 
 class MeteorologicalNormOutputSchema(HydrologicalNormOutputSchema):
