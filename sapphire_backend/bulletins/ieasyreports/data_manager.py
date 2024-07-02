@@ -4,6 +4,8 @@ from typing import Any
 from ieasyreports.core.tags import DefaultDataManager
 from zoneinfo import ZoneInfo
 
+from sapphire_backend.metrics.utils.helpers import PentadDecadeHelper
+
 
 class IEasyHydroDataManager(DefaultDataManager):
     data_cache = {}
@@ -105,7 +107,7 @@ class IEasyHydroDataManager(DefaultDataManager):
         station_id: int,
         target_date: datetime,
         day_offset: int,
-        time_of_day: str,
+        time_of_day: str | None,
     ) -> Any:
         start_date = target_date - timedelta(days=2)
         end_date = target_date + timedelta(days=1)
@@ -133,3 +135,47 @@ class IEasyHydroDataManager(DefaultDataManager):
         if current_value == "-" or previous_value == "-":
             return "-"
         return current_value - previous_value
+
+    @classmethod
+    def get_discharge_fiveday(cls, station_ids: list[int], station_id: int, target_date: datetime, day_offset: int):
+        date = target_date - timedelta(days=day_offset)
+        pentad_day = PentadDecadeHelper.calculate_associated_pentad_day_from_the_day_int_month(date.day)
+        pentad_reference_date = datetime(date.year, date.month, pentad_day, 12, tzinfo=ZoneInfo("UTC"))
+        return cls.get_metric_value_for_tag(
+            "discharge_pentad", station_ids, station_id, pentad_reference_date, 0, None
+        )
+
+    @classmethod
+    def get_discharge_decade(cls, station_ids: list[int], station_id: int, target_date: datetime, day_offset: int):
+        date = target_date - timedelta(days=day_offset)
+        decade_day = PentadDecadeHelper.calculate_associated_decade_day_for_the_day_in_month(date.day)
+        decade_reference_date = datetime(date.year, date.month, decade_day, 12, tzinfo=ZoneInfo("UTC"))
+        return cls.get_metric_value_for_tag(
+            "discharge_decade", station_ids, station_id, decade_reference_date, 0, None
+        )
+
+    @classmethod
+    def get_discharge_norm(cls, organization, station_uuids: list[int], station_id, target_date: datetime):
+        from sapphire_backend.metrics.choices import NormType
+        from sapphire_backend.metrics.models import HydrologicalNorm
+
+        norm_type = organization.discharge_norm_type
+
+        cache_key = f"discharge_norm_{','.join(map(str, station_uuids))}_{target_date.strftime('%Y-%m-%d')}"
+        if cache_key in cls.data_cache:
+            return cls.data_cache[cache_key].get(station_id, "-")
+
+        if norm_type == NormType.DECADAL:
+            ordinal_number = PentadDecadeHelper.calculate_decade_from_the_date_in_year(target_date)
+        else:
+            ordinal_number = target_date.month
+
+        norm_data = HydrologicalNorm.objects.filter(
+            station_id__in=station_uuids, norm_type=organization.discharge_norm_type, ordinal_number=ordinal_number
+        )
+
+        organized_norm_data = {norm.station_id: norm.value for norm in norm_data}
+
+        cls.data_cache[cache_key] = organized_norm_data
+
+        return organized_norm_data.get(station_id, "-")

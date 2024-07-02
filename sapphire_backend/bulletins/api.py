@@ -54,8 +54,9 @@ class BulletinsAPIController:
             "site", "site__basin", "site__region"
         )
         station_ids = stations.values_list("id", flat=True)
+        station_uuids = stations.values_list("uuid", flat=True)
 
-        context = {"station_ids": station_ids, "target_date": bulletin_input_data.date}
+        context = {"station_ids": station_ids, "station_uuids": station_uuids, "target_date": bulletin_input_data.date}
 
         for template in templates:
             template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
