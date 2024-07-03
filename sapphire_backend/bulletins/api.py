@@ -1,4 +1,6 @@
+import io
 import os
+import zipfile
 from time import time
 
 from django.conf import settings
@@ -58,7 +60,8 @@ class BulletinsAPIController:
 
         context = {"station_ids": station_ids, "station_uuids": station_uuids, "target_date": bulletin_input_data.date}
 
-        for template in templates:
+        if templates.count() == 1:
+            template = templates.first()
             template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
                 tags=discharge_tags + general_tags + station_tags + water_level_tags,
                 # already a full path so the templates directory path will basically be ignored
@@ -69,11 +72,31 @@ class BulletinsAPIController:
                 requires_header=True,
             )
             template_generator.validate()
-            template_generator.generate_report(
-                list_objects=stations, output_filename=f"daily_bulletin_{int(time())}.xlsx", context=context
-            )
+            output_report = template_generator.generate_report(list_objects=stations, context=context, as_stream=True)
+            response = FileResponse(output_report, as_attachment=True, filename=f"daily_bulletin_{int(time())}.xlsx")
+        else:
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zip_file:
+                for template in templates:
+                    template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
+                        tags=discharge_tags + general_tags + station_tags + water_level_tags,
+                        template=template.filename.path,
+                        templates_directory_path=settings.IEASYREPORTS_CONF.templates_directory_path,
+                        reports_directory_path=settings.IEASYREPORTS_CONF.report_output_path,
+                        tag_settings=settings.IEASYREPORTS_TAG_CONF,
+                        requires_header=True,
+                    )
+                    template_generator.validate()
+                    output_report = template_generator.generate_report(
+                        list_objects=stations, context=context, as_stream=True
+                    )
+                    report_filename = f"daily_bulletin_{int(time())}.xlsx"
+                    zip_file.writestr(report_filename, output_report.read())
 
-        return 200, "received"
+            zip_buffer.seek(0)
+            response = FileResponse(zip_buffer, as_attachment=True, filename=f"daily_bulletins_{int(time())}.zip")
+
+        return response
 
     @route.get("{bulletin_uuid}", response={200: None, 404: Message})
     def download_bulletin_template(self, organization_uuid: str, bulletin_uuid: str):
