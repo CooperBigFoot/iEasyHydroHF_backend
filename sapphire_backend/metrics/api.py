@@ -7,6 +7,7 @@ from typing import Any
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.db.models import Avg, Count, Max, Min, Sum
 from django.http import FileResponse
 from django.templatetags.static import static
@@ -41,6 +42,7 @@ from .choices import (
 )
 from .models import HydrologicalMetric, HydrologicalNorm, MeteorologicalMetric, MeteorologicalNorm
 from .schema import (
+    BulkDataDownloadInputSchema,
     HydrologicalMetricOutputSchema,
     HydrologicalNormOutputSchema,
     HydrologicalNormTypeFiltersSchema,
@@ -61,7 +63,19 @@ from .schema import (
     TimeBucketQueryParams,
 )
 from .timeseries.query import TimeseriesQueryManager
-from .utils.helpers import OperationalJournalDataTransformer, create_norm_dataframe
+from .utils.bulk_data import (
+    write_bulk_data_hydro_auto_sheets,
+    write_bulk_data_hydro_manual_sheets,
+    write_bulk_data_meteo_sheets,
+    write_bulk_data_virtual_sheets,
+)
+from .utils.helpers import (
+    OperationalJournalDataTransformer,
+    create_norm_dataframe,
+    hydro_station_uuids_belong_to_organization_uuid,
+    meteo_station_uuids_belong_to_organization_uuid,
+    virtual_station_uuids_belong_to_organization_uuid,
+)
 from .utils.parser import (
     DecadalDischargeNormFileParser,
     DecadalMeteoNormFileParser,
@@ -517,3 +531,51 @@ class OperationalJournalAPIController:
             prepared_data = OperationalJournalDataTransformer(decadal_data).get_meteo_decadal_data()
 
         return prepared_data
+
+
+@api_controller(
+    "bulk-data/{organization_uuid}", tags=["Bulk data download"], auth=JWTAuth(), permissions=regular_permissions
+)
+class BulkDataAPIController:
+    @route.post("download")
+    def download_bulk_data(self, request, organization_uuid: str, payload: BulkDataDownloadInputSchema):
+        all = False
+        if (
+            len(
+                payload.hydro_station_manual_uuids
+                + payload.hydro_station_auto_uuids
+                + payload.meteo_station_uuids
+                + payload.virtual_station_uuids
+            )
+            == 0
+        ):
+            all = True
+        else:
+            hydro_station_uuids = payload.hydro_station_manual_uuids + payload.hydro_station_auto_uuids
+            if (
+                not hydro_station_uuids_belong_to_organization_uuid(hydro_station_uuids, organization_uuid)
+                and meteo_station_uuids_belong_to_organization_uuid(payload.meteo_station_uuids, organization_uuid)
+                and virtual_station_uuids_belong_to_organization_uuid(payload.virtual_station_uuids, organization_uuid)
+            ):
+                raise PermissionDenied("The provided station UUIDs do not belong to the organization.")
+
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            write_bulk_data_hydro_manual_sheets(
+                writer=writer, station_uuids=payload.hydro_station_manual_uuids, org_uuid=organization_uuid, all=all
+            )
+            write_bulk_data_meteo_sheets(
+                writer=writer, station_uuids=payload.meteo_station_uuids, org_uuid=organization_uuid, all=all
+            )
+            write_bulk_data_virtual_sheets(
+                writer=writer, station_uuids=payload.virtual_station_uuids, org_uuid=organization_uuid, all=all
+            )
+            write_bulk_data_hydro_auto_sheets(
+                writer=writer, station_uuids=payload.hydro_station_auto_uuids, org_uuid=organization_uuid, all=all
+            )
+
+        output_filename = "bulk-data.xlsx"
+        buffer.seek(0)
+        response = FileResponse(buffer, as_attachment=True, filename=output_filename)
+
+        return response

@@ -169,3 +169,10 @@ class HydrologicalNormOutputSchema(ModelSchema):
 class MeteorologicalNormOutputSchema(HydrologicalNormOutputSchema):
     class Meta(HydrologicalNormOutputSchema.Meta):
         model = MeteorologicalNorm
+
+
+class BulkDataDownloadInputSchema(Schema):
+    hydro_station_manual_uuids: list[str] = None
+    hydro_station_auto_uuids: list[str] = None
+    meteo_station_uuids: list[str] = None
+    virtual_station_uuids: list[str] = None

@@ -9,6 +9,7 @@ from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitation
 from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
 from sapphire_backend.utils.rounding import hydrological_round
 
+from ...stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
 from ..choices import HydrologicalMetricName, MeteorologicalMetricName
 
 
@@ -356,3 +357,24 @@ def create_norm_dataframe(norm_data: HydrologicalNormQuerySet | MeteorologicalNo
             output_df.at[0, col] = None
 
     return output_df
+
+
+def hydro_station_uuids_belong_to_organization_uuid(station_uuids: list[str], org_uuid: str):
+    uuids_set = set(station_uuids)
+    return (
+        len(uuids_set)
+        == HydrologicalStation.objects.filter(uuid__in=uuids_set, site__organization__uuid=org_uuid).count()
+    )
+
+
+def meteo_station_uuids_belong_to_organization_uuid(station_uuids: list[str], org_uuid: str):
+    uuids_set = set(station_uuids)
+    return (
+        len(uuids_set)
+        == MeteorologicalStation.objects.filter(uuid__in=uuids_set, site__organization__uuid=org_uuid).count()
+    )
+
+
+def virtual_station_uuids_belong_to_organization_uuid(station_uuids: list[str], org_uuid: str):
+    uuids_set = set(station_uuids)
+    return len(uuids_set) == VirtualStation.objects.filter(uuid__in=uuids_set, organization__uuid=org_uuid).count()

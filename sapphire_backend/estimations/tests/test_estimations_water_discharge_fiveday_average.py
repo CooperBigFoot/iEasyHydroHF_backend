@@ -7,7 +7,7 @@ from sapphire_backend.estimations.models import (
     EstimationsWaterDischargeDailyAverage,
     EstimationsWaterDischargeFivedayAverage,
 )
-from sapphire_backend.utils.rounding import custom_round
+from sapphire_backend.utils.rounding import custom_round, hydrological_round
 
 
 class TestHydroStationWaterDischargeFivedayAverageFirstFivePentads:
@@ -28,7 +28,7 @@ class TestHydroStationWaterDischargeFivedayAverageFirstFivePentads:
             timestamp_local__date__range=(date(2020, 2, 1), date(2020, 2, 5)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wdfa_expected = wdda_queryset_agg["avg_total"]
+        wdfa_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wdfa_estimated = EstimationsWaterDischargeFivedayAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=first_fiveday_avg_date
@@ -50,7 +50,7 @@ class TestHydroStationWaterDischargeFivedayAverageFirstFivePentads:
             timestamp_local__date__range=(date(2020, 2, 6), date(2020, 2, 10)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wdfa_expected = wdda_queryset_agg["avg_total"]
+        wdfa_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wdfa_estimated = EstimationsWaterDischargeFivedayAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=second_fiveday_avg_date
@@ -72,7 +72,7 @@ class TestHydroStationWaterDischargeFivedayAverageFirstFivePentads:
             timestamp_local__date__range=(date(2020, 2, 11), date(2020, 2, 15)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wdfa_expected = wdda_queryset_agg["avg_total"]
+        wdfa_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wdfa_estimated = EstimationsWaterDischargeFivedayAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=third_fiveday_avg_date
@@ -94,7 +94,7 @@ class TestHydroStationWaterDischargeFivedayAverageFirstFivePentads:
             timestamp_local__date__range=(date(2020, 2, 16), date(2020, 2, 20)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wdfa_expected = wdda_queryset_agg["avg_total"]
+        wdfa_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wdfa_estimated = EstimationsWaterDischargeFivedayAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=fourth_fiveday_avg_date
@@ -116,7 +116,7 @@ class TestHydroStationWaterDischargeFivedayAverageFirstFivePentads:
             timestamp_local__date__range=(date(2020, 2, 21), date(2020, 2, 25)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wdfa_expected = wdda_queryset_agg["avg_total"]
+        wdfa_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wdfa_estimated = EstimationsWaterDischargeFivedayAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=fifth_fiveday_avg_date
@@ -142,7 +142,7 @@ class TestHydroStationWaterDischargeFivedayAverageSixthPentad:
             timestamp_local__date__range=(date(2021, 2, 26), date(2021, 2, 28)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wdfa_expected = wdda_queryset_agg["avg_total"]
+        wdfa_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wdfa_estimated = EstimationsWaterDischargeFivedayAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=sixth_fiveday_avg_date
@@ -166,7 +166,7 @@ class TestHydroStationWaterDischargeFivedayAverageSixthPentad:
             timestamp_local__date__range=(date(2020, 2, 26), date(2020, 2, 29)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wdfa_expected = wdda_queryset_agg["avg_total"]
+        wdfa_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wdfa_estimated = EstimationsWaterDischargeFivedayAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=sixth_fiveday_avg_date
@@ -190,7 +190,7 @@ class TestHydroStationWaterDischargeFivedayAverageSixthPentad:
             timestamp_local__date__range=(date(2020, 3, 26), date(2020, 3, 31)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wdfa_expected = wdda_queryset_agg["avg_total"]
+        wdfa_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wdfa_estimated = EstimationsWaterDischargeFivedayAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=sixth_fiveday_avg_date
@@ -214,7 +214,7 @@ class TestHydroStationWaterDischargeFivedayAverageSixthPentad:
             timestamp_local__date__range=(date(2020, 4, 26), date(2020, 4, 30)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wdfa_expected = wdda_queryset_agg["avg_total"]
+        wdfa_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wdfa_estimated = EstimationsWaterDischargeFivedayAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=sixth_fiveday_avg_date
