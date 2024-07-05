@@ -124,12 +124,6 @@ class Migration(migrations.Migration):
                         and metric_name in ('WLD', 'WTO', 'ATO')
                       UNION ALL
                       SELECT station_id, timestamp_local, metric_name, value_type, min_value, avg_value, max_value
-                      FROM estimations_water_discharge_daily
-                      UNION ALL
-                      SELECT station_id, timestamp_local, metric_name, value_type, min_value, avg_value, max_value
-                      FROM estimations_water_level_daily_average
-                      UNION ALL
-                      SELECT station_id, timestamp_local, metric_name, value_type, min_value, avg_value, max_value
                       FROM estimations_water_discharge_daily_average
                       UNION ALL
                       SELECT station_id, timestamp_local, metric_name, value_type, min_value, avg_value, max_value
