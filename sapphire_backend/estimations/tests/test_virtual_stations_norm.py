@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from sapphire_backend.estimations.models import HydrologicalNormVirtual
 from sapphire_backend.metrics.choices import NormType
-from sapphire_backend.utils.rounding import custom_round
+from sapphire_backend.utils.rounding import custom_round, hydrological_round
 
 
 class TestVirtualStationHydrologicalNorm:
@@ -15,7 +15,7 @@ class TestVirtualStationHydrologicalNorm:
         decadal_discharge_norm_manual_hydro_station_kyrgyz,
         decadal_discharge_norm_manual_second_hydro_station_kyrgyz,
     ):
-        virtual_norm_expected = (
+        virtual_norm_expected = hydrological_round(
             virtual_station_association_one.weight
             / Decimal(100)
             * decadal_discharge_norm_manual_hydro_station_kyrgyz.value
@@ -43,7 +43,7 @@ class TestVirtualStationHydrologicalNorm:
         decadal_discharge_norm_manual_second_hydro_station_kyrgyz,
         decadal_discharge_norm_manual_third_hydro_station_kyrgyz,
     ):
-        virtual_norm_expected = (
+        virtual_norm_expected = hydrological_round(
             virtual_station_association_one.weight
             / Decimal(100)
             * decadal_discharge_norm_manual_hydro_station_kyrgyz.value
@@ -72,12 +72,12 @@ class TestVirtualStationHydrologicalNorm:
         monthly_discharge_norm_manual_hydro_station_kyrgyz,
         monthly_discharge_norm_manual_second_hydro_station_kyrgyz,
     ):
-        virtual_norm_expected = (
+        virtual_norm_expected = hydrological_round(
             virtual_station_association_one.weight
-            / Decimal(100)
+            / Decimal("100")
             * monthly_discharge_norm_manual_hydro_station_kyrgyz.value
             + virtual_station_association_two.weight
-            / Decimal(100)
+            / Decimal("100")
             * monthly_discharge_norm_manual_second_hydro_station_kyrgyz.value
         )
 

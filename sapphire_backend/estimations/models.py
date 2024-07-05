@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from sapphire_backend.metrics.managers import HydrologicalNormQuerySet
 from sapphire_backend.metrics.mixins import BaseHydroMetricMixin, MinMaxValueMixin, NormModelMixin, SensorInfoMixin
 from sapphire_backend.utils.mixins.models import UUIDMixin
+from sapphire_backend.utils.rounding import hydrological_round
 
 
 class DischargeModel(UUIDMixin, models.Model):
@@ -23,7 +24,9 @@ class DischargeModel(UUIDMixin, models.Model):
         return f"DischargeModel ({self.name}): Q = {self.param_c} (H + {self.param_a} ) ^ {self.param_b}, valid from local: {self.valid_from_local}"
 
     def estimate_discharge(self, water_level):
-        return float(self.param_c) * (float(water_level) + float(self.param_a)) ** float(self.param_b)
+        return hydrological_round(
+            float(self.param_c) * (float(water_level) + float(self.param_a)) ** float(self.param_b)
+        )
 
 
 class EstimationsWaterLevelDailyAverage(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
