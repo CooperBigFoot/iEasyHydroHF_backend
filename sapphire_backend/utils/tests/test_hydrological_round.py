@@ -8,6 +8,7 @@ from sapphire_backend.utils.rounding import hydrological_round
 
 class TestHydrologicalRound:
     input_output_expected = [
+        (Decimal("0.0"), Decimal("0.0")),
         (Decimal("0.00005567"), Decimal("0")),
         (Decimal("0.555"), Decimal("0.555")),
         (Decimal("0.5555"), Decimal("0.556")),

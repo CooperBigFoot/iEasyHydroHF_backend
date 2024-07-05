@@ -24,12 +24,12 @@ def custom_round(value: float | Decimal | None, ndigits: int | None = None) -> f
 
 
 def hydrological_round(number: Decimal | float | int):
-    if number == 0:
+    number = Decimal(str(number))
+    if number == Decimal("0"):
         return Decimal("0.000")
     elif number < 1.0:
         rounding_format = "1." + "0" * 3  # Create the format string e.g., '1.000' for 3 places
         return number.quantize(Decimal(rounding_format), rounding=ROUND_HALF_UP)
-    number = Decimal(number)
 
     # Determine the exponent to scale the number to 1 <= number < 10
     exponent = number.adjusted()
