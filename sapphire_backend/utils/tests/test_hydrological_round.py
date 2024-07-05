@@ -35,7 +35,7 @@ class TestHydrologicalRound:
             assert sql_output == expected_output
 
     @pytest.mark.django_db
-    def test_hydrological_round_range_low(self):
+    def test_compare_hydrological_round_range_low(self):
         start = Decimal("0.00001")
         end = Decimal("1")
         increment = Decimal("0.00003")
@@ -52,7 +52,7 @@ class TestHydrologicalRound:
             current_value += increment
 
     @pytest.mark.django_db
-    def test_hydrological_round_range_middle(self):
+    def test_compare_hydrological_round_range_middle(self):
         start = Decimal("1")
         end = Decimal("5")
         increment = Decimal("0.0003")
@@ -69,7 +69,7 @@ class TestHydrologicalRound:
             current_value += increment
 
     @pytest.mark.django_db
-    def test_hydrological_round_range_high(self):
+    def test_compare_hydrological_round_range_high(self):
         start = Decimal("5")
         end = Decimal("2000")
         increment = Decimal("2.3")
