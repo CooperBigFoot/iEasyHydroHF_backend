@@ -1,16 +1,9 @@
 from decimal import Decimal
 
 import pytest
-from django.db import connection
 
+from sapphire_backend.utils.db_helper import execute_sql_hydrological_round
 from sapphire_backend.utils.rounding import hydrological_round
-
-
-def execute_sql_hydrological_round(input_value):
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT hydrological_round(%s)", [input_value])
-        result = cursor.fetchone()
-    return Decimal(result[0])
 
 
 class TestHydrologicalRound:
@@ -79,7 +72,7 @@ class TestHydrologicalRound:
     def test_hydrological_round_range_high(self):
         start = Decimal("5")
         end = Decimal("2000")
-        increment = Decimal("2")
+        increment = Decimal("2.3")
 
         current_value = start
         while current_value <= end:
