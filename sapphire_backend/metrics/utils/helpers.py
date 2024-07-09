@@ -202,6 +202,7 @@ class OperationalJournalDataTransformer:
 
         # iterate over the existing dates
         for date in df["date"].unique():
+            print(f"date: {date}")
             daily_data = df[df["date"] == date]
             day_dict = {}
 
@@ -212,9 +213,11 @@ class OperationalJournalDataTransformer:
                 water_discharge_morning = self._get_metric_value(
                     morning_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY
                 )
+                print(f"previous: {previous_day_water_level}")
+                print(f"water_level_morning: {water_level_morning}")
                 day_dict["water_level_morning"] = water_level_morning
                 day_dict["water_discharge_morning"] = water_discharge_morning
-                if previous_day_water_level != "--" and water_level_morning != "--":
+                if previous_day_water_level and previous_day_water_level != "--" and water_level_morning != "--":
                     day_dict["trend"] = water_level_morning - previous_day_water_level
                 previous_day_water_level = water_level_morning
             else:
