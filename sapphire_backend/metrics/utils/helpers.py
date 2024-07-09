@@ -9,6 +9,7 @@ from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitation
 from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
 from sapphire_backend.utils.rounding import hydrological_round
 
+from ...stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
 from ..choices import HydrologicalMetricName, MeteorologicalMetricName
 
 
@@ -252,6 +253,7 @@ class OperationalJournalDataTransformer:
 
         # iterate over the existing dates
         for date in df["date"].unique():
+            print(f"date: {date}")
             daily_data = df[df["date"] == date]
             day_dict = {}
 
@@ -262,9 +264,11 @@ class OperationalJournalDataTransformer:
                 water_discharge_morning = self._get_metric_value(
                     morning_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY
                 )
+                print(f"previous: {previous_day_water_level}")
+                print(f"water_level_morning: {water_level_morning}")
                 day_dict["water_level_morning"] = water_level_morning
                 day_dict["water_discharge_morning"] = water_discharge_morning
-                if previous_day_water_level != "--" and water_level_morning != "--":
+                if previous_day_water_level and previous_day_water_level != "--" and water_level_morning != "--":
                     day_dict["trend"] = water_level_morning - previous_day_water_level
                 previous_day_water_level = water_level_morning
             else:
@@ -407,3 +411,24 @@ def create_norm_dataframe(norm_data: HydrologicalNormQuerySet | MeteorologicalNo
             output_df.at[0, col] = None
 
     return output_df
+
+
+def hydro_station_uuids_belong_to_organization_uuid(station_uuids: list[str], org_uuid: str):
+    uuids_set = set(station_uuids)
+    return (
+        len(uuids_set)
+        == HydrologicalStation.objects.filter(uuid__in=uuids_set, site__organization__uuid=org_uuid).count()
+    )
+
+
+def meteo_station_uuids_belong_to_organization_uuid(station_uuids: list[str], org_uuid: str):
+    uuids_set = set(station_uuids)
+    return (
+        len(uuids_set)
+        == MeteorologicalStation.objects.filter(uuid__in=uuids_set, site__organization__uuid=org_uuid).count()
+    )
+
+
+def virtual_station_uuids_belong_to_organization_uuid(station_uuids: list[str], org_uuid: str):
+    uuids_set = set(station_uuids)
+    return len(uuids_set) == VirtualStation.objects.filter(uuid__in=uuids_set, organization__uuid=org_uuid).count()

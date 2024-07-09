@@ -10,6 +10,41 @@ class Migration(migrations.Migration):
     ]
     operations = [
         migrations.RunSQL(
+            """
+            CREATE OR REPLACE FUNCTION hydrological_round(number numeric)
+            RETURNS numeric AS $$
+            DECLARE
+                result numeric;
+                exponent int;
+                scale_factor numeric;
+                scaled_number numeric;
+            BEGIN
+                IF number = 0 THEN
+                    RETURN 0.000;
+                END IF;
+
+                IF number < 1.0 THEN
+                    -- If the number is less than 1, round it to three decimal places directly
+                    result := ROUND(number, 3);
+                ELSE
+                    -- Determine the exponent to scale the number to 1 <= number < 10
+                    exponent := FLOOR(LOG10(ABS(number)));
+
+                    -- Calculate the scale factor
+                    scale_factor := POWER(10, 2 - exponent);
+
+                    -- Scale, round, and then rescale the number
+                    scaled_number := number * scale_factor;
+                    result := ROUND(scaled_number) / scale_factor;
+                END IF;
+
+                RETURN result;
+            END;
+            $$ LANGUAGE plpgsql;
+            """,
+            reverse_sql="DROP FUNCTION IF EXISTS hydrological_round(numeric);"
+        ),
+        migrations.RunSQL(
             sql=[(
                 """
                 CREATE MATERIALIZED VIEW estimations_water_level_daily_average WITH (timescaledb.continuous)
@@ -45,7 +80,7 @@ class Migration(migrations.Migration):
                 SELECT
                     wld.timestamp_local ,
                     CAST(NULL AS NUMERIC) as min_value,
-                    dm.param_c * POWER((wld.avg_value + dm.param_a), dm.param_b) AS avg_value,
+                    hydrological_round(dm.param_c * POWER((wld.avg_value + dm.param_a), dm.param_b)) AS avg_value,
                     CAST(NULL AS NUMERIC) as max_value,
                     'm^3/s' as unit,
                     'E' as value_type,
@@ -78,7 +113,7 @@ class Migration(migrations.Migration):
                 SELECT
                     wlda.timestamp_local,
                     CAST(NULL AS NUMERIC) as min_value,
-                    dm.param_c * POWER((wlda.avg_value + dm.param_a), dm.param_b) AS avg_value,
+                    hydrological_round(dm.param_c * POWER((wlda.avg_value + dm.param_a), dm.param_b)) AS avg_value,
                     CAST(NULL AS NUMERIC) as max_value,
                     'm^3/s' as unit,
                     'E' as value_type,
@@ -133,7 +168,7 @@ class Migration(migrations.Migration):
                                  FROM data_ranges)
                 SELECT timestamp_local,
                        CAST(NULL AS NUMERIC) AS min_value,
-                       avg_value,
+                       hydrological_round(avg_value) as avg_value,
                        CAST(NULL AS NUMERIC) AS max_value,
                        'm^3/s'               AS unit,
                        'E'                   AS value_type,
@@ -173,7 +208,7 @@ class Migration(migrations.Migration):
                 )
                 SELECT timestamp_local,
                        CAST(NULL AS NUMERIC) as min_value,
-                       avg_value,
+                       hydrological_round(avg_value) as avg_value,
                        CAST(NULL AS NUMERIC) AS max_value,
                        'm^3/s' AS unit,
                        'E' AS value_type,
@@ -213,7 +248,7 @@ class Migration(migrations.Migration):
                                          FROM data_ranges)
                 SELECT timestamp_local,
                        CAST(NULL AS NUMERIC) as min_value,
-                       avg_value,
+                       ceil(avg_value) as avg_value,
                        CAST(NULL AS NUMERIC) AS max_value,
                        'cm'                  as unit,
                        'E'                   as value_type,

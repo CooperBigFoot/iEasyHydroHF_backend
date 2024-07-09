@@ -13,7 +13,7 @@ from sapphire_backend.metrics.choices import HydrologicalMeasurementType, Hydrol
 from sapphire_backend.metrics.models import HydrologicalMetric
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.db_helper import refresh_continuous_aggregate
-from sapphire_backend.utils.rounding import custom_round
+from sapphire_backend.utils.rounding import custom_round, hydrological_round
 
 
 class TestVirtualStationWaterDischargeDailyMetrics:
@@ -59,7 +59,7 @@ class TestVirtualStationWaterDischargeDailyMetrics:
             station_id=manual_second_hydro_station_kyrgyz.id, timestamp_local=smart_dt.morning_local
         ).avg_value
 
-        virtual_discharge_morning_expected = (
+        virtual_discharge_morning_expected = hydrological_round(
             virtual_station_association_one.weight / Decimal(100) * discharge_morning_station1
             + virtual_station_association_two.weight / Decimal(100) * discharge_morning_station2
         )
@@ -133,7 +133,7 @@ class TestVirtualStationWaterDischargeDailyMetrics:
             station=manual_third_hydro_station_kyrgyz,
             timestamp_local=smart_dt.morning_local,
         ).avg_value
-        virtual_discharge_morning_expected = (
+        virtual_discharge_morning_expected = hydrological_round(
             virtual_station_association_one.weight / Decimal(100) * discharge_morning_station1
             + virtual_station_association_two.weight / Decimal(100) * discharge_morning_station2
             + virtual_station_association_three.weight / Decimal(100) * discharge_morning_station3
@@ -189,7 +189,7 @@ class TestVirtualStationWaterDischargeDailyMetrics:
         discharge_evening_station2 = EstimationsWaterDischargeDaily.objects.get(
             station=manual_second_hydro_station_kyrgyz, timestamp_local=smart_dt.evening_local
         ).avg_value
-        virtual_discharge_evening_expected = (
+        virtual_discharge_evening_expected = hydrological_round(
             virtual_station_association_one.weight / Decimal(100) * discharge_evening_station1
             + virtual_station_association_two.weight / Decimal(100) * discharge_evening_station2
         )
@@ -275,9 +275,9 @@ class TestVirtualStationWaterDischargeDailyMetrics:
             water_level_average_station2
         )
 
-        virtual_average_discharge_expected = (
-            virtual_station_association_one.weight / 100 * discharge_average_station1_expected
-            + virtual_station_association_two.weight / 100 * discharge_average_station2_expected
+        virtual_average_discharge_expected = hydrological_round(
+            virtual_station_association_one.weight / Decimal("100") * discharge_average_station1_expected
+            + virtual_station_association_two.weight / Decimal("100") * discharge_average_station2_expected
         )
 
         virtual_discharge_average_estimated = EstimationsWaterDischargeDailyAverageVirtual.objects.get(

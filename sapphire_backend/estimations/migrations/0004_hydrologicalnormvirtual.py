@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
                 WITH cte AS
                 (
                 SELECT hn.ordinal_number,
-                        SUM(hn.value * (vsa.weight / 100.0)) AS value,
+                        hydrological_round(SUM(hn.value * (vsa.weight / 100.0))) AS value,
                         hn.norm_type,
                         vs.uuid                              as station_id
                  FROM metrics_hydrologicalnorm hn

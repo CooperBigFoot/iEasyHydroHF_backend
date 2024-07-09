@@ -188,19 +188,19 @@ def get_metric_name_unit_type(variable: Variable):
     elif var_code == Variables.temperature_decade_average.value:  # 0016
         metric_name = MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE
         metric_unit = MetricUnit.TEMPERATURE
-        measurement_type = MeteorologicalMeasurementType.IMPORTED
+        measurement_type = MeteorologicalMeasurementType.MANUAL
     elif var_code == Variables.temperature_month_average.value:  # 0017
         metric_name = MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE
         metric_unit = MetricUnit.TEMPERATURE
-        measurement_type = MeteorologicalMeasurementType.IMPORTED
+        measurement_type = MeteorologicalMeasurementType.MANUAL
     elif var_code == Variables.precipitation_decade_average.value:  # 0018
         metric_name = MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE
         metric_unit = MetricUnit.PRECIPITATION
-        measurement_type = MeteorologicalMeasurementType.IMPORTED
+        measurement_type = MeteorologicalMeasurementType.MANUAL
     elif var_code == Variables.precipitation_month_average.value:  # 0019
         metric_name = MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE
         metric_unit = MetricUnit.PRECIPITATION
-        measurement_type = MeteorologicalMeasurementType.IMPORTED
+        measurement_type = MeteorologicalMeasurementType.MANUAL
     elif var_code == Variables.discharge_decade_average_historical.value:  # 0020
         metric_name = HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE_HISTORICAL
         metric_unit = MetricUnit.WATER_DISCHARGE
@@ -416,7 +416,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                     station_decades[decade].append(data_value)
 
                 # right now we're only preparing the data, we need to go over all the data values
-                # to store every relevant value after which we average them and store to the DischargeNorm model
+                # to store every relevant value after which we average them and store to the HydrologicalNorm model
                 continue
 
             metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
@@ -567,8 +567,8 @@ def migrate(skip_cleanup: bool, skip_structure: bool, target_station: str, limit
     if target_station != "":
         logging.info(f"Will migrate only station {target_station} (--station)")
 
-    migrate_discharge_models(old_session)
-    migrate_hydro_metrics(old_session, limiter, target_station)
+    # migrate_discharge_models(old_session)
+    # migrate_hydro_metrics(old_session, limiter, target_station)
     migrate_meteo_metrics(old_session, limiter, target_station)
     old_session.close()
     print("Data migration completed successfully.")

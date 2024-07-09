@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
                 SELECT
                     wdd.timestamp_local,
                     vsa.virtual_station_id as station_id,
-                    SUM(wdd.avg_value * (vsa.weight / 100.0)) AS avg_value,
+                    hydrological_round(SUM(wdd.avg_value * (vsa.weight / 100.0))) AS avg_value,
                     'm^3/s' as unit,
                     'E' as value_type,
                     wdd.metric_name
@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
                 as
                 SELECT wdda.timestamp_local,
                        vsa.virtual_station_id                    as station_id,
-                       SUM(wdda.avg_value * (vsa.weight / 100.0)) AS avg_value,
+                       hydrological_round(SUM(wdda.avg_value * (vsa.weight / 100.0))) AS avg_value,
                        'm^3/s'                                   as unit,
                        'E'                                       as value_type,
                        wdda.metric_name
@@ -67,7 +67,7 @@ class Migration(migrations.Migration):
                 as
                 SELECT wdfa.timestamp_local,
                        vsa.virtual_station_id                     as station_id,
-                       SUM(wdfa.avg_value * (vsa.weight / 100.0)) AS avg_value,
+                       hydrological_round(SUM(wdfa.avg_value * (vsa.weight / 100.0))) AS avg_value,
                        'm^3/s'                                    as unit,
                        'E'                                        as value_type,
                        wdfa.metric_name
@@ -92,7 +92,7 @@ class Migration(migrations.Migration):
                 as
                 SELECT wddca.timestamp_local,
                        vsa.virtual_station_id                     as station_id,
-                       SUM(wddca.avg_value * (vsa.weight / 100.0)) AS avg_value,
+                       hydrological_round(SUM(wddca.avg_value * (vsa.weight / 100.0))) AS avg_value,
                        'm^3/s'                                    as unit,
                        'E'                                        as value_type,
                        wddca.metric_name
