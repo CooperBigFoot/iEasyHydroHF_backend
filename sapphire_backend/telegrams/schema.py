@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Any
+
 from ninja import Schema
 
 from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitationCodeMapper
@@ -127,3 +130,29 @@ class TelegramOverviewOutputSchema(Schema):
     discharge_codes: list[tuple[str, str]]
     meteo_codes: list[tuple[str, str]]
     errors: list[TelegramOverviewErrorOutputSchema]
+
+
+class TelegramReceivedOutputSchema(Schema):
+    id: int
+    telegram: str
+    valid: bool
+    created_date: datetime
+    station_code: str | None = None
+    decoded_values: Any | None = None
+    errors: str | None = None
+    acknowledged: bool
+    acknowledged_ts: datetime | None = None
+    acknowledged_by: int | None = None
+    auto_stored: bool
+
+
+class FilterSchema(Schema):
+    created_date: datetime | None = None
+    acknowledged_by: int | None = None
+    valid: bool | None = None
+    station_code: str | None = None
+    auto_stored: bool | None = None
+
+
+class InputAckSchema(Schema):
+    ids: list[int]

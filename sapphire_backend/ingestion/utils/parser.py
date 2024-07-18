@@ -2,6 +2,7 @@ import datetime
 import gzip
 import logging
 import os
+import re
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from types import NoneType
@@ -10,10 +11,14 @@ from typing import TypedDict
 import zoneinfo
 from django.utils import timezone
 
+from sapphire_backend.ingestion.models import FileState
 from sapphire_backend.ingestion.utils.helper import get_or_create_auto_station_by_code
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, MetricUnit
 from sapphire_backend.metrics.models import HydrologicalMetric
+from sapphire_backend.organizations.models import Organization
 from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.telegrams.models import TelegramReceived
+from sapphire_backend.telegrams.parser import KN15TelegramParser
 
 
 class MetricRecord(TypedDict):
@@ -30,24 +35,61 @@ class MetricRecord(TypedDict):
 
 
 class BaseParser(ABC):
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, organization: Organization, filestate: FileState):
         self.file_path = file_path
+        self._filestate = filestate
         self._input_records = []
         self._output_metric_objects = []
         self._cnt_skipped_records = 0
+        self._organization = organization
 
     @property
     def file_name(self):
         dir, file_name = os.path.split(self.file_path)
         return file_name
 
+    @abstractmethod
+    def run(self):
+        """
+        Main parsing method, must be implemented by subclasses
+        """
+        pass
+
+    @abstractmethod
+    def save(self):
+        """
+        Save all the parsed objects
+        """
+        pass
+
+
+class XMLParser(BaseParser):
+    class InputRecord(TypedDict):
+        timestamp: str
+        station_id: str
+        var_name: str
+        sensor_type: str
+        sensor_id: str
+        avg_value: str
+        min_value: str
+        max_value: str
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.map_xml_var_to_model_var = {
+            "LW": (HydrologicalMetricName.WATER_LEVEL_DAILY, MetricUnit.WATER_LEVEL),
+            "TW": (HydrologicalMetricName.WATER_TEMPERATURE, MetricUnit.TEMPERATURE),
+            "TA": (HydrologicalMetricName.AIR_TEMPERATURE, MetricUnit.TEMPERATURE),
+        }
+        self.log_unsupported_variables = set()
+        self.log_unknown_stations = set()
+
+    def is_var_name_supported(self, var_name: str) -> bool:
+        return var_name in self.map_xml_var_to_model_var
+
     @property
     def input_records(self):
         return self._input_records
-
-    @property
-    def output_metric_objects(self) -> [HydrologicalMetric]:
-        return self._output_metric_objects
 
     def increment_skipped(self):
         self._cnt_skipped_records = self._cnt_skipped_records + 1
@@ -76,43 +118,9 @@ class BaseParser(ABC):
         )
         return new_hydro_metric
 
-    @abstractmethod
-    def run(self):
-        """
-        Main parsing method, must be implemented by subclasses
-        """
-
-    def save(self):
-        """
-        Save all the created metric objects
-        """
-        for metric_object in self.output_metric_objects:
-            metric_object.save()
-
-
-class XMLParser(BaseParser):
-    class InputRecord(TypedDict):
-        timestamp: str
-        station_id: str
-        var_name: str
-        sensor_type: str
-        sensor_id: str
-        avg_value: str
-        min_value: str
-        max_value: str
-
-    def __init__(self, file_path: str):
-        super().__init__(file_path)
-        self.map_xml_var_to_model_var = {
-            "LW": (HydrologicalMetricName.WATER_LEVEL_DAILY, MetricUnit.WATER_LEVEL),
-            "TW": (HydrologicalMetricName.WATER_TEMPERATURE, MetricUnit.TEMPERATURE),
-            "TA": (HydrologicalMetricName.AIR_TEMPERATURE, MetricUnit.TEMPERATURE),
-        }
-        self.log_unsupported_variables = set()
-        self.log_unknown_stations = set()
-
-    def is_var_name_supported(self, var_name: str) -> bool:
-        return var_name in self.map_xml_var_to_model_var
+    @property
+    def output_metric_objects(self) -> [HydrologicalMetric]:
+        return self._output_metric_objects
 
     @staticmethod
     def convert_str_to_datetime(datetime_str: str) -> datetime.datetime:
@@ -123,12 +131,18 @@ class XMLParser(BaseParser):
         dt_object_utc = timezone.make_aware(dt_object, zoneinfo.ZoneInfo("UTC"))
         return dt_object_utc
 
+    def save(self):
+        for metric_object in self.output_metric_objects:
+            metric_object.save()
+
     def transform_record(self, record_raw: InputRecord) -> MetricRecord | NoneType:
         datetime_object = self.convert_str_to_datetime(record_raw["timestamp"])
         # in case of a 6-digit station id, take only the first five digits
         station_id_5digit = record_raw["station_id"][:5]
 
-        hydro_station_obj = get_or_create_auto_station_by_code(station_code=station_id_5digit)
+        hydro_station_obj = get_or_create_auto_station_by_code(
+            station_code=station_id_5digit, organization=self._organization
+        )
         if hydro_station_obj is None:
             self.log_unknown_stations.add(station_id_5digit)
             return
@@ -240,3 +254,89 @@ class XMLParser(BaseParser):
         if len(self.log_unsupported_variables) > 0:
             logging.info(f"Unsupported variables: {self.log_unsupported_variables}")
         logging.info(f"Skipped {self.count_skipped_records} records")
+
+
+class ZKSParser(BaseParser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.log_unsupported_variables = set()
+        self.log_unknown_stations = set()
+        self._telegrams_list = []
+
+    def _read_txt_data(self) -> str:
+        """
+        Read a file either raw or gzipped and return data as string
+        """
+        filename, ext = os.path.splitext(self.file_path)
+        if ext == ".gz":
+            with gzip.open(self.file_path, "rt") as f_gzipped:
+                txt_data = f_gzipped.read()
+        else:
+            with open(self.file_path) as f_raw:
+                txt_data = f_raw.read()
+        return txt_data
+
+    @property
+    def telegrams_list(self):
+        return self._telegrams_list
+
+    def _extract_telegram_strings(self, txt_data):
+        # Replace all newlines with a single whitespace
+        content = txt_data.replace("\n", " ")
+
+        # Remove the EOF character (0x03)
+        content = content.replace("\x03", "")
+
+        # Reduce multiple whitespaces to a single whitespace
+        content = re.sub(r"\s+", " ", content)
+
+        content = content.rsplit("HHZZ ")[-1]  # accept only data after "HHZZ "
+
+        # Remove whitespace on edges
+        content = content.strip()
+
+        # Split the content into parts by '='
+        telegrams_list_raw = content.split("=")
+        telegrams_stripped_with_equal = [f"{x.strip()}=" for x in telegrams_list_raw if x != ""]
+        self._telegrams_list = telegrams_stripped_with_equal
+
+    def save(self):
+        for telegram in self.telegrams_list:
+            decoded = ""
+            errors = ""
+            valid = True
+            station_code = ""
+            try:
+                parser = KN15TelegramParser(
+                    telegram, organization_uuid=self._organization.uuid, store_parsed_telegram=False
+                )
+                decoded = parser.parse()
+                station_code = decoded["section_zero"]["station_code"]
+            except Exception as e:
+                valid = False
+                errors = repr(e)
+            new_telegram_pending_obj = TelegramReceived(
+                telegram=telegram,
+                station_code=station_code,
+                filestate=self._filestate,
+                decoded_values=decoded,
+                errors=errors,
+                valid=valid,
+                organization=self._organization,
+            )
+            new_telegram_pending_obj.save()
+        pass
+
+    def run(self):
+        logging.info(f"Begin parsing {self.file_name}")
+        txt_data = self._read_txt_data()
+        self._extract_telegram_strings(txt_data)
+        self.save()
+        self.post_run()
+        logging.info(f"Done parsing {self.file_name}")
+
+    def post_run(self):
+        """
+        Logging imported telegrams stats
+        """
+        logging.info(f"Imported {len(self.telegrams_list)} telegrams")

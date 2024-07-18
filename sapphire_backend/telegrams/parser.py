@@ -5,6 +5,7 @@ from typing import Any
 
 from zoneinfo import ZoneInfo
 
+from sapphire_backend.organizations.models import Organization
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 from sapphire_backend.telegrams.exceptions import (
     InvalidTokenException,
@@ -13,17 +14,24 @@ from sapphire_backend.telegrams.exceptions import (
     TelegramParserException,
     UnsupportedSectionException,
 )
-from sapphire_backend.telegrams.models import Telegram
+from sapphire_backend.telegrams.models import TelegramParserLog
+from sapphire_backend.users.models import User
 
 
 class BaseTelegramParser(ABC):
     def __init__(
-        self, telegram: str, organization_uuid, store_parsed_telegram: bool = True, automatic_ingestion: bool = False
+        self,
+        telegram: str,
+        organization_uuid,
+        store_parsed_telegram: bool = True,
+        automatic_ingestion: bool = False,
+        user: User = None,
     ):
         self.original_telegram = telegram.strip()
         self.telegram = self.handle_telegram_termination_character()
         self.store_in_db = store_parsed_telegram
         self.automatic_ingestion = automatic_ingestion
+        self.user = user
         self.tokens = self.tokenize()
         self.organization_uuid = organization_uuid
         self.hydro_station = None
@@ -54,9 +62,6 @@ class BaseTelegramParser(ABC):
         Used to validate the format of the telegram if necessary
         """
         return True
-
-    def telegram_already_parsed(self):
-        return Telegram.objects.filter(telegram=self.original_telegram, successfully_parsed=True).exists()
 
     def tokenize(self) -> list[str]:
         """
@@ -122,28 +127,26 @@ class BaseTelegramParser(ABC):
         return [cls(telegram, store_in_db, automatic).parse() for telegram in telegrams]
 
     def save_telegram(self, decoded_values: dict[str, Any]):
-        if not Telegram.objects.filter(
-            telegram=self.original_telegram, successfully_parsed=True, created_date__date=dt.now(tz=ZoneInfo("UTC"))
-        ).exists():
-            Telegram.objects.create(
+        if self.store_in_db:
+            TelegramParserLog.objects.create(
                 telegram=self.original_telegram,
                 decoded_values=decoded_values,
-                automatically_ingested=self.automatic_ingestion,
-                hydro_station=self.hydro_station,
-                meteo_station=self.meteo_station,
+                station_code=decoded_values["section_zero"]["station_code"],
+                user=self.user,
+                organization=Organization.objects.get(uuid=self.organization_uuid),
             )
 
     def save_parsing_error(
         self, error: str, token: str | int = "", exception_class: TelegramParserException | None = None
     ):
-        Telegram.objects.create(
-            telegram=self.original_telegram,
-            automatically_ingested=self.automatic_ingestion,
-            hydro_station=self.hydro_station,
-            meteo_station=self.meteo_station,
-            errors=f"{error}: {token}",
-            successfully_parsed=False,
-        )
+        if self.store_in_db:
+            TelegramParserLog.objects.create(
+                telegram=self.original_telegram,
+                errors=f"{error}: {token}",
+                valid=False,
+                user=self.user,
+                organization=Organization.objects.get(uuid=self.organization_uuid),
+            )
         if exception_class:
             raise exception_class(token, error)
 
@@ -155,8 +158,9 @@ class KN15TelegramParser(BaseTelegramParser):
         organization_uuid: str,
         store_parsed_telegram: bool = True,
         automatic_ingestion: bool = False,
+        user: User = None,
     ):
-        super().__init__(telegram, organization_uuid, store_parsed_telegram, automatic_ingestion)
+        super().__init__(telegram, organization_uuid, store_parsed_telegram, automatic_ingestion, user)
 
     def validate_format(self):
         if self.tokens[1][-1] not in ["1", "2"]:
@@ -179,7 +183,7 @@ class KN15TelegramParser(BaseTelegramParser):
         Implements the parsing logic for KN15 telegrams.
         """
         super().parse()
-        decoded_values = {}
+        decoded_values = {"raw": self.original_telegram}
         # start by parsing section zero
         section_zero = self.parse_section_zero()
         decoded_values["section_zero"] = section_zero

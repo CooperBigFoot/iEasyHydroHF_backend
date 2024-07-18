@@ -1,7 +1,6 @@
 import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
-from ninja_jwt.tokens import AccessToken
 from pytest_factoryboy import register
 from zoneinfo import ZoneInfo
 
@@ -13,6 +12,7 @@ from sapphire_backend.stations.tests.factories import (
     MeteorologicalStationFactory,
     SiteFactory,
 )
+from sapphire_backend.users.conftest import get_api_client_for_user
 from sapphire_backend.users.tests.factories import UserFactory
 
 register(SiteFactory)
@@ -150,72 +150,52 @@ def unauthenticated_api_client():
 
 @pytest.fixture
 def authenticated_regular_user_api_client(regular_user):
-    token = AccessToken.for_user(regular_user)
-    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
-    return client
+    return get_api_client_for_user(regular_user)
 
 
 @pytest.fixture
 def authenticated_regular_user_other_organization_api_client(other_organization_user):
-    token = AccessToken.for_user(other_organization_user)
-    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
-    return client
+    return get_api_client_for_user(other_organization_user)
 
 
 @pytest.fixture
 def regular_user_kyrgyz_api_client(regular_user_kyrgyz):
-    token = AccessToken.for_user(regular_user_kyrgyz)
-    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
-    return client
+    return get_api_client_for_user(regular_user_kyrgyz)
 
 
 @pytest.fixture
 def regular_user_uzbek_api_client(regular_user_uzbek):
-    token = AccessToken.for_user(regular_user_uzbek)
-    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
-    return client
+    return get_api_client_for_user(regular_user_uzbek)
 
 
 @pytest.fixture
 def authenticated_organization_user_api_client(organization_admin):
-    token = AccessToken.for_user(organization_admin)
-    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
-    return client
+    return get_api_client_for_user(organization_admin)
 
 
 @pytest.fixture
 def organization_admin_kyrgyz_api_client(organization_admin_kyrgyz):
-    token = AccessToken.for_user(organization_admin_kyrgyz)
-    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
-    return client
+    return get_api_client_for_user(organization_admin_kyrgyz)
 
 
 @pytest.fixture
 def organization_admin_uzbek_api_client(organization_admin_uzbek):
-    token = AccessToken.for_user(organization_admin_uzbek)
-    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
-    return client
+    return get_api_client_for_user(organization_admin_uzbek)
 
 
 @pytest.fixture
 def authenticated_superadmin_user_api_client(superadmin):
-    token = AccessToken.for_user(superadmin)
-    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
-    return client
+    return get_api_client_for_user(superadmin)
 
 
 @pytest.fixture
 def superadmin_kyrgyz_api_client(superadmin_kyrgyz):
-    token = AccessToken.for_user(superadmin_kyrgyz)
-    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
-    return client
+    return get_api_client_for_user(superadmin_kyrgyz)
 
 
 @pytest.fixture
 def superadmin_uzbek_api_client(superadmin_uzbek):
-    token = AccessToken.for_user(superadmin_uzbek)
-    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
-    return client
+    return get_api_client_for_user(superadmin_uzbek)
 
 
 # sites

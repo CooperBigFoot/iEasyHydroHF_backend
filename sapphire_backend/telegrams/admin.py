@@ -1,14 +1,39 @@
 from django.contrib import admin
 
-from .models import Telegram
+from .models import TelegramParserLog, TelegramReceived, TelegramStored
 
 
-@admin.register(Telegram)
-class TelegramAdmin(admin.ModelAdmin):
-    list_display = ["telegram", "created_date", "hydro_station", "automatically_ingested", "successfully_parsed"]
+@admin.register(TelegramReceived)
+class TelegramIngestedAdmin(admin.ModelAdmin):
+    list_display = [
+        "telegram",
+        "created_date",
+        "valid",
+        "acknowledged",
+        "acknowledged_ts",
+        "acknowledged_by",
+        "filestate",
+        "station_code",
+        "organization",
+    ]
     list_filter = [
         "created_date",
-        "automatically_ingested",
-        "hydro_station__site__organization",
-        "successfully_parsed",
+        "valid",
+        "acknowledged",
+        "acknowledged_ts",
+        "acknowledged_by",
+        "station_code",
+        "organization",
     ]
+
+
+@admin.register(TelegramStored)
+class TelegramStoredAdmin(admin.ModelAdmin):
+    list_display = ["telegram", "created_date", "telegram_day", "station_code", "stored_by", "auto_stored"]
+    list_filter = ["created_date", "telegram_day", "station_code", "stored_by", "auto_stored"]
+
+
+@admin.register(TelegramParserLog)
+class TelegramParserLogAdmin(admin.ModelAdmin):
+    list_display = ["telegram", "created_date", "station_code", "errors", "decoded_values", "valid", "user"]
+    list_filter = ["created_date", "station_code", "valid", "user"]

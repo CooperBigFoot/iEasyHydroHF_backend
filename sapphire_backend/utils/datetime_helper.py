@@ -2,12 +2,16 @@ from datetime import date, datetime, timedelta
 
 from zoneinfo import ZoneInfo
 
+from sapphire_backend.organizations.models import Organization
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 
 
 class SmartDatetime:
     def __init__(
-        self, dt: [str | datetime | date], station: [HydrologicalStation | MeteorologicalStation], tz_included=False
+        self,
+        dt: [str | datetime | date],
+        station: [HydrologicalStation | MeteorologicalStation | Organization],
+        tz_included=False,
     ):
         self._local_timezone = station.timezone
         if isinstance(dt, str):

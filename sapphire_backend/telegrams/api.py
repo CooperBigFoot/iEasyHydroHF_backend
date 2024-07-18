@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from django.utils import timezone
 from django.utils.translation import gettext as _
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
@@ -6,10 +9,16 @@ from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
+from ..organizations.models import Organization
+from ..users.models import User
+from ..utils.datetime_helper import SmartDatetime
 from ..utils.mixins.schemas import Message
+from .models import TelegramReceived, TelegramStored
 from .schema import (
+    InputAckSchema,
     TelegramBulkWithDatesInputSchema,
     TelegramOverviewOutputSchema,
+    TelegramReceivedOutputSchema,
 )
 from .utils import (
     generate_daily_overview,
@@ -35,8 +44,10 @@ class TelegramsAPIController:
     def get_telegram_overview(
         self, request, organization_uuid: str, encoded_telegrams_dates: TelegramBulkWithDatesInputSchema
     ):
-        # TODO need to write tests for the utils methods and the API endpoint
-        parsed_data = get_parsed_telegrams_data(encoded_telegrams_dates, organization_uuid)
+        user = User.objects.get(id=request.user.id)
+        parsed_data = get_parsed_telegrams_data(
+            encoded_telegrams_dates, organization_uuid, save_telegrams=True, user=user
+        )
         telegram_insert_simulation_result = simulate_telegram_insertion(parsed_data)
 
         daily_overview = generate_daily_overview(parsed_data)
@@ -59,7 +70,7 @@ class TelegramsAPIController:
     def save_input_telegrams(
         self, request, organization_uuid: str, encoded_telegrams_dates: TelegramBulkWithDatesInputSchema
     ):
-        parsed_data = get_parsed_telegrams_data(encoded_telegrams_dates, organization_uuid, False)
+        parsed_data = get_parsed_telegrams_data(encoded_telegrams_dates, organization_uuid, save_telegrams=False)
         for station_data in parsed_data["stations"].values():
             hydro_station = station_data["hydro_station_obj"]
 
@@ -77,4 +88,61 @@ class TelegramsAPIController:
                 reported_discharge = telegram_data.get("section_six")
                 if reported_discharge is not None:
                     save_reported_discharge(reported_discharge, hydro_station)
+
+                TelegramStored(
+                    telegram=telegram_data["raw"],
+                    telegram_day=telegram_day_smart.morning_local.date(),
+                    station_code=telegram_data["section_zero"]["station_code"],
+                    stored_by=User.objects.get(id=request.user.id),
+                    organization=Organization.objects.get(uuid=organization_uuid),
+                ).save()
         return 201, {"detail": _("Telegram metrics successfully saved"), "code": "success"}
+
+    @route.get("received/list", response={200: list[TelegramReceivedOutputSchema], 404: Message})
+    def list_received_telegrams(
+        self,
+        request,
+        organization_uuid: str,
+        created_date=None,
+        acknowledged_by=None,
+        valid=None,
+        station_code=None,
+        auto_stored=None,
+    ):
+        organization = Organization.objects.get(uuid=organization_uuid)
+        queryset = TelegramReceived.objects.filter(organization=organization)
+
+        if created_date:
+            start_created_date_tz = SmartDatetime(
+                created_date, station=organization, tz_included=False
+            ).day_beginning_tz
+            end_created_date_tz = start_created_date_tz + timedelta(days=1) - timedelta(microseconds=1)
+            queryset = queryset.filter(created_date__range=(start_created_date_tz, end_created_date_tz))
+
+        if acknowledged_by:
+            queryset = queryset.filter(acknowledged_by=acknowledged_by)
+
+        if valid:
+            queryset = queryset.filter(valid=valid)
+
+        if station_code:
+            queryset = queryset.filter(station_code=station_code)
+
+        if auto_stored:
+            queryset = queryset.filter(auto_stored=auto_stored)
+
+        return 200, queryset
+
+    @route.post("received/ack", response={200: Message})
+    def acknowledge_received_telegrams(self, request, organization_uuid: str, payload: InputAckSchema):
+        user = User.objects.get(id=request.user.id)
+        org = Organization.objects.get(uuid=organization_uuid)
+        tg_received_queryset = TelegramReceived.objects.filter(
+            id__in=payload.ids, acknowledged=False, organization=org
+        )
+
+        if tg_received_queryset.count() != len(payload.ids):
+            raise TelegramReceived.DoesNotExist("Not all provided IDs are available.")
+
+        tg_received_queryset.update(acknowledged=True, acknowledged_by=user, acknowledged_ts=timezone.now())
+        return 200, {"detail": f"Successfully acknowledged {len(payload.ids)} received telegrams."}
