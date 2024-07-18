@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 import pytest
 
-from sapphire_backend.ingestion.tests.conftest import filestate_zks
 from sapphire_backend.telegrams.models import TelegramReceived
 from sapphire_backend.telegrams.tests.factories import TelegramReceivedFactory
 from sapphire_backend.utils.datetime_helper import SmartDatetime

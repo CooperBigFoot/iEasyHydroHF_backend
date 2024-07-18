@@ -54,10 +54,7 @@ class BaseIngester(ABC):
 
     @property
     def files_unprocessed(self):
-        return FileState.objects.exclude(
-            state=FileState.States.PROCESSED,
-            ingester_name=self.ingester_name,
-        )
+        return FileState.objects.filter(ingester_name=self.ingester_name).exclude(state=FileState.States.PROCESSED)
 
     @property
     def files_downloaded(self):
