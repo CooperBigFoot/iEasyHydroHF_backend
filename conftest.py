@@ -4,6 +4,7 @@ from django.test import Client
 from pytest_factoryboy import register
 from zoneinfo import ZoneInfo
 
+from sapphire_backend.ingestion.tests.factories import FileStateFactory
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.organizations.tests.factories import BasinFactory, OrganizationFactory, RegionFactory
 from sapphire_backend.stations.models import HydrologicalStation
@@ -21,7 +22,7 @@ register(UserFactory)
 register(OrganizationFactory)
 register(BasinFactory)
 register(RegionFactory)
-
+register(FileStateFactory)
 User = get_user_model()
 
 
@@ -328,3 +329,14 @@ def automatic_hydro_station_backup(db, site_one):
         station_code="98765",
         name="Automatic Hydrological Station Backup",
     )
+
+
+# FileState
+@pytest.fixture
+def filestate_zks():
+    return FileStateFactory(ingester_name="imomo_zks")
+
+
+@pytest.fixture
+def filestate_auto():
+    return FileStateFactory(ingester_name="imomo_auto")
