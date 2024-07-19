@@ -4,11 +4,12 @@ from .models import TelegramParserLog, TelegramReceived, TelegramStored
 
 
 @admin.register(TelegramReceived)
-class TelegramIngestedAdmin(admin.ModelAdmin):
+class TelegramReceivedAdmin(admin.ModelAdmin):
     list_display = [
         "telegram",
         "created_date",
         "valid",
+        "errors",
         "acknowledged",
         "acknowledged_ts",
         "acknowledged_by",
