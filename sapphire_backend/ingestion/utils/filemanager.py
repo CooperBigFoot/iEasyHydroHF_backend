@@ -191,6 +191,7 @@ class ImomoStagingFTPClient(FTPClient):
     def close(self):
         if self.ssh_client is not None:
             self.ssh_client.close()
+            self.ssh_client = None
 
     def _exec_shell_command(self, command: str, silent=True) -> str:
         """
