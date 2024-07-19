@@ -95,7 +95,7 @@ class TestListTelegramsReceivedAPI:
             ("superadmin_uzbek_api_client", 200),
         ],
     )
-    def test_list_telegram_received_acknowledge_status_code(
+    def test_telegram_received_acknowledge_status_code(
         self,
         client,
         organization_kyrgyz,
@@ -132,7 +132,7 @@ class TestListTelegramsReceivedAPI:
             "superadmin_uzbek_api_client",
         ],
     )
-    def test_list_telegram_received_acknowledge(
+    def test_telegram_received_acknowledge(
         self,
         client,
         organization_kyrgyz,
@@ -184,7 +184,7 @@ class TestListTelegramsReceivedAPI:
             "superadmin_uzbek_api_client",
         ],
     )
-    def test_list_telegram_received_acknowledge_non_existing(
+    def test_telegram_received_acknowledge_non_existing(
         self,
         client,
         organization_kyrgyz,

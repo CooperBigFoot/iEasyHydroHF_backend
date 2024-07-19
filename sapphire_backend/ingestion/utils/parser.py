@@ -325,7 +325,6 @@ class ZKSParser(BaseParser):
                 organization=self._organization,
             )
             new_telegram_pending_obj.save()
-        pass
 
     def run(self):
         logging.info(f"Begin parsing {self.file_name}")

@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 from django.utils.translation import gettext as _
+from ninja import Query
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 
@@ -18,6 +19,7 @@ from .schema import (
     InputAckSchema,
     TelegramBulkWithDatesInputSchema,
     TelegramOverviewOutputSchema,
+    TelegramReceivedFilterSchema,
     TelegramReceivedOutputSchema,
 )
 from .utils import (
@@ -44,7 +46,7 @@ class TelegramsAPIController:
     def get_telegram_overview(
         self, request, organization_uuid: str, encoded_telegrams_dates: TelegramBulkWithDatesInputSchema
     ):
-        user = User.objects.get(id=request.user.id)
+        user = request.user
         parsed_data = get_parsed_telegrams_data(
             encoded_telegrams_dates, organization_uuid, save_telegrams=True, user=user
         )
@@ -100,42 +102,35 @@ class TelegramsAPIController:
 
     @route.get("received/list", response={200: list[TelegramReceivedOutputSchema], 404: Message})
     def list_received_telegrams(
-        self,
-        request,
-        organization_uuid: str,
-        created_date=None,
-        acknowledged_by=None,
-        valid=None,
-        station_code=None,
-        auto_stored=None,
+        self, request, organization_uuid: str, filters: Query[TelegramReceivedFilterSchema] = None
     ):
         organization = Organization.objects.get(uuid=organization_uuid)
         queryset = TelegramReceived.objects.filter(organization=organization)
 
-        if created_date:
+        if filters.created_date:
             start_created_date_tz = SmartDatetime(
-                created_date, station=organization, tz_included=False
+                filters.created_date, station=organization, tz_included=False
             ).day_beginning_tz
             end_created_date_tz = start_created_date_tz + timedelta(days=1) - timedelta(microseconds=1)
             queryset = queryset.filter(created_date__range=(start_created_date_tz, end_created_date_tz))
 
-        if acknowledged_by:
-            queryset = queryset.filter(acknowledged_by=acknowledged_by)
+        if filters.acknowledged_by:
+            queryset = queryset.filter(acknowledged_by=filters.acknowledged_by)
 
-        if valid:
-            queryset = queryset.filter(valid=valid)
+        if filters.valid:
+            queryset = queryset.filter(valid=filters.valid)
 
-        if station_code:
-            queryset = queryset.filter(station_code=station_code)
+        if filters.station_code:
+            queryset = queryset.filter(station_code=filters.station_code)
 
-        if auto_stored:
-            queryset = queryset.filter(auto_stored=auto_stored)
+        if filters.auto_stored:
+            queryset = queryset.filter(auto_stored=filters.auto_stored)
 
         return 200, queryset
 
     @route.post("received/ack", response={200: Message})
     def acknowledge_received_telegrams(self, request, organization_uuid: str, payload: InputAckSchema):
-        user = User.objects.get(id=request.user.id)
+        user = request.user
         org = Organization.objects.get(uuid=organization_uuid)
         tg_received_queryset = TelegramReceived.objects.filter(
             id__in=payload.ids, acknowledged=False, organization=org

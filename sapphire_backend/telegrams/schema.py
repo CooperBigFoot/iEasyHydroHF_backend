@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from ninja import Schema
+from ninja import FilterSchema, Schema
 
 from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitationCodeMapper
 from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
@@ -146,9 +146,9 @@ class TelegramReceivedOutputSchema(Schema):
     auto_stored: bool
 
 
-class FilterSchema(Schema):
-    created_date: datetime | None = None
-    acknowledged_by: int | None = None
+class TelegramReceivedFilterSchema(FilterSchema):
+    created_date: str = None
+    acknowledged_by: str | None = None
     valid: bool | None = None
     station_code: str | None = None
     auto_stored: bool | None = None
