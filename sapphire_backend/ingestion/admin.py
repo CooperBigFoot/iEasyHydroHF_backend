@@ -5,8 +5,5 @@ from .models import FileState
 
 @admin.register(FileState)
 class FileStateAdmin(admin.ModelAdmin):
-    list_display = ["filename", "state", "remote_path", "local_path", "state_timestamp"]
-    list_filter = [
-        "state_timestamp",
-        "state",
-    ]
+    list_display = ["filename", "state", "remote_path", "local_path", "state_timestamp", "ingester_name"]
+    list_filter = ["state_timestamp", "state", "ingester_name"]

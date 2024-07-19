@@ -2,6 +2,7 @@ sudo mkfs -t ext4 /dev/xvdh || echo 'filesystem /dev/svdh already created'
 sudo mkdir /ebs_volume || echo '/ebs_volume already created'
 sudo mount /dev/xvdh /ebs_volume/ || echo '/ebs_volume already mounted'
 sudo mkdir /ebs_volume/imomo_ingestion_storage || echo '/ebs_volume/imomo_ingestion_storage already created'
+sudo mkdir /ebs_volume/imomo_telegram_ingestion_storage || echo '/ebs_volume/imomo_telegram_ingestion_storage already created'
 
 sudo chown -R $USER:$USER /ebs_volume
 mkdir /ebs_volume/timescale_data || echo '/ebs_volume/timescale_data already created'
