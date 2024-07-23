@@ -9,6 +9,7 @@ class FileState(models.Model):
     remote_path = models.TextField(verbose_name=_("File path on the remote location"))
     local_path = models.TextField(blank=True, verbose_name=_("Local file path"))
     state_timestamp = models.DateTimeField(auto_now=True, verbose_name=_("Timestamp of last state update"))
+    ingester_name = models.TextField(verbose_name=_("Ingester name"))
 
     class States(models.TextChoices):
         DISCOVERED = "discovered", _("Discovered")

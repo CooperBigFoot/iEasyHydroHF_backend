@@ -104,26 +104,26 @@ class FTPClient(BaseFileManager):
         local_files = self._ftp_get_files(ftp_file_path)
         return local_files
 
-    def list_dir(self, path, file_extension=".xml.part"):
+    def list_dir(self, path, file_extension, line_prefix: str = "-rwxrwxrwx"):
         """
         List FTP directory
         """
         partial_commands = f"cd {path}\nls"
         ftp_commands = self.ftp_cmd_wrapper.format(partial_commands=partial_commands)
         response = self._exec_shell_command(ftp_commands)
-        list_files = self._parse_list_dir(path, response, file_extension)
+        list_files = self._parse_list_dir(path, response, file_extension, line_prefix)
         return list_files
 
     @staticmethod
-    def _parse_list_dir(path: str, response: str, file_extension: str):
+    def _parse_list_dir(path: str, response: str, file_extension: str, line_prefix: str):
         """
-        Filter FTP ls response and only output .xml.part files
+        Filter FTP ls response and only files where the response line starts with line_prefix and ends with file_extension
         """
         lines = response.split("\n")
         files = []
         for line in lines:
-            if line.endswith(file_extension):
-                f = os.path.join(path, line.split()[8])
+            if line.startswith(line_prefix) and line.endswith(file_extension):
+                f = os.path.join(path, line.split()[-1])
                 files.append(f)
         return files
 
@@ -191,6 +191,7 @@ class ImomoStagingFTPClient(FTPClient):
     def close(self):
         if self.ssh_client is not None:
             self.ssh_client.close()
+            self.ssh_client = None
 
     def _exec_shell_command(self, command: str, silent=True) -> str:
         """

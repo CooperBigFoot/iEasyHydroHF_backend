@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from django.db import connection
 
@@ -14,3 +15,10 @@ def refresh_continuous_aggregate(start_date: str = None, end_date: str = None):
         cursor.execute(
             f"CALL refresh_continuous_aggregate('public.estimations_water_level_daily_average', '{start_date}', '{end_date}')"
         )
+
+
+def execute_sql_hydrological_round(input_value):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT hydrological_round(%s)", [input_value])
+        result = cursor.fetchone()
+    return Decimal(result[0])

@@ -1,3 +1,5 @@
+import pytest
+
 from sapphire_backend.metrics.choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
@@ -5,7 +7,9 @@ from sapphire_backend.metrics.choices import (
     MeteorologicalMetricName,
 )
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
+from sapphire_backend.telegrams.models import TelegramStored
 from sapphire_backend.telegrams.parser import KN15TelegramParser
+from sapphire_backend.users.conftest import get_api_client_for_user
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 
 INPUT_MULTIPLE_TELEGRAMS = [
@@ -22,27 +26,77 @@ INPUT_MULTIPLE_TELEGRAMS = [
 
 
 class TestMultipleTelegramSaveGeneralAPI:
+    @pytest.mark.parametrize(
+        "client, expected_status_code",
+        [
+            ("unauthenticated_api_client", 401),
+            ("regular_user_uzbek_api_client", 403),
+            ("organization_admin_uzbek_api_client", 403),
+            ("regular_user_kyrgyz_api_client", 201),
+            ("organization_admin_kyrgyz_api_client", 201),
+            ("superadmin_kyrgyz_api_client", 201),
+            ("superadmin_uzbek_api_client", 201),
+        ],
+    )
     def test_save_input_multi_telegrams_status_code(
         self,
-        regular_user_kyrgyz_api_client,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
         manual_second_hydro_station_kyrgyz,
         manual_second_meteo_station_kyrgyz,
+        client,
+        expected_status_code,
+        request,
     ):
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
+        client = request.getfixturevalue(client)
 
-        response = regular_user_kyrgyz_api_client.post(
+        response = client.post(
             endpoint,
             data={"telegrams": INPUT_MULTIPLE_TELEGRAMS},
             content_type="application/json",
         )
 
-        res = response.json()
+        assert response.status_code == expected_status_code
 
-        assert response.status_code == 201
-        assert res["code"] == "success"
+    @pytest.mark.parametrize(
+        "user",
+        [
+            "regular_user_kyrgyz",
+            "organization_admin_kyrgyz",
+            "superadmin_kyrgyz",
+            "superadmin_uzbek",
+        ],
+    )
+    def test_save_input_telegrams_creates_telegram_stored(
+        self,
+        user,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        manual_meteo_station_kyrgyz,
+        manual_second_hydro_station_kyrgyz,
+        manual_second_meteo_station_kyrgyz,
+        request,
+    ):
+        user = request.getfixturevalue(user)
+        client = get_api_client_for_user(user)
+        telegrams = INPUT_MULTIPLE_TELEGRAMS
+        endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
+
+        assert TelegramStored.objects.all().count() == 0
+
+        client.post(
+            endpoint,
+            data={"telegrams": INPUT_MULTIPLE_TELEGRAMS},
+            content_type="application/json",
+        )
+
+        queryset = TelegramStored.objects.all()
+        assert queryset.count() == len(telegrams)
+
+        for telegram in telegrams:
+            assert queryset.filter(telegram=telegram["raw"], stored_by=user).exists() is True
 
 
 class TestMultipleTelegramSaveSectionOneAPI:
