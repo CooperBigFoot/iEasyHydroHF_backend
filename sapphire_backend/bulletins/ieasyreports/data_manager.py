@@ -4,8 +4,6 @@ from typing import Any
 from ieasyreports.core.tags import DefaultDataManager
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.metrics.utils.helpers import PentadDecadeHelper
-
 
 class IEasyHydroDataManager(DefaultDataManager):
     data_cache = {}
@@ -138,6 +136,8 @@ class IEasyHydroDataManager(DefaultDataManager):
 
     @classmethod
     def get_discharge_fiveday(cls, station_ids: list[int], station_id: int, target_date: datetime, day_offset: int):
+        from sapphire_backend.metrics.utils.helpers import PentadDecadeHelper
+
         date = target_date - timedelta(days=day_offset)
         pentad_day = PentadDecadeHelper.calculate_associated_pentad_day_from_the_day_int_month(date.day)
         pentad_reference_date = datetime(date.year, date.month, pentad_day, 12, tzinfo=ZoneInfo("UTC"))
@@ -147,6 +147,8 @@ class IEasyHydroDataManager(DefaultDataManager):
 
     @classmethod
     def get_discharge_decade(cls, station_ids: list[int], station_id: int, target_date: datetime, day_offset: int):
+        from sapphire_backend.metrics.utils.helpers import PentadDecadeHelper
+
         date = target_date - timedelta(days=day_offset)
         decade_day = PentadDecadeHelper.calculate_associated_decade_day_for_the_day_in_month(date.day)
         decade_reference_date = datetime(date.year, date.month, decade_day, 12, tzinfo=ZoneInfo("UTC"))
@@ -158,6 +160,7 @@ class IEasyHydroDataManager(DefaultDataManager):
     def get_discharge_norm(cls, organization, station_uuids: list[int], station_id, target_date: datetime):
         from sapphire_backend.metrics.choices import NormType
         from sapphire_backend.metrics.models import HydrologicalNorm
+        from sapphire_backend.metrics.utils.helpers import PentadDecadeHelper
 
         norm_type = organization.discharge_norm_type
 
