@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 import pytest
 from django.db.models import Avg
@@ -7,7 +8,7 @@ from sapphire_backend.estimations.models import (
     EstimationsWaterDischargeDailyAverage,
     EstimationsWaterDischargeFivedayAverageVirtual,
 )
-from sapphire_backend.utils.rounding import custom_round
+from sapphire_backend.utils.rounding import custom_round, hydrological_round
 
 
 class TestVirtualStationWaterDischargeFivedayMetrics:
@@ -42,12 +43,12 @@ class TestVirtualStationWaterDischargeFivedayMetrics:
             timestamp_local__date__range=(self.start_date, self.end_date),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wdfa_station1_expected = wdda_station1_agg["avg_total"]
-        wdfa_station2_expected = wdda_station2_agg["avg_total"]
+        wdfa_station1_expected = hydrological_round(wdda_station1_agg["avg_total"])
+        wdfa_station2_expected = hydrological_round(wdda_station2_agg["avg_total"])
 
-        wdfa_virtual_expected = (
-            float(wdfa_station1_expected) * virtual_station_association_one.weight / 100.0
-            + float(wdfa_station2_expected) * virtual_station_association_two.weight / 100.0
+        wdfa_virtual_expected = hydrological_round(
+            wdfa_station1_expected * virtual_station_association_one.weight / Decimal("100")
+            + wdfa_station2_expected * virtual_station_association_two.weight / Decimal("100")
         )
 
         wdfa_virtual_estimated = EstimationsWaterDischargeFivedayAverageVirtual.objects.get(

@@ -290,3 +290,72 @@ class MeteorologicalNorm(NormModelMixin, models.Model):
 
     def __str__(self):
         return f"Meteo norm {self.station.name} ({self.norm_type}, {self.norm_metric} - {self.ordinal_number})"
+
+
+class BulkDataHydroManual(models.Model):
+    station = models.ForeignKey("stations.HydrologicalStation", on_delete=models.DO_NOTHING)
+    timestamp_local = models.DateTimeField()
+    water_level_daily = models.DecimalField(max_digits=10, decimal_places=3)
+    water_level_daily_average = models.DecimalField(max_digits=10, decimal_places=3)
+    discharge_measurement = models.DecimalField(max_digits=10, decimal_places=3)
+    discharge_daily = models.DecimalField(max_digits=10, decimal_places=3)
+    free_river_area = models.DecimalField(max_digits=10, decimal_places=3)
+    decade_discharge = models.DecimalField(max_digits=10, decimal_places=3)
+    discharge_daily_average = models.DecimalField(max_digits=10, decimal_places=3)
+    ice_phenomena = models.CharField(max_length=20, blank=True)
+    water_level_measurement = models.DecimalField(max_digits=10, decimal_places=3)
+    fiveday_discharge = models.DecimalField(max_digits=10, decimal_places=3)
+    air_temperature = models.DecimalField(max_digits=10, decimal_places=3)
+    water_temperature = models.DecimalField(max_digits=10, decimal_places=3)
+    precipitation_daily = models.CharField(max_length=20, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "metrics_bulk_data_hydro_manual"
+
+
+class BulkDataHydroAuto(models.Model):
+    station = models.ForeignKey("stations.HydrologicalStation", on_delete=models.DO_NOTHING)
+    timestamp_local = models.DateTimeField()
+    water_level_daily_min = models.DecimalField(max_digits=10, decimal_places=3)
+    water_level_daily_average = models.DecimalField(max_digits=10, decimal_places=3)
+    water_level_daily_max = models.DecimalField(max_digits=10, decimal_places=3)
+    air_temperature_min = models.DecimalField(max_digits=10, decimal_places=3)
+    air_temperature_average = models.DecimalField(max_digits=10, decimal_places=3)
+    air_temperature_max = models.DecimalField(max_digits=10, decimal_places=3)
+    water_temperature_min = models.DecimalField(max_digits=10, decimal_places=3)
+    water_temperature_average = models.DecimalField(max_digits=10, decimal_places=3)
+    water_temperature_max = models.DecimalField(max_digits=10, decimal_places=3)
+    discharge_daily_average = models.DecimalField(max_digits=10, decimal_places=3)
+    fiveday_discharge = models.DecimalField(max_digits=10, decimal_places=3)
+    decade_discharge = models.DecimalField(max_digits=10, decimal_places=3)
+
+    class Meta:
+        managed = False
+        db_table = "metrics_bulk_data_hydro_auto"
+
+
+class BulkDataVirtual(models.Model):
+    station = models.ForeignKey("stations.VirtualStation", on_delete=models.DO_NOTHING)
+    timestamp_local = models.DateTimeField()
+    discharge_daily = models.DecimalField(max_digits=10, decimal_places=3)
+    decade_discharge = models.DecimalField(max_digits=10, decimal_places=3)
+    discharge_daily_average = models.DecimalField(max_digits=10, decimal_places=3)
+    fiveday_discharge = models.DecimalField(max_digits=10, decimal_places=3)
+
+    class Meta:
+        managed = False
+        db_table = "metrics_bulk_data_virtual"
+
+
+class BulkDataMeteo(models.Model):
+    station = models.ForeignKey("stations.MeteorologicalStation", on_delete=models.DO_NOTHING)
+    timestamp_local = models.DateTimeField()
+    air_temperature_decade_average = models.DecimalField(max_digits=10, decimal_places=3)
+    air_temperature_month_average = models.DecimalField(max_digits=10, decimal_places=3)
+    precipitation_decade_average = models.DecimalField(max_digits=10, decimal_places=3)
+    precipitation_month_average = models.DecimalField(max_digits=10, decimal_places=3)
+
+    class Meta:
+        managed = False
+        db_table = "metrics_bulk_data_meteo"

@@ -10,7 +10,7 @@ from sapphire_backend.telegrams.exceptions import (
     MissingMeteoStationException,
     MissingSectionException,
 )
-from sapphire_backend.telegrams.models import Telegram
+from sapphire_backend.telegrams.models import TelegramParserLog
 from sapphire_backend.telegrams.parser import KN15TelegramParser
 
 
@@ -72,15 +72,15 @@ class TestKN15TelegramParserInitialization:
     def test_parse_error_stores_telegram_to_database(self, organization, manual_hydro_station):
         parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 29081 10417 30410=", organization.uuid)
 
-        assert Telegram.objects.exists() is False
+        assert TelegramParserLog.objects.exists() is False
 
         expected_exception = "Expected token starting with '2', got: 30410"
 
         with pytest.raises(InvalidTokenException, match=expected_exception):
             parser.parse()
-            db_telegram = Telegram.objects.first()
+            db_telegram = TelegramParserLog.objects.first()
             assert db_telegram.errors == expected_exception
-            assert db_telegram.was_parsed_successfully is False
+            assert db_telegram.valid is False
 
 
 class TestKN15TelegramParserSectionZero:
@@ -233,11 +233,11 @@ class TestKN15TelegramParserSectionZero:
     def test_parsing_saves_telegram_to_database(self, datetime_mock, organization, manual_hydro_station):
         parser = KN15TelegramParser(f"{manual_hydro_station.station_code} 14081 10417 20021 30410=", organization.uuid)
 
-        assert Telegram.objects.all().count() == 0
+        assert TelegramParserLog.objects.all().count() == 0
 
         decoded_data = parser.parse()
 
-        db_telegrams = Telegram.objects.all()
+        db_telegrams = TelegramParserLog.objects.all()
 
         assert db_telegrams.count() == 1
         assert db_telegrams.first().decoded_values == decoded_data
@@ -251,11 +251,11 @@ class TestKN15TelegramParserSectionZero:
             store_parsed_telegram=False,
         )
 
-        assert Telegram.objects.all().count() == 0
+        assert TelegramParserLog.objects.all().count() == 0
 
         _ = parser.parse()
 
-        assert Telegram.objects.all().count() == 0
+        assert TelegramParserLog.objects.all().count() == 0
 
 
 class TestKN15TelegramParserSectionOne:
@@ -314,6 +314,7 @@ class TestKN15TelegramParserSectionOne:
         decoded_data = parser.parse()
 
         assert decoded_data == {
+            "raw": f"{manual_hydro_station.station_code} 14081 10417 20021 30410=",
             "section_zero": {
                 "station_code": manual_hydro_station.station_code,
                 "station_name": manual_hydro_station.name,

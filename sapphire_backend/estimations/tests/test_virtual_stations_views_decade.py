@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 import pytest
 from django.db.models import Avg
@@ -7,7 +8,7 @@ from sapphire_backend.estimations.models import (
     EstimationsWaterDischargeDailyAverage,
     EstimationsWaterDischargeDecadeAverageVirtual,
 )
-from sapphire_backend.utils.rounding import custom_round
+from sapphire_backend.utils.rounding import custom_round, hydrological_round
 
 
 class TestVirtualStationWaterDischargeDecadeMetrics:
@@ -42,12 +43,12 @@ class TestVirtualStationWaterDischargeDecadeMetrics:
             timestamp_local__date__range=(self.start_date, self.end_date),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wddca_station1_expected = wdda_station1_agg["avg_total"]
-        wddca_station2_expected = wdda_station2_agg["avg_total"]
+        wddca_station1_expected = hydrological_round(wdda_station1_agg["avg_total"])
+        wddca_station2_expected = hydrological_round(wdda_station2_agg["avg_total"])
 
-        wddca_virtual_expected = (
-            float(wddca_station1_expected) * virtual_station_association_one.weight / 100.0
-            + float(wddca_station2_expected) * virtual_station_association_two.weight / 100.0
+        wddca_virtual_expected = hydrological_round(
+            wddca_station1_expected * virtual_station_association_one.weight / Decimal("100")
+            + wddca_station2_expected * virtual_station_association_two.weight / Decimal("100")
         )
 
         wddca_virtual_estimated = EstimationsWaterDischargeDecadeAverageVirtual.objects.get(

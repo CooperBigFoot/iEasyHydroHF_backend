@@ -1,4 +1,6 @@
 import pytest
+from django.test import Client
+from ninja_jwt.tokens import AccessToken
 from pytest_factoryboy import register
 
 from sapphire_backend.users.tests.factories import UserFactory
@@ -43,3 +45,9 @@ def user_with_only_first_name(db, user_factory):
 @pytest.fixture
 def user_with_only_last_name(db, user_factory):
     return user_factory.create(first_name="", last_name="Last", username="my_display_name", email="display@name.com")
+
+
+def get_api_client_for_user(user):
+    token = AccessToken.for_user(user)
+    client = Client(HTTP_AUTHORIZATION=f"Bearer {token}")
+    return client

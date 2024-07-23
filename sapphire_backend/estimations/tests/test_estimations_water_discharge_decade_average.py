@@ -7,7 +7,7 @@ from sapphire_backend.estimations.models import (
     EstimationsWaterDischargeDailyAverage,
     EstimationsWaterDischargeDecadeAverage,
 )
-from sapphire_backend.utils.rounding import custom_round
+from sapphire_backend.utils.rounding import custom_round, hydrological_round
 
 
 class TestHydroStationWaterDischargeDecadeAverageFirstTwoDecades:
@@ -27,7 +27,7 @@ class TestHydroStationWaterDischargeDecadeAverageFirstTwoDecades:
             timestamp_local__date__range=(date(2020, 2, 1), date(2020, 2, 10)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wddca_expected = wdda_queryset_agg["avg_total"]
+        wddca_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wddca_estimated = EstimationsWaterDischargeDecadeAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=first_decade_avg_date
@@ -51,7 +51,7 @@ class TestHydroStationWaterDischargeDecadeAverageFirstTwoDecades:
             timestamp_local__date__range=(date(2020, 2, 11), date(2020, 2, 20)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wddca_expected = wdda_queryset_agg["avg_total"]
+        wddca_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wddca_estimated = EstimationsWaterDischargeDecadeAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=second_decade_avg_date
@@ -77,7 +77,7 @@ class TestHydroStationWaterDischargeDecadeAverageThirdDecade:
             timestamp_local__date__range=(date(2021, 2, 21), date(2021, 2, 28)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wddca_expected = wdda_queryset_agg["avg_total"]
+        wddca_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wddca_estimated = EstimationsWaterDischargeDecadeAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=third_decade_avg_date
@@ -101,7 +101,7 @@ class TestHydroStationWaterDischargeDecadeAverageThirdDecade:
             timestamp_local__date__range=(date(2020, 2, 21), date(2020, 2, 29)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wddca_expected = wdda_queryset_agg["avg_total"]
+        wddca_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wddca_estimated = EstimationsWaterDischargeDecadeAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=third_decade_avg_date
@@ -125,7 +125,7 @@ class TestHydroStationWaterDischargeDecadeAverageThirdDecade:
             timestamp_local__date__range=(date(2020, 3, 21), date(2020, 3, 31)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wddca_expected = wdda_queryset_agg["avg_total"]
+        wddca_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wddca_estimated = EstimationsWaterDischargeDecadeAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=third_decade_avg_date
@@ -149,7 +149,7 @@ class TestHydroStationWaterDischargeDecadeAverageThirdDecade:
             timestamp_local__date__range=(date(2020, 4, 21), date(2020, 4, 30)),
         ).aggregate(avg_total=Avg("avg_value"))
 
-        wddca_expected = wdda_queryset_agg["avg_total"]
+        wddca_expected = hydrological_round(wdda_queryset_agg["avg_total"])
 
         wddca_estimated = EstimationsWaterDischargeDecadeAverage.objects.get(
             station_id=manual_hydro_station_kyrgyz.id, timestamp_local__date=third_decade_avg_date

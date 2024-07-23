@@ -1,7 +1,7 @@
 import logging
 
 from django.contrib.admin.views.decorators import staff_member_required
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.db import IntegrityError
 from django.http import Http404
 from django.utils.translation import gettext_lazy as _
@@ -12,6 +12,7 @@ from pydantic import ValidationError as PydanticValidationError
 from sapphire_backend.bulletins.api import BulletinsAPIController
 from sapphire_backend.estimations.api import DischargeModelsAPIController, EstimationsAPIController
 from sapphire_backend.metrics.api import (
+    BulkDataAPIController,
     HydrologicalNormsAPIController,
     HydroMetricsAPIController,
     MeteoMetricsAPIController,
@@ -47,6 +48,7 @@ api.register_controllers(HydroMetricsAPIController)
 api.register_controllers(ForecastStatusAPIController)
 api.register_controllers(MeteoMetricsAPIController)
 api.register_controllers(OperationalJournalAPIController)
+api.register_controllers(BulkDataAPIController)
 api.register_controllers(OrganizationsAPIController)
 api.register_controllers(RegionsAPIController)
 api.register_controllers(MeteoStationsAPIController)
@@ -96,3 +98,9 @@ def telegram_parse_error(request, exc):
 def discharge_norm_parse_error(request, exc):
     logging.error(str(exc))
     return api.create_response(request, {"detail": str(exc), "code": "invalid_norm_file"}, status=400)
+
+
+@api.exception_handler(PermissionDenied)
+def permission_denied_error(request, exc):
+    logging.error(f"{exc!r}")
+    return api.create_response(request, {"detail": f"{exc!r}", "code": "forbidden"}, status=403)

@@ -20,12 +20,16 @@ from sapphire_backend.stations.models import HydrologicalStation, Meteorological
 from sapphire_backend.telegrams.exceptions import TelegramParserException
 from sapphire_backend.telegrams.parser import KN15TelegramParser
 from sapphire_backend.telegrams.schema import NewOldMetrics, TelegramBulkWithDatesInputSchema
+from sapphire_backend.users.models import User
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.rounding import custom_ceil, custom_round
 
 
 def get_parsed_telegrams_data(
-    encoded_telegrams_dates: TelegramBulkWithDatesInputSchema, organization_uuid: str, save_telegrams: bool = True
+    encoded_telegrams_dates: TelegramBulkWithDatesInputSchema,
+    organization_uuid: str,
+    save_telegrams: bool = True,
+    user: User = None,
 ) -> dict:
     """
     Parse telegrams and add more context
@@ -39,7 +43,7 @@ def get_parsed_telegrams_data(
         telegram = telegram_input.raw
         override_date = telegram_input.override_date
         parser = KN15TelegramParser(
-            telegram, organization_uuid=organization_uuid, store_parsed_telegram=save_telegrams
+            telegram, organization_uuid=organization_uuid, store_parsed_telegram=save_telegrams, user=user
         )
         try:
             decoded = parser.parse()
