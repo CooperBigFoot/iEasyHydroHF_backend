@@ -24,6 +24,8 @@ def custom_round(value: float | Decimal | None, ndigits: int | None = None) -> f
 
 
 def hydrological_round(number: Decimal | float | int):
+    if number is None:
+        return None
     number = Decimal(str(number))
     if number == Decimal("0"):
         return Decimal("0.000")

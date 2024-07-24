@@ -3,8 +3,8 @@ from django.utils.translation import gettext_lazy as _
 
 from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, UUIDMixin
 
-from .choices import BulletinTagType, BulletinType
-from .managers import BulletinTemplateQuerySet, BulletinTemplateTagQuerySet
+from .choices import BulletinType
+from .managers import BulletinTemplateQuerySet
 
 
 def bulletin_upload_path(instance, filename):
@@ -53,23 +53,3 @@ class BulletinTemplate(UUIDMixin, CreateLastModifiedDateMixin, models.Model):
                 name="unique_default_per_organization_and_type",
             )
         ]
-
-
-class BulletinTemplateTag(UUIDMixin, models.Model):
-    bulletins = models.ManyToManyField(BulletinTemplate, verbose_name=_("Bulletin"), related_name="tags")
-    name = models.CharField(verbose_name=_("Tag name"), max_length=200)
-    description = models.TextField(verbose_name=_("Tag description"))
-    type = models.CharField(
-        verbose_name=_("Tag type"), choices=BulletinTagType, default=BulletinTagType.DATA, max_length=2
-    )
-    is_default = models.BooleanField(verbose_name=_("Is default?"), default=True)
-
-    objects = BulletinTemplateTagQuerySet.as_manager()
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        verbose_name = _("Bulletin template tag")
-        verbose_name_plural = _("Bulletin template tags")
-        indexes = [models.Index(fields=["uuid"], name="bulletin_template_tag_uuid_idx")]

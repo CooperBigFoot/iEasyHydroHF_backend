@@ -1,6 +1,8 @@
 from django.conf import settings
 from ieasyreports.core.tags import Tag
 
+from sapphire_backend.utils.rounding import hydrological_round
+
 from .utils import get_trend, get_value
 
 discharge_morning = Tag(
@@ -10,6 +12,8 @@ discharge_morning = Tag(
     ),
     description="Morning (8 AM at local time) water discharge estimation for the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_morning_1 = Tag(
     "DISCHARGE_MORNING_1",
@@ -18,6 +22,8 @@ discharge_morning_1 = Tag(
     ),
     description="Morning (8 AM at local time) water discharge estimation for day before the selected day",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_morning_2 = Tag(
     "DISCHARGE_MORNING_2",
@@ -26,6 +32,8 @@ discharge_morning_2 = Tag(
     ),
     description="Morning (8 AM at local time) water discharge estimation for 2 days before the selected day",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_morning_trend = Tag(
     "DISCHARGE_MORNING_TREND",
@@ -38,6 +46,7 @@ discharge_morning_trend = Tag(
     ),
     description="Water discharge morning (8 AM at local time) trend: selected date - previous day value",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    data=True,
 )
 discharge_evening = Tag(
     "DISCHARGE_EVENING",
@@ -46,6 +55,8 @@ discharge_evening = Tag(
     ),
     description="Evening (8 PM at local time) water discharge estimation for the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_evening_1 = Tag(
     "DISCHARGE_EVENING_1",
@@ -54,6 +65,8 @@ discharge_evening_1 = Tag(
     ),
     description="Evening (8 PM at local time) water discharge estimation for day before the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_evening_2 = Tag(
     "DISCHARGE_EVENING_2",
@@ -62,6 +75,8 @@ discharge_evening_2 = Tag(
     ),
     description="Evening (8 PM at local time) water discharge estimation for 2 days before the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_evening_trend = Tag(
     "DISCHARGE_EVENING_TREND",
@@ -74,30 +89,38 @@ discharge_evening_trend = Tag(
     ),
     description="Water discharge evening (8 PM at local time) trend: selected date - previous day value",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    data=True,
 )
 discharge_daily = Tag(
-    "WATER_DISCHARGE_DAILY",
+    "DISCHARGE_DAILY",
     lambda **kwargs: get_value("discharge_average", kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"], 0),
     description="Average daily discharge level estimation for the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_daily_1 = Tag(
-    "WATER_DISCHARGE_DAILY_1",
+    "DISCHARGE_DAILY_1",
     lambda **kwargs: get_value("discharge_average", kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"], 1),
     description="Average daily discharge level estimation for the day before the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_daily_2 = Tag(
-    "WATER_DISCHARGE_DAILY_2",
+    "DISCHARGE_DAILY_2",
     lambda **kwargs: get_value("discharge_average", kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"], 2),
     description="Average daily discharge level estimation for 2 days before the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_daily_trend = Tag(
-    "WATER_DISCHARGE_DAILY_TREND",
+    "DISCHARGE_DAILY_TREND",
     lambda **kwargs: get_trend("discharge_daily", kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"]),
     description="Water discharge daily average estimation trend: selected date - previous day value",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    data=True,
 )
 discharge_measurement = Tag(
     "DISCHARGE_MEASUREMENT",
@@ -106,6 +129,8 @@ discharge_measurement = Tag(
     ),
     description="Discharge measurement (group 966) on the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_fiveday = Tag(
     "DISCHARGE_FIVEDAY",
@@ -114,6 +139,8 @@ discharge_fiveday = Tag(
     ),
     description="Current 5-day period average discharge for the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_fiveday_1 = Tag(
     "DISCHARGE_FIVEDAY_1",
@@ -122,6 +149,8 @@ discharge_fiveday_1 = Tag(
     ),
     description="Previous 5-day period average discharge for the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_decade = Tag(
     "DISCHARGE_DECADE",
@@ -130,6 +159,8 @@ discharge_decade = Tag(
     ),
     description="Current 10-day period average discharge for the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_decade_1 = Tag(
     "DISCHARGE_DECADE_1",
@@ -138,6 +169,8 @@ discharge_decade_1 = Tag(
     ),
     description="Previous 10-day period average discharge for the selected date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )
 discharge_norm = Tag(
     "DISCHARGE_NORM",
@@ -146,4 +179,6 @@ discharge_norm = Tag(
     ),
     description="Decadal or monthly norm, depending on the settings on the organization level.",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
 )

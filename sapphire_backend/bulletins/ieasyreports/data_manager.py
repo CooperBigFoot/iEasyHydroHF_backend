@@ -122,7 +122,7 @@ class IEasyHydroDataManager(DefaultDataManager):
 
         station_data = data.get(station_id, {})
 
-        return station_data.get(target_timestamp, "-")
+        return station_data.get(target_timestamp)
 
     @classmethod
     def get_trend_value(
@@ -131,7 +131,7 @@ class IEasyHydroDataManager(DefaultDataManager):
         current_value = cls.get_metric_value_for_tag(data_type, station_ids, station_id, target_date, 0, time_of_day)
         previous_value = cls.get_metric_value_for_tag(data_type, station_ids, station_id, target_date, 1, time_of_day)
         if current_value == "-" or previous_value == "-":
-            return "-"
+            return None
         return current_value - previous_value
 
     @classmethod
