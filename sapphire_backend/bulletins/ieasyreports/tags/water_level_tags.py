@@ -115,6 +115,7 @@ water_level_daily_1 = Tag(
     description="Average daily water level for the day before the selected date",
     custom_number_format_fn=custom_ceil,
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    data=True,
 )
 water_level_daily_2 = Tag(
     "WATER_LEVEL_DAILY_2",

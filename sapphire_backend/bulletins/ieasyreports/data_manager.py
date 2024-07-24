@@ -166,7 +166,7 @@ class IEasyHydroDataManager(DefaultDataManager):
 
         cache_key = f"discharge_norm_{','.join(map(str, station_uuids))}_{target_date.strftime('%Y-%m-%d')}"
         if cache_key in cls.data_cache:
-            return cls.data_cache[cache_key].get(station_id, "-")
+            return cls.data_cache[cache_key].get(station_id)
 
         if norm_type == NormType.DECADAL:
             ordinal_number = PentadDecadeHelper.calculate_decade_from_the_date_in_year(target_date)
