@@ -85,7 +85,7 @@ class BulletinsAPIController:
                     output_report = template_generator.generate_report(
                         list_objects=stations, context=context, as_stream=True
                     )
-                    report_filename = f"daily_bulletin_{int(time())}.xlsx"
+                    report_filename = f"{template.name}.xlsx"
                     zip_file.writestr(report_filename, output_report.read())
 
             zip_buffer.seek(0)

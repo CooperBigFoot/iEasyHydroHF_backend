@@ -181,4 +181,4 @@ class IEasyHydroDataManager(DefaultDataManager):
 
         cls.data_cache[cache_key] = organized_norm_data
 
-        return organized_norm_data.get(station_id, "-")
+        return organized_norm_data.get(station_id)
