@@ -1,13 +1,12 @@
 from datetime import datetime
 
 from django.conf import settings
-from ninja import Field, FilterSchema, ModelSchema, Schema
+from ninja import Field, FilterSchema, Schema
 
 from sapphire_backend.users.schema import UserOutputListSchema
 from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
 
 from .choices import BulletinType
-from .models import BulletinTemplateTag
 
 
 class BulletinTypeFilterSchema(FilterSchema):
@@ -45,13 +44,18 @@ class BulletinOutputSchema(UUIDSchemaMixin, BulletinBaseSchema):
             return f"{settings.BACKEND_URL}{obj.filename.url}"
 
 
-class BulletinTemplateTagSchema(ModelSchema):
-    class Meta:
-        model = BulletinTemplateTag
-        fields = ["id", "uuid", "name", "description", "is_default"]
+class BulletinTemplateTagSchema(Schema):
+    name: str
+    description: str
 
 
 class BulletinTemplateTagOutputSchema(Schema):
     general: list[BulletinTemplateTagSchema]
     header: list[BulletinTemplateTagSchema]
     data: list[BulletinTemplateTagSchema]
+
+
+class BulletinGenerateSchema(Schema):
+    date: datetime
+    stations: list[str]
+    bulletins: list[str]

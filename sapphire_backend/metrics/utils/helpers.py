@@ -13,39 +13,90 @@ from ...stations.models import HydrologicalStation, MeteorologicalStation, Virtu
 from ..choices import HydrologicalMetricName, MeteorologicalMetricName
 
 
-def calculate_decade_date(ordinal_number: int):
+class PentadDecadeHelper:
+    days_in_pentad = [3, 8, 13, 18, 23, 28]
     days_in_decade = [5, 15, 25]
-    idx = (ordinal_number - 1) % 3
-    month_increment = (ordinal_number - 1) // 3
 
-    month = month_increment + 1
-    day = days_in_decade[idx]
+    @classmethod
+    def calculate_decade_date(cls, ordinal_number: int) -> datetime:
+        """
+        Construct a datetime object from a given ordinal number of a decade in a year
 
-    return datetime(datetime.utcnow().year, month, day, 12, tzinfo=timezone.utc)
+        :param ordinal_number:
+        integer representing the absolute ordinal number of the decade in a year, ranged from 1 to 36
+        :return: datetime object for the given ordinal number
+        """
+        idx = (ordinal_number - 1) % 3
+        month_increment = (ordinal_number - 1) // 3
 
+        month = month_increment + 1
+        day = cls.days_in_decade[idx]
 
-def calculate_decade_from_day_in_month(day: int) -> int:
-    if 1 <= day <= 10:
-        decade = 1
-    elif 11 <= day <= 20:
-        decade = 2
-    elif 21 <= day <= 31:
-        decade = 3
-    else:
-        raise ValueError(f"Day {day} is an invalid day")
+        return datetime(datetime.utcnow().year, month, day, 12, tzinfo=timezone.utc)
 
-    return decade
+    @classmethod
+    def calculate_decade_from_the_day_in_month(cls, day: int) -> int:
+        """
+        Calculate the decade in a month from a given integer number representing a day in the month
 
+        :param day: integer representing the day in month
+        :return: integer representing the decade in a month, ranged from 1 to 3
+        """
+        if 1 <= day <= 31:
+            return (day - 1) // 10 + 1 if day <= 20 else 3
+        else:
+            raise ValueError(f"Day {day} is an invalid day")
 
-def calculate_decade_number(date: datetime) -> int:
-    month, day = date.month, date.day
+    @classmethod
+    def calculate_associated_decade_day_for_the_day_in_month(cls, day: int) -> int:
+        """
+        Calculate the day in month that the decade is associated with for the given day in month
 
-    decade = calculate_decade_from_day_in_month(day)
+        :param day: integer representing the day in month
+        :return: integer representing the day in a month associated with the decade
+        """
+        decade_num = cls.calculate_decade_from_the_day_in_month(day)
+        return cls.days_in_decade[decade_num - 1]
 
-    month_decrement = month - 1
-    ordinal_number = month_decrement * 3 + decade
+    @classmethod
+    def calculate_decade_from_the_date_in_year(cls, date: datetime) -> int:
+        """
+        Calculates the absolute decade number in a year from a given datetime object
 
-    return ordinal_number
+        :param date: datetime object for which to find the decade
+        :return: integer representing the decade in a year, ranged from 1 to 36
+        """
+        month, day = date.month, date.day
+        decade = cls.calculate_decade_from_the_day_in_month(day)
+
+        month_decrement = month - 1
+        ordinal_number = month_decrement * 3 + decade
+
+        return ordinal_number
+
+    @classmethod
+    def calculate_pentad_ordinal_number_from_the_day_in_month(cls, day: int) -> int:
+        """
+        Calculate the pentad in a month from a given integer number representing a day in the month
+
+        :param day: integer representing the day in month
+        :return: integer representing the pentad in a month, ranged from 1 to 6
+        """
+        if 1 <= day <= 31:
+            return (day - 1) // 5 + 1 if day <= 25 else 6
+        else:
+            raise ValueError(f"Day {day} is an invalid day")
+
+    @classmethod
+    def calculate_associated_pentad_day_from_the_day_int_month(cls, day: int) -> int:
+        """
+        Calculate the day in month that the pentad is associated with for the given day in month
+
+        :param day: integer representing the day in month
+        :return: integer representing the day in a month associated with the pentad
+        """
+        pentad_num = cls.calculate_pentad_ordinal_number_from_the_day_in_month(day)
+        return cls.days_in_pentad[pentad_num - 1]
 
 
 class OperationalJournalDataTransformer:
@@ -300,7 +351,7 @@ class OperationalJournalDataTransformer:
             }.items():
                 decade_dict[metric_name] = self._get_metric_value(decade_data, metric_code)
 
-            decade_dict["decade"] = calculate_decade_from_day_in_month(date.day)
+            decade_dict["decade"] = PentadDecadeHelper.calculate_decade_from_the_day_in_month(date.day)
             decade_dict["id"] = date.strftime("%Y-%m-%d")
             results.append(decade_dict)
 
@@ -325,7 +376,7 @@ class OperationalJournalDataTransformer:
             }.items():
                 decade_dict[metric_name] = self._get_metric_value(decade_data, metric_code)
 
-            decade_dict["decade"] = calculate_decade_from_day_in_month(date.day)
+            decade_dict["decade"] = PentadDecadeHelper.calculate_decade_from_the_day_in_month(date.day)
             decade_dict["id"] = date.strftime("%Y-%m-%d")
             results.append(decade_dict)
 

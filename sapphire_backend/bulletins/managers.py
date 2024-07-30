@@ -1,6 +1,6 @@
 from django.db.models import QuerySet
 
-from .choices import BulletinTagType, BulletinType
+from .choices import BulletinType
 
 
 class BulletinTemplateQuerySet(QuerySet):
@@ -18,20 +18,3 @@ class BulletinTemplateQuerySet(QuerySet):
 
     def decadal(self):
         return self.filter(type=BulletinType.DECADAL)
-
-
-class BulletinTemplateTagQuerySet(QuerySet):
-    def for_template(self, template):
-        return self.filter(bulletins=template)
-
-    def default(self):
-        return self.filter(is_default=True)
-
-    def general(self):
-        return self.filter(type=BulletinTagType.GENERAL)
-
-    def data(self):
-        return self.filter(type=BulletinTagType.DATA)
-
-    def header(self):
-        return self.filter(type=BulletinTagType.HEADER)

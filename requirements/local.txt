@@ -17,7 +17,7 @@ tqdm==4.66.4  # https://tqdm.github.io/
 
 # Documentation
 # ------------------------------------------------------------------------------
-sphinx==7.3.7  # https://github.com/sphinx-doc/sphinx
+sphinx==7.4.7  # https://github.com/sphinx-doc/sphinx
 sphinx-autobuild==2024.4.16 # https://github.com/GaretJax/sphinx-autobuild
 
 # Code quality
