@@ -69,9 +69,10 @@ DJANGO_APPS = [
     "django.contrib.admin",
     "django.forms",
 ]
-THIRD_PARTY_APPS = ["ninja", "ninja_extra", "ninja_jwt", "ninja_jwt.token_blacklist", "corsheaders"]
+THIRD_PARTY_APPS = ["ninja", "ninja_extra", "ninja_jwt", "ninja_jwt.token_blacklist", "corsheaders", "ieasyreports"]
 
 LOCAL_APPS = [
+    "sapphire_backend.bulletins",
     "sapphire_backend.organizations",
     "sapphire_backend.stations",
     "sapphire_backend.users",
@@ -248,5 +249,12 @@ CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
 # corsheaders
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+CORS_EXPOSE_HEADERS = ["Content-Disposition"]
 
 MAX_IMAGE_SIZE = env.int("MAX_IMAGE_SIZE", 10)  # MB
+
+if "ieasyreports" in INSTALLED_APPS:
+    from ieasyreports.settings import ReportGeneratorSettings, TagSettings
+
+    IEASYREPORTS_CONF = ReportGeneratorSettings()
+    IEASYREPORTS_TAG_CONF = TagSettings()

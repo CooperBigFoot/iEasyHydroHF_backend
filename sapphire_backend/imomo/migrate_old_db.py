@@ -28,7 +28,7 @@ from sapphire_backend.metrics.choices import (
     NormType
 )
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric, HydrologicalNorm
-from sapphire_backend.metrics.utils.helpers import calculate_decade_number
+from sapphire_backend.metrics.utils.helpers import PentadDecadeHelper
 from sapphire_backend.organizations.models import Basin, Organization, Region
 from sapphire_backend.stations.models import (
     HydrologicalStation,
@@ -409,7 +409,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                     # empty value for some reason
                     continue
 
-                decade = calculate_decade_number(smart_datetime.local)
+                decade = PentadDecadeHelper.calculate_decade_from_the_date_in_year(smart_datetime.local)
                 if decade not in station_decades:
                     station_decades[decade] = [data_value]
                 else:
