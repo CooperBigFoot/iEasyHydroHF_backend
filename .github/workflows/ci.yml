@@ -104,6 +104,8 @@ jobs:
           echo 'INGESTION_FTP_PORT=${{ secrets.INGESTION_FTP_PORT }}' >> deployment/.backend.env
           echo 'INGESTION_FTP_USER=${{ secrets.INGESTION_FTP_USER }}' >> deployment/.backend.env
           echo 'INGESTION_FTP_PASSWORD=${{ secrets.INGESTION_FTP_PASSWORD }}' >> deployment/.backend.env
+          echo 'IEASYREPORTS_DATA_MANAGER_CLASS=${{ secrets.IEASYREPORTS_DATA_MANAGER_CLASS }}' >> deployment/.backend.env
+          echo 'IEASYREPORTS_TEMPLATE_GENERATOR_CLASS=${{ secrets.IEASYREPORTS_TEMPLATE_GENERATOR_CLASS }}' >> deployment/.backend.env
           echo '${{ secrets.EC2_STAGING_KEYPAIR }}' >> deployment/ec2_kp.pem
           chmod 400 deployment/ec2_kp.pem
       - name: EC2 install docker packages
