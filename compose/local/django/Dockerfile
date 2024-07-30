@@ -11,7 +11,9 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   # dependencies for building Python packages
   build-essential  \
   # psycopg dependencies
-  libpq-dev
+  libpq-dev \
+  # install git
+  git
 
 # Requirements are installed here to ensure they will be cached.
 COPY ./requirements .
@@ -39,8 +41,10 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   libpq-dev \
   cron  \
   nano \
-        # Translations dependencies
+  # Translations dependencies
   gettext \
+  # install Git \
+  git \
   # cleaning up unused files
   && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
   && rm -rf /var/lib/apt/lists/*
