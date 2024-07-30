@@ -1,3 +1,4 @@
+import logging
 import os.path
 from typing import Any
 
@@ -57,4 +58,4 @@ class Command(BaseCommand):
                 defaults={"filename": decadal_file},
             )
 
-        self.stdout.write(self.style.SUCCESS("Default bulletin templates created!"))
+        logging.info("Default bulletin templates successfully created!")
