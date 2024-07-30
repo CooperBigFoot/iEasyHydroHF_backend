@@ -14,18 +14,18 @@ odfpy==1.4.1
 django==5.0.6 # https://www.djangoproject.com/
 django-environ==0.11.2  # https://github.com/joke2k/django-environ
 django-model-utils==4.5.1  # https://github.com/jazzband/django-model-utils
-django-timezone-field==6.1.0  # https://github.com/mfogel/django-timezone-field/
+django-timezone-field==7.0  # https://github.com/mfogel/django-timezone-field/
 django-cors-headers==4.4.0  # https://github.com/adamchainz/django-cors-headers
 django-extensions==3.2.3  # https://github.com/django-extensions/django-extensions
 
 # API
 # ------------------------------------------------------------------------------W
 django-ninja==1.1.0  # https://github.com/vitalik/django-ninja
-django-ninja-jwt[crypto]==5.3.1  # https://github.com/eadwinCode/django-ninja-jwt
+django-ninja-jwt[crypto]==5.3.2  # https://github.com/eadwinCode/django-ninja-jwt
 django-ninja-extra==0.20.7  # https://github.com/eadwinCode/django-ninja-extra
 
 # static files handling
-whitenoise==6.6.0  # https://github.com/evansd/whitenoise
+whitenoise==6.7.0  # https://github.com/evansd/whitenoise
 
 # reporting
 git+https://github.com/hydrosolutions/ieasyreports.git@main
