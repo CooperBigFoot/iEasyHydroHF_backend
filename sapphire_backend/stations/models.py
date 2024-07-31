@@ -35,6 +35,7 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
         AUTOMATIC = "A", _("Automatic")
 
     name = models.CharField(verbose_name=_("Station name"), max_length=150)
+    secondary_name = models.CharField(verbose_name=_("Secondary name"), blank=True, max_length=150)
     description = models.TextField(verbose_name=_("Description"), blank=True)
     site = models.ForeignKey(
         "stations.Site",
@@ -82,6 +83,7 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
 
 class MeteorologicalStation(UUIDMixin, models.Model):
     name = models.CharField(verbose_name=_("Station name"), blank=False, max_length=150)
+    secondary_name = models.CharField(verbose_name=_("Secondary name"), blank=True, max_length=150)
     station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=False)
     site = models.ForeignKey(
         "stations.Site",
@@ -159,6 +161,7 @@ class Remark(UUIDMixin, CreateLastModifiedDateMixin, models.Model):
 
 class VirtualStation(UUIDMixin, LocationMixin, models.Model):
     name = models.CharField(verbose_name=_("Virtual station name"), blank=False, max_length=150)
+    secondary_name = models.CharField(verbose_name=_("Secondary name"), blank=True, max_length=150)
     description = models.TextField(verbose_name=_("Description"), blank=True)
     station_code = models.CharField(verbose_name=_("Station code"), max_length=100, blank=False, unique=True)
     hydro_stations = models.ManyToManyField(
