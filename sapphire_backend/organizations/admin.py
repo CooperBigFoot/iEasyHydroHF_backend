@@ -13,7 +13,7 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 @admin.register(Basin)
 class BasinAdmin(admin.ModelAdmin):
-    list_display = ["name", "secondary_name", "uuid"]
+    list_display = ["name", "secondary_name", "uuid", "bulletin_order"]
     list_filter = ["organization"]
     search_fields = ["name"]
     readonly_fields = ["uuid"]
@@ -21,7 +21,7 @@ class BasinAdmin(admin.ModelAdmin):
 
 @admin.register(Region)
 class RegionAdmin(admin.ModelAdmin):
-    list_display = ["name", "secondary_name", "uuid"]
+    list_display = ["name", "secondary_name", "uuid", "bulletin_order"]
     list_filter = ["organization"]
     search_fields = ["name"]
     readonly_fields = ["uuid"]
