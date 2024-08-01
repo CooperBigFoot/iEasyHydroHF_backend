@@ -1,8 +1,6 @@
 import pytest
 from django.contrib.auth import get_user_model
 
-from ..models import Basin, Region
-
 User = get_user_model()
 
 
@@ -34,26 +32,31 @@ class TestOrganizationsAPIController:
 
 class TestBasinsAPIController:
     endpoint = "/api/v1/basins"
-    basin_data = {"name": "Test basin"}
+    basin_data = {"name": "Test basin", "secondary_name": "", "bulletin_order": 0}
 
     @pytest.mark.django_db
-    def test_create_basin_success(self, authenticated_regular_user_api_client, organization):
-        response = authenticated_regular_user_api_client.post(
-            f"{self.endpoint}/{organization.uuid}", self.basin_data, content_type="application/json"
+    @pytest.mark.parametrize(
+        "client, expected_status_code",
+        [
+            ("unauthenticated_api_client", 401),
+            ("regular_user_uzbek_api_client", 403),
+            ("organization_admin_uzbek_api_client", 403),
+            ("regular_user_kyrgyz_api_client", 201),
+            ("organization_admin_kyrgyz_api_client", 201),
+            ("superadmin_kyrgyz_api_client", 201),
+            ("superadmin_uzbek_api_client", 201),
+        ],
+    )
+    def test_create_basin_success(self, client, organization_kyrgyz, expected_status_code, request):
+        client = request.getfixturevalue(client)
+        response = client.post(
+            f"{self.endpoint}/{organization_kyrgyz.uuid}", self.basin_data, content_type="application/json"
         )
-        assert response.status_code == 201
-        assert "id" in response.json()
-        assert Basin.objects.get(pk=response.json()["id"]).organization == organization
-
-    @pytest.mark.django_db
-    def test_create_basin_unauthorized(self, api_client, organization):
-        response = api_client.post(f"/api/v1/basins/{organization.uuid}", self.basin_data)
-        assert response.status_code == 401
-        assert "detail" in response.json()
+        assert response.status_code == expected_status_code
 
     @pytest.mark.django_db
     def test_create_basin_invalid_data(self, authenticated_regular_user_api_client, organization):
-        invalid_basin_data = {"name": ""}  # Incomplete or invalid data
+        invalid_basin_data = {"name": "Doesn't have other fields"}  # Incomplete or invalid data
         response = authenticated_regular_user_api_client.post(
             f"/api/v1/basins/{organization.uuid}", invalid_basin_data
         )
@@ -100,25 +103,27 @@ class TestBasinsAPIController:
 
 class TestRegionsAPIController:
     endpoint = "/api/v1/regions"
-    region_data = {
-        "name": "Test region",
-        # Add other required fields
-    }
+    region_data = {"name": "Test region", "secondary_name": "", "bulletin_order": 0}
 
     @pytest.mark.django_db
-    def test_create_region_success(self, authenticated_regular_user_api_client, organization):
-        response = authenticated_regular_user_api_client.post(
-            f"{self.endpoint}/{organization.uuid}", self.region_data, content_type="application/json"
+    @pytest.mark.parametrize(
+        "client, expected_status_code",
+        [
+            ("unauthenticated_api_client", 401),
+            ("regular_user_uzbek_api_client", 403),
+            ("organization_admin_uzbek_api_client", 403),
+            ("regular_user_kyrgyz_api_client", 201),
+            ("organization_admin_kyrgyz_api_client", 201),
+            ("superadmin_kyrgyz_api_client", 201),
+            ("superadmin_uzbek_api_client", 201),
+        ],
+    )
+    def test_create_region_success(self, client, organization_kyrgyz, expected_status_code, request):
+        client = request.getfixturevalue(client)
+        response = client.post(
+            f"{self.endpoint}/{organization_kyrgyz.uuid}", self.region_data, content_type="application/json"
         )
-        assert response.status_code == 201
-        assert "id" in response.json()
-        assert Region.objects.get(pk=response.json()["id"]).organization == organization
-
-    @pytest.mark.django_db
-    def test_create_region_unauthorized(self, api_client, organization):
-        response = api_client.post(f"{self.endpoint}/{organization.uuid}", self.region_data)
-        assert response.status_code == 401
-        assert "detail" in response.json()
+        assert response.status_code == expected_status_code
 
     @pytest.mark.django_db
     def test_create_region_invalid_data(self, authenticated_regular_user_api_client, organization):

@@ -50,7 +50,7 @@ class BasinsAPIController:
 
     @route.get("", response={200: list[BasinOutputSchema]})
     def get_organization_basins(self, request, organization_uuid: str):
-        return Basin.objects.filter(organization=organization_uuid)
+        return Basin.objects.filter(organization=organization_uuid).order_by("-bulletin_order")
 
     @route.put("{basin_uuid}", response={200: BasinOutputSchema, 404: Message})
     def update_basin(self, request, organization_uuid: str, basin_uuid: str, basin_data: BasinInputSchema):
@@ -91,7 +91,7 @@ class RegionsAPIController:
 
     @route.get("", response={200: list[RegionOutputSchema]})
     def get_organization_regions(self, request, organization_uuid: str):
-        return Region.objects.filter(organization=organization_uuid)
+        return Region.objects.filter(organization=organization_uuid).order_by("-bulletin_order")
 
     @route.put("{region_uuid}", response={200: RegionOutputSchema, 404: Message})
     def update_region(self, request, organization_uuid: str, region_uuid: str, region_data: RegionInputSchema):

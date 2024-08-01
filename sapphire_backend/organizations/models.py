@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from timezone_field import TimeZoneField
 
 from sapphire_backend.metrics.choices import NormType
-from sapphire_backend.utils.mixins.models import UUIDMixin
+from sapphire_backend.utils.mixins.models import BulletinOrderMixin, UUIDMixin
 
 
 class Organization(UUIDMixin, models.Model):
@@ -17,6 +17,7 @@ class Organization(UUIDMixin, models.Model):
         RUSSIAN = "ru", _("Russian")
 
     name = models.CharField(verbose_name=_("Organization name"), max_length=100)
+    secondary_name = models.CharField(verbose_name=_("Secondary name"), blank=True, max_length=150)
     description = models.TextField(verbose_name=_("Description"), blank=True, default="")
     url = models.URLField(verbose_name=_("Organization URL"), blank=True)
 
@@ -61,8 +62,9 @@ class Organization(UUIDMixin, models.Model):
         return self.name
 
 
-class Basin(UUIDMixin, models.Model):
+class Basin(UUIDMixin, BulletinOrderMixin, models.Model):
     name = models.CharField(verbose_name=_("Basin"), blank=False, max_length=200)
+    secondary_name = models.CharField(verbose_name=_("Secondary name"), blank=True, max_length=150)
     organization = models.ForeignKey(
         "organizations.Organization",
         to_field="uuid",
@@ -80,8 +82,9 @@ class Basin(UUIDMixin, models.Model):
         return self.name
 
 
-class Region(UUIDMixin, models.Model):
+class Region(UUIDMixin, BulletinOrderMixin, models.Model):
     name = models.CharField(verbose_name=_("Region"), blank=False, max_length=200)
+    secondary_name = models.CharField(verbose_name=_("Secondary name"), blank=True, max_length=150)
     organization = models.ForeignKey(
         "organizations.Organization",
         to_field="uuid",
