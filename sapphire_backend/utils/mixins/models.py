@@ -63,3 +63,10 @@ class ForecastToggleMixin(models.Model):
 
     class Meta:
         abstract = True
+
+
+class BulletinOrderMixin(models.Model):
+    bulletin_order = models.PositiveIntegerField(verbose_name=_("Bulletin order"), default=0)
+
+    class Meta:
+        abstract = True

@@ -32,7 +32,7 @@ class OrganizationOutputListSchema(UUIDSchemaMixin, Schema):
 class BasinInputSchema(ModelSchema):
     class Meta:
         model = Basin
-        fields = ["name", "secondary_name"]
+        fields = ["name", "secondary_name", "bulletin_order"]
 
 
 class BasinOutputSchema(BasinInputSchema):
@@ -47,7 +47,7 @@ class BasinOutputSchema(BasinInputSchema):
 class RegionInputSchema(ModelSchema):
     class Meta:
         model = Region
-        fields = ["name", "secondary_name"]
+        fields = ["name", "secondary_name", "bulletin_order"]
 
 
 class RegionOutputSchema(RegionInputSchema):

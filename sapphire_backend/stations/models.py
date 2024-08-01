@@ -5,7 +5,12 @@ from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, ForecastToggleMixin, UUIDMixin
+from sapphire_backend.utils.mixins.models import (
+    BulletinOrderMixin,
+    CreateLastModifiedDateMixin,
+    ForecastToggleMixin,
+    UUIDMixin,
+)
 
 from .managers import HydroStationQuerySet, MeteoStationQuerySet, VirtualStationQuerySet
 from .mixins import LocationMixin
@@ -29,7 +34,7 @@ def get_timezone_from_site(site: Site) -> ZoneInfo:
     return site.timezone or site.organization.timezone or ZoneInfo(settings.TIME_ZONE)
 
 
-class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
+class HydrologicalStation(UUIDMixin, ForecastToggleMixin, BulletinOrderMixin, models.Model):
     class StationType(models.TextChoices):
         MANUAL = "M", _("Manual")
         AUTOMATIC = "A", _("Automatic")
@@ -61,7 +66,6 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, models.Model):
         verbose_name=_("Historical maximal value of discharge"), blank=True, null=True
     )
     is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
-    bulletin_order = models.PositiveIntegerField(verbose_name=_("Bulletin order"), default=0)
 
     objects = HydroStationQuerySet.as_manager()
 
@@ -159,7 +163,7 @@ class Remark(UUIDMixin, CreateLastModifiedDateMixin, models.Model):
         return self.hydro_station or self.meteo_station
 
 
-class VirtualStation(UUIDMixin, LocationMixin, models.Model):
+class VirtualStation(UUIDMixin, LocationMixin, BulletinOrderMixin, models.Model):
     name = models.CharField(verbose_name=_("Virtual station name"), blank=False, max_length=150)
     secondary_name = models.CharField(verbose_name=_("Secondary name"), blank=True, max_length=150)
     description = models.TextField(verbose_name=_("Description"), blank=True)

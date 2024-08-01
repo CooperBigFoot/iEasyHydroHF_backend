@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from timezone_field import TimeZoneField
 
 from sapphire_backend.metrics.choices import NormType
-from sapphire_backend.utils.mixins.models import UUIDMixin
+from sapphire_backend.utils.mixins.models import BulletinOrderMixin, UUIDMixin
 
 
 class Organization(UUIDMixin, models.Model):
@@ -62,7 +62,7 @@ class Organization(UUIDMixin, models.Model):
         return self.name
 
 
-class Basin(UUIDMixin, models.Model):
+class Basin(UUIDMixin, BulletinOrderMixin, models.Model):
     name = models.CharField(verbose_name=_("Basin"), blank=False, max_length=200)
     secondary_name = models.CharField(verbose_name=_("Secondary name"), blank=True, max_length=150)
     organization = models.ForeignKey(
@@ -82,7 +82,7 @@ class Basin(UUIDMixin, models.Model):
         return self.name
 
 
-class Region(UUIDMixin, models.Model):
+class Region(UUIDMixin, BulletinOrderMixin, models.Model):
     name = models.CharField(verbose_name=_("Region"), blank=False, max_length=200)
     secondary_name = models.CharField(verbose_name=_("Secondary name"), blank=True, max_length=150)
     organization = models.ForeignKey(
