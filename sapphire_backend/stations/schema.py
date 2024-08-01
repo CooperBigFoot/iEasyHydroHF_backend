@@ -156,6 +156,10 @@ class MeteoStationStatsSchema(Schema):
 class VirtualStationBaseSchema(SiteBaseSchema, Schema):
     name: str
     secondary_name: str | None = ""
+    bulletin_order: int | None = 0
+    discharge_level_alarm: float | None = None
+    historical_discharge_minimum: float | None = None
+    historical_discharge_maximum: float | None = None
     description: str = ""
     station_code: str
 

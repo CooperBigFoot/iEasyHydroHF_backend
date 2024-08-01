@@ -171,6 +171,13 @@ class VirtualStation(UUIDMixin, LocationMixin, BulletinOrderMixin, models.Model)
     hydro_stations = models.ManyToManyField(
         "stations.HydrologicalStation", through="stations.VirtualStationAssociation", related_name="virtual_stations"
     )
+    discharge_level_alarm = models.FloatField(verbose_name=_("Dangerous discharge level"), blank=True, null=True)
+    historical_discharge_minimum = models.FloatField(
+        verbose_name=_("Historical minimal value of discharge"), blank=True, null=True
+    )
+    historical_discharge_maximum = models.FloatField(
+        verbose_name=_("Historical maximal value of discharge"), blank=True, null=True
+    )
     is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
 
     objects = VirtualStationQuerySet.as_manager()
