@@ -130,7 +130,7 @@ class IEasyHydroDataManager(DefaultDataManager):
     ):
         current_value = cls.get_metric_value_for_tag(data_type, station_ids, station_id, target_date, 0, time_of_day)
         previous_value = cls.get_metric_value_for_tag(data_type, station_ids, station_id, target_date, 1, time_of_day)
-        if current_value == "-" or previous_value == "-":
+        if current_value is None or previous_value is None:
             return None
         return current_value - previous_value
 
