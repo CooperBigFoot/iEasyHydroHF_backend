@@ -42,7 +42,7 @@ class BulletinsAPIController:
 
         return bulletin
 
-    @route.post("generate-daily-bulletin", response={200: str})
+    @route.post("generate-daily-bulletin", response={200: str, 400: Message})
     def generate_daily_bulletin(
         self, request: HttpRequest, organization_uuid: str, bulletin_input_data: BulletinGenerateSchema
     ):
@@ -54,6 +54,9 @@ class BulletinsAPIController:
         station_uuids = stations.values_list("uuid", flat=True)
 
         context = {"station_ids": station_ids, "station_uuids": station_uuids, "target_date": bulletin_input_data.date}
+
+        if not templates.exists():
+            return 400, {"detail": "Template(s) not found", "code": "templates_not_found"}
 
         if templates.count() == 1:
             template = templates.first()
