@@ -1,6 +1,7 @@
 import io
 import math
 import os
+from collections import defaultdict
 from datetime import datetime as dt
 from typing import Any
 
@@ -23,6 +24,7 @@ from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
+from sapphire_backend.utils.rounding import custom_ceil, hydrological_round
 
 from ..estimations.models import (
     EstimationsWaterDischargeDaily,
@@ -47,6 +49,7 @@ from .schema import (
     HydrologicalNormOutputSchema,
     HydrologicalNormTypeFiltersSchema,
     HydroMetricFilterSchema,
+    MeasuredDischargeMeasurementSchema,
     MeteoMetricFilterSchema,
     MeteorologicalManualInputSchema,
     MeteorologicalMetricOutputSchema,
@@ -70,6 +73,7 @@ from .utils.bulk_data import (
     write_bulk_data_virtual_sheets,
 )
 from .utils.helpers import (
+    HydrologicalYearResolver,
     OperationalJournalDataTransformer,
     create_norm_dataframe,
     hydro_station_uuids_belong_to_organization_uuid,
@@ -144,6 +148,33 @@ class HydroMetricsAPIController:
             return query_manager.time_bucket(**time_bucket_dict)
         except ValueError as e:
             return 400, {"detail": str(e), "code": "time_bucket_error"}
+
+    @route.get("{station_uuid}/measured-discharge", response={200: list[MeasuredDischargeMeasurementSchema]})
+    def get_measured_discharge_points(self, organization_uuid: str, station_uuid: str, year: int):
+        station = HydrologicalStation.objects.select_related("site__organization").get(uuid=station_uuid)
+        organization = station.site.organization
+        year_resolver = HydrologicalYearResolver(organization, year)
+        filter_dict = {
+            "station": station.id,
+            "timestamp_local__gte": year_resolver.get_start_date(),
+            "timestamp_local__lt": year_resolver.get_end_date(),
+            "metric_name__in": [
+                HydrologicalMetricName.WATER_LEVEL_DECADAL,
+                HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+            ],
+            "value_type": HydrologicalMeasurementType.MANUAL,
+        }
+        measurements = TimeseriesQueryManager(model=HydrologicalMetric, filter_dict=filter_dict).execute_query()
+
+        grouped_data = defaultdict(dict)
+
+        for entry in measurements:
+            grouped_data[entry.timestamp_local][entry.metric_name] = entry.avg_value
+
+        return [
+            {"date": str(date), "h": custom_ceil(values.get("WLDC")), "q": hydrological_round(values.get("WDD"))}
+            for date, values in grouped_data.items()
+        ]
 
 
 @api_controller(

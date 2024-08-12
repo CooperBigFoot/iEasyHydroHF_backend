@@ -5,7 +5,9 @@ import pandas as pd
 
 from sapphire_backend.metrics.choices import NormType
 from sapphire_backend.metrics.managers import HydrologicalNormQuerySet, MeteorologicalNormQuerySet
+from sapphire_backend.organizations.models import Organization
 from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitationCodeMapper
+from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
 from sapphire_backend.utils.rounding import hydrological_round
 
@@ -432,3 +434,29 @@ def meteo_station_uuids_belong_to_organization_uuid(station_uuids: list[str], or
 def virtual_station_uuids_belong_to_organization_uuid(station_uuids: list[str], org_uuid: str):
     uuids_set = set(station_uuids)
     return len(uuids_set) == VirtualStation.objects.filter(uuid__in=uuids_set, organization__uuid=org_uuid).count()
+
+
+class HydrologicalYearResolver:
+    def __init__(self, organization: Organization, year: int):
+        self.organization = organization
+        self.year = year
+
+    @property
+    def is_calendar_year(self):
+        return self.organization.year_type == Organization.YearType.CALENDAR
+
+    @property
+    def is_hydrological_year(self):
+        return self.organization.year_type == Organization.YearType.HYDROLOGICAL
+
+    def get_start_date(self) -> datetime:
+        if self.is_calendar_year:
+            return SmartDatetime(datetime(self.year, 1, 1), self.organization).local
+        else:
+            return SmartDatetime(datetime(self.year - 1, 10, 1), self.organization).local
+
+    def get_end_date(self) -> datetime:
+        if self.is_calendar_year:
+            return SmartDatetime(datetime(self.year + 1, 1, 1), self.organization).local
+        else:
+            return SmartDatetime(datetime(self.year, 10, 1), self.organization).local

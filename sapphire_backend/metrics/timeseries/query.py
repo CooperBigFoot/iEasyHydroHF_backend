@@ -15,7 +15,7 @@ class TimeseriesQueryManager:
         self,
         model: type[HydrologicalMetric] | type[MeteorologicalMetric],
         filter_dict: dict[str, str | list[str]] = None,
-        order_param: str = "timestamp",
+        order_param: str = "timestamp_local",
         order_direction: str = "DESC",
     ):
         self.model = self._set_model(model)
