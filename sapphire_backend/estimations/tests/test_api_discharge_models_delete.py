@@ -4,7 +4,7 @@ from sapphire_backend.estimations.models import DischargeModel
 
 
 class TestDischargeModelsDeleteAPI:
-    endpoint = "/api/v1/estimations/discharge-models/delete/{discharge_model_uuid}"
+    endpoint = "/api/v1/estimations/discharge-models/{discharge_model_uuid}/delete"
 
     @pytest.mark.parametrize(
         "client, expected_status_code",
