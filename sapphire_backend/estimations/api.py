@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from django.db.models import F
+from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
 from ninja import Query
 from ninja_extra import api_controller, route
@@ -94,14 +95,29 @@ class DischargeModelsAPIController:
         new_model.save()
         return 200, new_model
 
-    @route.delete("discharge-models/delete/{discharge_model_uuid}", response={200: DischargeModelDeleteOutputSchema})
+    @route.delete("discharge-models/{discharge_model_uuid}/delete", response={200: DischargeModelDeleteOutputSchema})
     def delete_discharge_model(self, request, discharge_model_uuid: str):
-        model = DischargeModel.objects.filter(uuid=discharge_model_uuid).get()
+        model = DischargeModel.objects.get(uuid=discharge_model_uuid)
         name = model.name
         model.delete()
 
         response = DischargeModelDeleteOutputSchema(name=name)
         return 200, response
+
+    @route.get("discharge-models/{discharge_model_uuid}/hq-table", response={200: list[list[float]]})
+    def get_hq_table_values(self, request: HttpRequest, discharge_model_uuid: str):
+        model = DischargeModel.objects.get(uuid=discharge_model_uuid)
+        values = []
+
+        for i in range(10):
+            row = []
+            for j in range(10):
+                number = i * 10 + j
+                value = model.estimate_discharge(number)
+                row.append(value)
+            values.append(row)
+
+        return values
 
 
 @api_controller(
