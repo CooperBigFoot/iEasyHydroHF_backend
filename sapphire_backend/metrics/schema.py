@@ -62,6 +62,12 @@ class HydrologicalMetricOutputSchema(Schema):
     value_code: int | None
 
 
+class MeasuredDischargeMeasurementSchema(Schema):
+    date: str
+    h: float
+    q: float
+
+
 class OperationalJournalDailyDataSchema(Schema):
     id: str
     date: str
