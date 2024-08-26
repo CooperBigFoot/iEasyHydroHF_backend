@@ -85,16 +85,21 @@ class UsersAPIController:
 
         created_assignments = []
 
-        for entry in data:
-            station_assignment_dict = entry.dict()
-            station_assignment_dict["assigned_by"] = user
-            station_assignment_dict["user_id"] = user_uuid
-            created_assignment = UserAssignedStation.objects.create(**station_assignment_dict)
-            created_assignments.append(created_assignment)
+        if len(data) == 0:
+            user.remove_assigned_stations()
+
+        else:
+            for entry in data:
+                station_assignment_dict = entry.dict()
+                station_assignment_dict["user_id"] = user_uuid
+                created_assignment, created = UserAssignedStation.objects.get_or_create(
+                    **station_assignment_dict, defaults={"assigned_by": user}
+                )
+                created_assignments.append(created_assignment)
 
         return 201, created_assignments
 
-    @route.get("{user_uuid}/assigned_stations", response={200: list[UserAssignedStationOutputSchema]})
+    @route.get("{user_uuid}/assigned-stations", response={200: list[UserAssignedStationOutputSchema]})
     def get_user_assigned_stations(self, request: HttpRequest, user_uuid: str):
         user = User.objects.get(uuid=user_uuid)
         return user.assigned_stations

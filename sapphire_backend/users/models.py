@@ -64,8 +64,12 @@ class User(UUIDMixin, AbstractUser):
         else:
             return self.username
 
+    def remove_assigned_stations(self):
+        self.assigned_stations.all().delete()
+
     def soft_delete(self):
         self.is_deleted = True
+        self.remove_assigned_stations()
         self.username = f"User {self.uuid}"
         self.email = "deleted@user.com"
         self.is_active = False

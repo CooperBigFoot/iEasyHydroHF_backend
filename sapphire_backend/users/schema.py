@@ -5,11 +5,7 @@ from django.contrib.auth import get_user_model
 from ninja import Field, Schema
 
 from sapphire_backend.organizations.schema import OrganizationOutputListSchema
-from sapphire_backend.stations.schema import (
-    HydrologicalStationNestedSchema,
-    MeteoStationNestedSchema,
-    VirtualStationNestedSchema,
-)
+from sapphire_backend.stations.models import HydrologicalStation, VirtualStation
 from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
 
 User = get_user_model()
@@ -52,13 +48,6 @@ class UserOutputListSchema(UserInputSchema, UserAvatarSchema, UUIDSchemaMixin):
     display_name: str = Field(None, alias="display_name")
 
 
-class UserOutputNestedSchema(UserAvatarSchema, UUIDSchemaMixin, Schema):
-    display_name: str = Field(None, alias="display_name")
-    username: str
-    email: str
-    id: int
-
-
 class UserOutputDetailSchema(UserOutputListSchema):
     id: int
     organization: OrganizationOutputListSchema | None = None
@@ -71,8 +60,22 @@ class UserAssignedStationInputSchema(Schema):
 
 
 class UserAssignedStationOutputSchema(Schema):
-    assigned_by: UserOutputNestedSchema
-    hydro_station: HydrologicalStationNestedSchema | None = None
-    meteo_station: MeteoStationNestedSchema | None = None
-    virtual_station: VirtualStationNestedSchema | None = None
+    id: int = Field(..., alias="station.id")
+    name: str = Field(..., alias="station.name")
+    station_code: str = Field(..., alias="station.station_code")
+    uuid: str
+    station_type: str | None
     created_date: datetime
+
+    @staticmethod
+    def resolve_uuid(obj):
+        return str(obj.station.uuid)
+
+    @staticmethod
+    def resolve_station_type(obj):
+        if isinstance(obj.station, HydrologicalStation):
+            return obj.station.station_type
+        elif isinstance(obj.station, VirtualStation):
+            return "V"
+        else:
+            return None
