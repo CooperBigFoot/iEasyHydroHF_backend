@@ -1,8 +1,15 @@
+from datetime import datetime
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from ninja import Field, Schema
 
 from sapphire_backend.organizations.schema import OrganizationOutputListSchema
+from sapphire_backend.stations.schema import (
+    HydrologicalStationNestedSchema,
+    MeteoStationNestedSchema,
+    VirtualStationNestedSchema,
+)
 from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
 
 User = get_user_model()
@@ -27,9 +34,8 @@ class UserUpdateSchema(UserInputSchema):
     is_active: bool | None = None
 
 
-class UserOutputListSchema(UserInputSchema, UUIDSchemaMixin):
+class UserAvatarSchema(Schema):
     avatar: str | None = None
-    display_name: str = Field(None, alias="display_name")
 
     @staticmethod
     def resolve_avatar(obj: User):
@@ -42,6 +48,31 @@ class UserOutputListSchema(UserInputSchema, UUIDSchemaMixin):
             return f"{settings.BACKEND_URL}{obj.avatar.url}"
 
 
+class UserOutputListSchema(UserInputSchema, UserAvatarSchema, UUIDSchemaMixin):
+    display_name: str = Field(None, alias="display_name")
+
+
+class UserOutputNestedSchema(UserAvatarSchema, UUIDSchemaMixin, Schema):
+    display_name: str = Field(None, alias="display_name")
+    username: str
+    email: str
+    id: int
+
+
 class UserOutputDetailSchema(UserOutputListSchema):
     id: int
     organization: OrganizationOutputListSchema | None = None
+
+
+class UserAssignedStationInputSchema(Schema):
+    hydro_station_id: str | None = None
+    meteo_station_id: str | None = None
+    virtual_station_id: str | None = None
+
+
+class UserAssignedStationOutputSchema(Schema):
+    assigned_by: UserOutputNestedSchema
+    hydro_station: HydrologicalStationNestedSchema | None = None
+    meteo_station: MeteoStationNestedSchema | None = None
+    virtual_station: VirtualStationNestedSchema | None = None
+    created_date: datetime

@@ -94,6 +94,14 @@ class HydroStationOutputDetailSchema(HydroStationBaseSchema, UUIDSchemaMixin):
     remarks: list[RemarkOutputSchema] = None
 
 
+class HydrologicalStationNestedSchema(UUIDSchemaMixin, Schema):
+    id: int
+    name: str
+    station_code: str
+    basin: str = Field(..., alias="site.basin.name")
+    region: str = Field(..., alias="site.region.name")
+
+
 class ForecastStatusSchema(Schema):
     daily_forecast: bool
     pentad_forecast: bool
@@ -153,6 +161,10 @@ class MeteoStationStatsSchema(Schema):
     total: int
 
 
+class MeteoStationNestedSchema(HydrologicalStationNestedSchema):
+    pass
+
+
 class VirtualStationBaseSchema(SiteBaseSchema, Schema):
     name: str
     secondary_name: str | None = ""
@@ -181,6 +193,14 @@ class VirtualStationListOutputSchema(VirtualStationBaseSchema, SiteBasinRegionOu
     id: int
     timezone: str | None = Field(None, alias="get_timezone_display")
     station_type: str = "V"
+
+
+class VirtualStationNestedSchema(UUIDSchemaMixin, Schema):
+    id: int
+    name: str
+    station_code: str
+    basin: str = Field(..., alias="basin.name")
+    region: str = Field(..., alias="region.name")
 
 
 class VirtualStationAssociationInputSchema(Schema):
