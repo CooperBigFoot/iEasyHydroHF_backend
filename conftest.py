@@ -12,17 +12,21 @@ from sapphire_backend.stations.tests.factories import (
     HydrologicalStationFactory,
     MeteorologicalStationFactory,
     SiteFactory,
+    VirtualStationAssociationFactory,
+    VirtualStationFactory,
 )
 from sapphire_backend.users.conftest import get_api_client_for_user
-from sapphire_backend.users.tests.factories import UserFactory
+from sapphire_backend.users.tests.factories import UserAssignedStationFactory, UserFactory
 
 register(SiteFactory)
 register(HydrologicalStationFactory)
+register(VirtualStationFactory)
 register(UserFactory)
 register(OrganizationFactory)
 register(BasinFactory)
 register(RegionFactory)
 register(FileStateFactory)
+register(UserAssignedStationFactory)
 User = get_user_model()
 
 
@@ -329,6 +333,33 @@ def automatic_hydro_station_backup(db, site_one):
         station_code="98765",
         name="Automatic Hydrological Station Backup",
     )
+
+
+@pytest.fixture
+def virtual_station_kyrgyz(db, organization_kyrgyz):
+    return VirtualStationFactory(organization=organization_kyrgyz, station_code="12345")
+
+
+@pytest.fixture
+def virtual_station_kyrgyz_association_one(db, manual_hydro_station_kyrgyz, virtual_station_kyrgyz):
+    return VirtualStationAssociationFactory(
+        virtual_station=virtual_station_kyrgyz, hydro_station=manual_hydro_station_kyrgyz, weight=100
+    )
+
+
+@pytest.fixture
+def virtual_station_uzbek(db, organization_uzbek):
+    return VirtualStationFactory(organization=organization_uzbek, station_code="54321")
+
+
+@pytest.fixture
+def kyrgyz_hydro_station_assignment(db, manual_hydro_station_kyrgyz, regular_user_kyrgyz):
+    return UserAssignedStationFactory(user=regular_user_kyrgyz, hydro_station=manual_hydro_station_kyrgyz)
+
+
+@pytest.fixture
+def kyrgyz_meteo_station_assignment(db, manual_meteo_station_kyrgyz, regular_user_kyrgyz):
+    return UserAssignedStationFactory(user=regular_user_kyrgyz, meteo_station=manual_meteo_station_kyrgyz)
 
 
 # FileState
