@@ -44,21 +44,6 @@ class UserAvatarSchema(Schema):
             return f"{settings.BACKEND_URL}{obj.avatar.url}"
 
 
-class UserOutputListSchema(UserInputSchema, UserAvatarSchema, UUIDSchemaMixin):
-    display_name: str = Field(None, alias="display_name")
-
-
-class UserOutputDetailSchema(UserOutputListSchema):
-    id: int
-    organization: OrganizationOutputListSchema | None = None
-
-
-class UserAssignedStationInputSchema(Schema):
-    hydro_station_id: str | None = None
-    meteo_station_id: str | None = None
-    virtual_station_id: str | None = None
-
-
 class UserAssignedStationOutputSchema(Schema):
     id: int = Field(..., alias="station.id")
     name: str = Field(..., alias="station.name")
@@ -79,3 +64,18 @@ class UserAssignedStationOutputSchema(Schema):
             return "V"
         else:
             return None
+
+
+class UserOutputListSchema(UserInputSchema, UserAvatarSchema, UUIDSchemaMixin):
+    display_name: str = Field(None, alias="display_name")
+
+
+class UserOutputDetailSchema(UserOutputListSchema):
+    id: int
+    organization: OrganizationOutputListSchema | None = None
+
+
+class UserAssignedStationInputSchema(Schema):
+    hydro_station_id: str | None = None
+    meteo_station_id: str | None = None
+    virtual_station_id: str | None = None

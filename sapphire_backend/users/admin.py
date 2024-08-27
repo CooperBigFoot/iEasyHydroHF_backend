@@ -21,3 +21,4 @@ class UserAssignedStationAdmin(admin.ModelAdmin):
     list_display = ["user", "hydro_station", "meteo_station", "virtual_station"]
     list_filter = ["user"]
     search_fields = ["user__username"]
+    readonly_fields = ["created_date"]

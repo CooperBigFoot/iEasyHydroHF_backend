@@ -77,7 +77,7 @@ class UsersAPIController:
 
         return 200, {"detail": _("User successfully deleted"), "code": "delete_success"}
 
-    @route.post("{user_uuid}/assigned-stations", response={201: list[UserAssignedStationOutputSchema]})
+    @route.post("{user_uuid}/assigned-stations-bulk-create", response={201: list[UserAssignedStationOutputSchema]})
     def assign_stations_to_user(
         self, request: HttpRequest, user_uuid: str, data: list[UserAssignedStationInputSchema]
     ):
@@ -85,19 +85,36 @@ class UsersAPIController:
 
         created_assignments = []
 
-        if len(data) == 0:
-            user.remove_assigned_stations()
+        user.remove_assigned_stations()
 
-        else:
-            for entry in data:
-                station_assignment_dict = entry.dict()
-                station_assignment_dict["user_id"] = user_uuid
-                created_assignment, created = UserAssignedStation.objects.get_or_create(
-                    **station_assignment_dict, defaults={"assigned_by": user}
-                )
-                created_assignments.append(created_assignment)
+        for entry in data:
+            station_assignment_dict = entry.dict()
+            station_assignment_dict["user_id"] = user_uuid
+            created_assignment, created = UserAssignedStation.objects.get_or_create(
+                **station_assignment_dict, defaults={"assigned_by": user}
+            )
+            created_assignments.append(created_assignment)
 
         return 201, created_assignments
+
+    @route.post(
+        "{user_uuid}/assigned-stations-single-toggle",
+        response={200: UserAssignedStationOutputSchema, 201: UserAssignedStationOutputSchema},
+    )
+    def toggle_single_assigned_station(
+        self, request: HttpRequest, user_uuid: str, data: UserAssignedStationInputSchema
+    ):
+        user = request.user
+        filter_dict = data.dict()
+        filter_dict["user_id"] = user_uuid
+        assigned_station, created = UserAssignedStation.objects.get_or_create(
+            **filter_dict, defaults={"assigned_by": user}
+        )
+        if created:
+            return 201, assigned_station
+        else:
+            assigned_station.delete()
+            return 200, assigned_station
 
     @route.get("{user_uuid}/assigned-stations", response={200: list[UserAssignedStationOutputSchema]})
     def get_user_assigned_stations(self, request: HttpRequest, user_uuid: str):
