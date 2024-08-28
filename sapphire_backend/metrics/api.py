@@ -161,6 +161,7 @@ class HydroMetricsAPIController:
             "metric_name__in": [
                 HydrologicalMetricName.WATER_LEVEL_DECADAL,
                 HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+                HydrologicalMetricName.RIVER_CROSS_SECTION_AREA,
             ],
             "value_type": HydrologicalMeasurementType.MANUAL,
         }
@@ -172,7 +173,12 @@ class HydroMetricsAPIController:
             grouped_data[entry.timestamp_local][entry.metric_name] = entry.avg_value
 
         return [
-            {"date": str(date), "h": custom_ceil(values.get("WLDC")), "q": hydrological_round(values.get("WDD"))}
+            {
+                "date": str(date),
+                "h": custom_ceil(values.get("WLDC")),
+                "q": hydrological_round(values.get("WDD")),
+                "f": hydrological_round(values.get("RCSA")),
+            }
             for date, values in grouped_data.items()
         ]
 
