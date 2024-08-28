@@ -14,13 +14,13 @@ class TestEstimationsAPI:
     @pytest.mark.parametrize("water_level_metrics_daily_generator", [(start_date, end_date)], indirect=True)
     def test_get_discharge_daily_average(
         self,
-        organization,
+        organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         regular_user_kyrgyz_api_client,
         water_level_metrics_daily_generator,
         discharge_model_manual_hydro_station_kyrgyz,
     ):
-        endpoint = f"/api/v1/estimations/{str(organization.uuid)}/discharge-daily-average"
+        endpoint = f"/api/v1/estimations/{str(organization_kyrgyz.uuid)}/discharge-daily-average"
 
         response = regular_user_kyrgyz_api_client.get(
             endpoint,

@@ -73,7 +73,7 @@ def regular_user_assigned_meteo_station(db, regular_user, manual_meteo_station):
 
 
 @pytest.fixture
-def regular_user_assigned_virtual_station(db, regular_user_kyrgyz, virtual_station_kyrgyz):
+def regular_user_assigned_virtual_station(db, regular_user, virtual_station):
     return UserAssignedStationFactory(
-        user=regular_user_kyrgyz, hydro_station=None, meteo_station=None, virtual_station=virtual_station_kyrgyz
+        user=regular_user, hydro_station=None, meteo_station=None, virtual_station=virtual_station
     )

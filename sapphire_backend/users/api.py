@@ -9,7 +9,7 @@ from ninja_jwt.authentication import JWTAuth
 
 from sapphire_backend.utils.mixins.files import UploadedLimitedSizeFile
 from sapphire_backend.utils.mixins.schemas import Message
-from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsOwner, IsSuperAdmin
+from sapphire_backend.utils.permissions import IsInTheSameOrganization, IsOrganizationAdmin, IsOwner, IsSuperAdmin
 
 from .models import UserAssignedStation
 from .schema import (
@@ -77,7 +77,11 @@ class UsersAPIController:
 
         return 200, {"detail": _("User successfully deleted"), "code": "delete_success"}
 
-    @route.post("{user_uuid}/assigned-stations-bulk-create", response={201: list[UserAssignedStationOutputSchema]})
+    @route.post(
+        "{user_uuid}/assigned-stations-bulk-create",
+        response={201: list[UserAssignedStationOutputSchema]},
+        permissions=[IsOwner | IsSuperAdmin | IsOrganizationAdmin],
+    )
     def assign_stations_to_user(
         self, request: HttpRequest, user_uuid: str, data: list[UserAssignedStationInputSchema]
     ):
@@ -100,6 +104,7 @@ class UsersAPIController:
     @route.post(
         "{user_uuid}/assigned-stations-single-toggle",
         response={200: UserAssignedStationOutputSchema, 201: UserAssignedStationOutputSchema},
+        permissions=[IsOwner | IsSuperAdmin | IsOrganizationAdmin],
     )
     def toggle_single_assigned_station(
         self, request: HttpRequest, user_uuid: str, data: UserAssignedStationInputSchema
@@ -116,7 +121,11 @@ class UsersAPIController:
             assigned_station.delete()
             return 200, assigned_station
 
-    @route.get("{user_uuid}/assigned-stations", response={200: list[UserAssignedStationOutputSchema]})
+    @route.get(
+        "{user_uuid}/assigned-stations",
+        response={200: list[UserAssignedStationOutputSchema]},
+        permissions=[IsOwner | IsSuperAdmin | IsInTheSameOrganization],
+    )
     def get_user_assigned_stations(self, request: HttpRequest, user_uuid: str):
         user = User.objects.get(uuid=user_uuid)
         return user.assigned_stations

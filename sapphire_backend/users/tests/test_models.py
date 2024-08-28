@@ -69,8 +69,8 @@ class TestUserAssignedStationModelController:
     def test_station_property_for_meteo(self, manual_meteo_station, regular_user_assigned_meteo_station):
         assert regular_user_assigned_meteo_station.station == manual_meteo_station
 
-    def test_station_property_for_virtual(self, virtual_station_kyrgyz, regular_user_assigned_virtual_station):
-        assert regular_user_assigned_virtual_station.station == virtual_station_kyrgyz
+    def test_station_property_for_virtual(self, virtual_station, regular_user_assigned_virtual_station):
+        assert regular_user_assigned_virtual_station.station == virtual_station
 
     def test_save_with_no_assigned_station(self, regular_user):
         with pytest.raises(ValidationError, match="You must assign a station"):
