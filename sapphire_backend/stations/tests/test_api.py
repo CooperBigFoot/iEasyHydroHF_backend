@@ -92,6 +92,7 @@ class TestVirtualStationsAPI:
                 "historical_discharge_minimum": None,
                 "historical_discharge_maximum": None,
                 "station_type": "V",
+                "is_assigned": False,
             },
             {
                 "basin": {
@@ -128,6 +129,7 @@ class TestVirtualStationsAPI:
                 "historical_discharge_minimum": None,
                 "historical_discharge_maximum": None,
                 "station_type": "V",
+                "is_assigned": False,
             },
         ]
 
@@ -206,6 +208,7 @@ class TestVirtualStationsAPI:
             "id": virtual_station_no_associations.id,
             "station_type": "V",
             "associations": [],
+            "is_assigned": False,
         }
 
         assert response.json() == EXPECTED_RESPONSE
@@ -242,6 +245,64 @@ class TestVirtualStationsAPI:
         ]
 
         assert response.json()["associations"] == EXPECTED_ASSOCIATIONS
+
+    def test_get_single_assigned_station_with_association(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        virtual_station_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        virtual_station_kyrgyz_association_one,
+        virtual_station_assignment_kyrgyz,
+    ):
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint_detail.format(organization_kyrgyz.uuid, virtual_station_kyrgyz.uuid)
+        )
+
+        EXPECTED_RESPONSE = {
+            "uuid": str(virtual_station_kyrgyz.uuid),
+            "basin": {
+                "name": virtual_station_kyrgyz.basin.name,
+                "secondary_name": "",
+                "id": virtual_station_kyrgyz.basin.id,
+                "bulletin_order": 0,
+                "uuid": str(virtual_station_kyrgyz.basin.uuid),
+            },
+            "region": {
+                "name": virtual_station_kyrgyz.region.name,
+                "secondary_name": "",
+                "id": virtual_station_kyrgyz.region.id,
+                "bulletin_order": 0,
+                "uuid": str(virtual_station_kyrgyz.region.uuid),
+            },
+            "country": virtual_station_kyrgyz.country,
+            "latitude": float(virtual_station_kyrgyz.latitude),
+            "longitude": float(virtual_station_kyrgyz.longitude),
+            "timezone": str(virtual_station_kyrgyz.timezone),
+            "elevation": virtual_station_kyrgyz.elevation,
+            "name": virtual_station_kyrgyz.name,
+            "secondary_name": "",
+            "description": virtual_station_kyrgyz.description,
+            "station_code": virtual_station_kyrgyz.station_code,
+            "bulletin_order": 0,
+            "discharge_level_alarm": None,
+            "historical_discharge_minimum": None,
+            "historical_discharge_maximum": None,
+            "id": virtual_station_kyrgyz.id,
+            "station_type": "V",
+            "associations": [
+                {
+                    "name": manual_hydro_station_kyrgyz.name,
+                    "id": manual_hydro_station_kyrgyz.id,
+                    "uuid": str(manual_hydro_station_kyrgyz.uuid),
+                    "weight": virtual_station_kyrgyz_association_one.weight,
+                    "station_code": manual_hydro_station_kyrgyz.station_code,
+                },
+            ],
+            "is_assigned": True,
+        }
+
+        assert response.json() == EXPECTED_RESPONSE
 
     def test_create_new_virtual_station_for_unauthorized_user(self, api_client, organization):
         response = api_client.post(
@@ -335,6 +396,7 @@ class TestVirtualStationsAPI:
             "uuid": str(station.uuid),
             "station_type": "V",
             "associations": [],
+            "is_assigned": False,
         }
 
         assert response.json() == EXPECTED_RESPONSE

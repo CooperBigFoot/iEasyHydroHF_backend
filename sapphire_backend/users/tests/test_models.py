@@ -1,3 +1,10 @@
+import pytest
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
+
+from ..models import UserAssignedStation
+
+
 class TestUserModelController:
     def test_display_name_for_user_with_first_and_last_name(self, inactive_user):
         assert inactive_user.display_name == "Inactive User"
@@ -46,3 +53,49 @@ class TestUserModelController:
         assert deleted_user.organization is None
         assert deleted_user.is_active is False
         assert deleted_user.is_deleted
+
+
+class TestUserAssignedStationModelController:
+    def test_model_fields(self, regular_user, manual_hydro_station, regular_user_assigned_hydro_station):
+        assert regular_user_assigned_hydro_station.user == regular_user
+        assert regular_user_assigned_hydro_station.hydro_station == manual_hydro_station
+        assert regular_user_assigned_hydro_station.meteo_station is None
+        assert regular_user_assigned_hydro_station.virtual_station is None
+        assert regular_user_assigned_hydro_station.assigned_by is None
+
+    def test_station_property_for_hydro(self, manual_hydro_station, regular_user_assigned_hydro_station):
+        assert regular_user_assigned_hydro_station.station == manual_hydro_station
+
+    def test_station_property_for_meteo(self, manual_meteo_station, regular_user_assigned_meteo_station):
+        assert regular_user_assigned_meteo_station.station == manual_meteo_station
+
+    def test_station_property_for_virtual(self, virtual_station, regular_user_assigned_virtual_station):
+        assert regular_user_assigned_virtual_station.station == virtual_station
+
+    def test_save_with_no_assigned_station(self, regular_user):
+        with pytest.raises(ValidationError, match="You must assign a station"):
+            UserAssignedStation.objects.create(
+                user=regular_user, hydro_station=None, meteo_station=None, virtual_station=None, assigned_by=None
+            )
+
+    def test_save_with_station_from_different_organization(
+        self, regular_user, manual_hydro_station_other_organization
+    ):
+        with pytest.raises(ValidationError, match="The assigned station and user must be in the same organization"):
+            UserAssignedStation.objects.create(
+                user=regular_user,
+                hydro_station=manual_hydro_station_other_organization,
+                meteo_station=None,
+                virtual_station=None,
+                assigned_by=None,
+            )
+
+    def test_save_with_multiple_stations_assigned(self, regular_user, manual_hydro_station, manual_meteo_station):
+        with pytest.raises(IntegrityError):
+            UserAssignedStation.objects.create(
+                user=regular_user,
+                hydro_station=manual_hydro_station,
+                meteo_station=manual_meteo_station,
+                virtual_station=None,
+                assigned_by=None,
+            )

@@ -5,6 +5,12 @@ from faker import Faker
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.organizations.tests.factories import OrganizationFactory
+from sapphire_backend.stations.tests.factories import (
+    HydrologicalStationFactory,
+    MeteorologicalStationFactory,
+    VirtualStationFactory,
+)
+from sapphire_backend.users.models import UserAssignedStation
 
 User = get_user_model()
 
@@ -31,3 +37,15 @@ class UserFactory(factory.django.DjangoModelFactory):
     user_role = User.UserRoles.REGULAR_USER
 
     organization = factory.SubFactory(OrganizationFactory)
+
+
+class UserAssignedStationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = UserAssignedStation
+        django_get_or_create = ("user", "hydro_station", "meteo_station", "virtual_station")
+
+    user = factory.SubFactory(UserFactory)
+    hydro_station = factory.SubFactory(HydrologicalStationFactory)
+    meteo_station = factory.SubFactory(MeteorologicalStationFactory)
+    virtual_station = factory.SubFactory(VirtualStationFactory)
+    assigned_by = factory.SubFactory(UserFactory)

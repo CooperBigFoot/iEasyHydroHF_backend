@@ -1,6 +1,7 @@
 import uuid
 
 from django.contrib.auth import get_user_model
+from django.http import HttpRequest
 from django.utils.translation import gettext as _
 from ninja import File
 from ninja_extra import api_controller, route
@@ -8,9 +9,15 @@ from ninja_jwt.authentication import JWTAuth
 
 from sapphire_backend.utils.mixins.files import UploadedLimitedSizeFile
 from sapphire_backend.utils.mixins.schemas import Message
-from sapphire_backend.utils.permissions import IsOrganizationAdmin, IsOwner, IsSuperAdmin
+from sapphire_backend.utils.permissions import IsInTheSameOrganization, IsOrganizationAdmin, IsOwner, IsSuperAdmin
 
-from .schema import UserOutputDetailSchema, UserUpdateSchema
+from .models import UserAssignedStation
+from .schema import (
+    UserAssignedStationInputSchema,
+    UserAssignedStationOutputSchema,
+    UserOutputDetailSchema,
+    UserUpdateSchema,
+)
 from .utils import can_update_role
 
 User = get_user_model()
@@ -69,6 +76,59 @@ class UsersAPIController:
         user.soft_delete()
 
         return 200, {"detail": _("User successfully deleted"), "code": "delete_success"}
+
+    @route.post(
+        "{user_uuid}/assigned-stations-bulk-create",
+        response={201: list[UserAssignedStationOutputSchema]},
+        permissions=[IsOwner | IsSuperAdmin | IsOrganizationAdmin],
+    )
+    def assign_stations_to_user(
+        self, request: HttpRequest, user_uuid: str, data: list[UserAssignedStationInputSchema]
+    ):
+        user = request.user
+
+        created_assignments = []
+
+        user.remove_assigned_stations()
+
+        for entry in data:
+            station_assignment_dict = entry.dict()
+            station_assignment_dict["user_id"] = user_uuid
+            created_assignment, created = UserAssignedStation.objects.get_or_create(
+                **station_assignment_dict, defaults={"assigned_by": user}
+            )
+            created_assignments.append(created_assignment)
+
+        return 201, created_assignments
+
+    @route.post(
+        "{user_uuid}/assigned-stations-single-toggle",
+        response={200: UserAssignedStationOutputSchema, 201: UserAssignedStationOutputSchema},
+        permissions=[IsOwner | IsSuperAdmin | IsOrganizationAdmin],
+    )
+    def toggle_single_assigned_station(
+        self, request: HttpRequest, user_uuid: str, data: UserAssignedStationInputSchema
+    ):
+        user = request.user
+        filter_dict = data.dict()
+        filter_dict["user_id"] = user_uuid
+        assigned_station, created = UserAssignedStation.objects.get_or_create(
+            **filter_dict, defaults={"assigned_by": user}
+        )
+        if created:
+            return 201, assigned_station
+        else:
+            assigned_station.delete()
+            return 200, assigned_station
+
+    @route.get(
+        "{user_uuid}/assigned-stations",
+        response={200: list[UserAssignedStationOutputSchema]},
+        permissions=[IsOwner | IsSuperAdmin | IsInTheSameOrganization],
+    )
+    def get_user_assigned_stations(self, request: HttpRequest, user_uuid: str):
+        user = User.objects.get(uuid=user_uuid)
+        return user.assigned_stations
 
     @route.delete(
         "bulk-delete/{user_uuids}",

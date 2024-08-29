@@ -1,3 +1,6 @@
+from datetime import datetime
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
@@ -12,17 +15,21 @@ from sapphire_backend.stations.tests.factories import (
     HydrologicalStationFactory,
     MeteorologicalStationFactory,
     SiteFactory,
+    VirtualStationAssociationFactory,
+    VirtualStationFactory,
 )
 from sapphire_backend.users.conftest import get_api_client_for_user
-from sapphire_backend.users.tests.factories import UserFactory
+from sapphire_backend.users.tests.factories import UserAssignedStationFactory, UserFactory
 
 register(SiteFactory)
 register(HydrologicalStationFactory)
+register(VirtualStationFactory)
 register(UserFactory)
 register(OrganizationFactory)
 register(BasinFactory)
 register(RegionFactory)
 register(FileStateFactory)
+register(UserAssignedStationFactory)
 User = get_user_model()
 
 
@@ -30,10 +37,10 @@ User = get_user_model()
 @pytest.fixture
 def organization(db, organization_factory=OrganizationFactory):
     return organization_factory.create(
-        name="Kyrgyz Hydromet",
-        language=Organization.Language.RUSSIAN,
+        name="Encode Organization",
+        language=Organization.Language.ENGLISH,
         year_type=Organization.YearType.HYDROLOGICAL,
-        timezone=ZoneInfo("Asia/Bishkek"),
+        timezone=ZoneInfo("Europe/Zagreb"),
     )
 
 
@@ -86,13 +93,18 @@ def regular_user(db, organization):
 
 
 @pytest.fixture
+def regular_user_2(db, organization):
+    return UserFactory(username="regular_user_2", organization=organization)
+
+
+@pytest.fixture
 def regular_user_kyrgyz(db, organization_kyrgyz):
-    return UserFactory(username="regular_user", organization=organization_kyrgyz)
+    return UserFactory(username="regular_user_kyrgyz", organization=organization_kyrgyz)
 
 
 @pytest.fixture
 def regular_user_uzbek(db, organization_uzbek):
-    return UserFactory(username="regular_user", organization=organization_uzbek)
+    return UserFactory(username="regular_user_uzbek", organization=organization_uzbek)
 
 
 @pytest.fixture
@@ -112,14 +124,18 @@ def organization_admin(db, organization):
 @pytest.fixture
 def organization_admin_kyrgyz(db, organization_kyrgyz):
     return UserFactory(
-        username="organization_admin", user_role=User.UserRoles.ORGANIZATION_ADMIN, organization=organization_kyrgyz
+        username="organization_admin_kyrgyz",
+        user_role=User.UserRoles.ORGANIZATION_ADMIN,
+        organization=organization_kyrgyz,
     )
 
 
 @pytest.fixture
 def organization_admin_uzbek(db, organization_uzbek):
     return UserFactory(
-        username="organization_admin", user_role=User.UserRoles.ORGANIZATION_ADMIN, organization=organization_uzbek
+        username="organization_admin_uzbek",
+        user_role=User.UserRoles.ORGANIZATION_ADMIN,
+        organization=organization_uzbek,
     )
 
 
@@ -130,12 +146,16 @@ def superadmin(db, organization):
 
 @pytest.fixture
 def superadmin_kyrgyz(db, organization_kyrgyz):
-    return UserFactory(username="superadmin", user_role=User.UserRoles.SUPER_ADMIN, organization=organization_kyrgyz)
+    return UserFactory(
+        username="superadmin_kyrgyz", user_role=User.UserRoles.SUPER_ADMIN, organization=organization_kyrgyz
+    )
 
 
 @pytest.fixture
 def superadmin_uzbek(db, organization_uzbek):
-    return UserFactory(username="superadmin", user_role=User.UserRoles.SUPER_ADMIN, organization=organization_uzbek)
+    return UserFactory(
+        username="superadmin_uzbek", user_role=User.UserRoles.SUPER_ADMIN, organization=organization_uzbek
+    )
 
 
 # api clients
@@ -152,6 +172,11 @@ def unauthenticated_api_client():
 @pytest.fixture
 def authenticated_regular_user_api_client(regular_user):
     return get_api_client_for_user(regular_user)
+
+
+@pytest.fixture
+def authenticated_regular_user_2_api_client(regular_user_2):
+    return get_api_client_for_user(regular_user_2)
 
 
 @pytest.fixture
@@ -331,6 +356,38 @@ def automatic_hydro_station_backup(db, site_one):
     )
 
 
+@pytest.fixture
+def virtual_station(db, organization):
+    return VirtualStationFactory(organization=organization, station_code="55555")
+
+
+@pytest.fixture
+def virtual_station_kyrgyz(db, organization_kyrgyz):
+    return VirtualStationFactory(organization=organization_kyrgyz, station_code="12345")
+
+
+@pytest.fixture
+def virtual_station_kyrgyz_association_one(db, manual_hydro_station_kyrgyz, virtual_station_kyrgyz):
+    return VirtualStationAssociationFactory(
+        virtual_station=virtual_station_kyrgyz, hydro_station=manual_hydro_station_kyrgyz, weight=100
+    )
+
+
+@pytest.fixture
+def virtual_station_uzbek(db, organization_uzbek):
+    return VirtualStationFactory(organization=organization_uzbek, station_code="54321")
+
+
+@pytest.fixture
+def kyrgyz_hydro_station_assignment(db, manual_hydro_station_kyrgyz, regular_user_kyrgyz):
+    return UserAssignedStationFactory(user=regular_user_kyrgyz, hydro_station=manual_hydro_station_kyrgyz)
+
+
+@pytest.fixture
+def kyrgyz_meteo_station_assignment(db, manual_meteo_station_kyrgyz, regular_user_kyrgyz):
+    return UserAssignedStationFactory(user=regular_user_kyrgyz, meteo_station=manual_meteo_station_kyrgyz)
+
+
 # FileState
 @pytest.fixture
 def filestate_zks():
@@ -340,3 +397,11 @@ def filestate_zks():
 @pytest.fixture
 def filestate_auto():
     return FileStateFactory(ingester_name="imomo_auto")
+
+
+@pytest.fixture
+def datetime_mock_auto_now_add():
+    fixed_datetime = datetime(2024, 8, 25, 12, tzinfo=ZoneInfo("UTC"))
+    with patch("django.utils.timezone.now") as mock:
+        mock.return_value = fixed_datetime
+        yield mock

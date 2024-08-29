@@ -1,8 +1,10 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
-from sapphire_backend.utils.mixins.models import UUIDMixin
+from sapphire_backend.utils.mixins.models import CreatedDateMixin, UUIDMixin
 
 
 class User(UUIDMixin, AbstractUser):
@@ -62,10 +64,90 @@ class User(UUIDMixin, AbstractUser):
         else:
             return self.username
 
+    def remove_assigned_stations(self):
+        self.assigned_stations.all().delete()
+
     def soft_delete(self):
         self.is_deleted = True
+        self.remove_assigned_stations()
         self.username = f"User {self.uuid}"
         self.email = "deleted@user.com"
         self.is_active = False
         self.organization = None
         self.save()
+
+
+class UserAssignedStation(CreatedDateMixin, models.Model):
+    user = models.ForeignKey(
+        "users.User",
+        to_field="uuid",
+        verbose_name=_("User"),
+        on_delete=models.PROTECT,
+        related_name="assigned_stations",
+    )
+    hydro_station = models.ForeignKey(
+        "stations.HydrologicalStation",
+        to_field="uuid",
+        verbose_name=_("Hydrological station"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="assigned_users",
+    )
+    meteo_station = models.ForeignKey(
+        "stations.MeteorologicalStation",
+        to_field="uuid",
+        verbose_name=_("Meteorological station"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="assigned_users",
+    )
+    virtual_station = models.ForeignKey(
+        "stations.VirtualStation",
+        to_field="uuid",
+        verbose_name=_("Virtual station"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="assigned_users",
+    )
+    assigned_by = models.ForeignKey(
+        "users.User", to_field="uuid", verbose_name=_("Assigned by"), null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        verbose_name = _("User assigned station")
+        verbose_name_plural = _("User assigned stations")
+        ordering = ["-created_date"]
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    Q(hydro_station__isnull=False, meteo_station__isnull=True, virtual_station__isnull=True)
+                    | Q(hydro_station__isnull=True, meteo_station__isnull=False, virtual_station__isnull=True)
+                    | Q(hydro_station__isnull=True, meteo_station__isnull=True, virtual_station__isnull=False)
+                ),
+                name="only_one_station_populated",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.station.name}"
+
+    @property
+    def station(self):
+        return self.hydro_station or self.meteo_station or self.virtual_station
+
+    def clean(self):
+        super().clean()
+        if not self.station:
+            raise ValidationError(_("You must assign a station"))
+        station_organization = (
+            self.station.site.organization if hasattr(self.station, "site") else self.station.organization
+        )
+        if self.user.is_superadmin is not True and self.user.organization != station_organization:
+            raise ValidationError(_("The assigned station and user must be in the same organization"))
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
