@@ -6,6 +6,7 @@ from django.db import IntegrityError
 from django.http import Http404
 from django.utils.translation import gettext_lazy as _
 from ninja.errors import ValidationError as NinjaValidationError
+from ninja.openapi.docs import Swagger
 from ninja_extra import NinjaExtraAPI
 from pydantic import ValidationError as PydanticValidationError
 
@@ -32,11 +33,14 @@ from sapphire_backend.telegrams.exceptions import TelegramParserException
 from sapphire_backend.users.api import UsersAPIController
 from sapphire_backend.users.auth.api import AuthController
 
+swagger = Swagger(settings={"persistAuthorization": True})
+
 api = NinjaExtraAPI(
     title="iEasyHydroHF API",
     description=_("REST API service for the iEasyHydroHF application."),
     version="1.0",
     docs_decorator=staff_member_required,
+    docs=swagger,
 )
 
 api.register_controllers(AuthController)
