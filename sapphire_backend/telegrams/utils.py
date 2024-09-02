@@ -532,6 +532,7 @@ def generate_reported_discharge_points(parsed_data: dict) -> dict:
                         "date": entry["date"],
                         "h": entry["water_level"],
                         "q": entry["discharge"],
+                        "f": entry["cross_section_area"],
                     }
                 )
     return reported_discharge_points
