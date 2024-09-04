@@ -10,6 +10,15 @@ from sapphire_backend.stations.models import HydrologicalStation, Meteorological
 User = get_user_model()
 
 
+def get_user_from_kwargs(kwargs):
+    user = None
+    if (user_id := kwargs.get("user_id")) is not None:
+        user = User.objects.filter(id=user_id).first()
+    elif (user_uuid := kwargs.get("user_uuid")) is not None:
+        user = User.objects.filter(uuid=user_uuid).first()
+    return user
+
+
 def get_station_from_kwargs(kwargs):
     station = None
     if (discharge_model_id := kwargs.get("discharge_model_id")) is not None:
@@ -40,6 +49,8 @@ def get_organization_from_kwargs(kwargs):
     else:
         if (station := get_station_from_kwargs(kwargs)) is not None:
             organization_obj = station.site.organization
+        elif (user := get_user_from_kwargs(kwargs)) is not None:
+            organization_obj = user.organization
     return organization_obj
 
 
@@ -59,6 +70,17 @@ class IsOrganizationAdmin(permissions.BasePermission):
         organization = get_organization_from_kwargs(controller.context.kwargs)
         if user.is_authenticated:
             return user.organization.id == organization.id and user.user_role == User.UserRoles.ORGANIZATION_ADMIN
+        return False
+
+
+class IsInTheSameOrganization(permissions.BasePermission):
+    def has_permission(self, request: HttpRequest, controller: "ControllerBase") -> bool:
+        user = request.user
+        if user.is_authenticated:
+            second_user = get_user_from_kwargs(controller.context.kwargs)
+            if second_user:
+                return user.organization == second_user.organization
+
         return False
 
 

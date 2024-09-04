@@ -92,6 +92,12 @@ class HydroStationOutputDetailSchema(HydroStationBaseSchema, UUIDSchemaMixin):
     site: SiteOutputSchema
     id: int
     remarks: list[RemarkOutputSchema] = None
+    is_assigned: bool = False
+
+    @staticmethod
+    def resolve_is_assigned(obj, context):
+        user = context["request"].user
+        return user.assigned_stations.filter(hydro_station__uuid=obj.uuid).exists()
 
 
 class ForecastStatusSchema(Schema):
@@ -147,6 +153,12 @@ class MeteoStationOutputDetailSchema(MeteoStationBaseSchema, UUIDSchemaMixin):
     site: SiteOutputSchema
     id: int
     remarks: list[RemarkOutputSchema] = None
+    is_assigned: bool = False
+
+    @staticmethod
+    def resolve_is_assigned(obj, context):
+        user = context["request"].user
+        return user.assigned_stations.filter(meteo_station__uuid=obj.uuid).exists()
 
 
 class MeteoStationStatsSchema(Schema):
@@ -181,6 +193,12 @@ class VirtualStationListOutputSchema(VirtualStationBaseSchema, SiteBasinRegionOu
     id: int
     timezone: str | None = Field(None, alias="get_timezone_display")
     station_type: str = "V"
+    is_assigned: bool = False
+
+    @staticmethod
+    def resolve_is_assigned(obj, context):
+        user = context["request"].user
+        return user.assigned_stations.filter(virtual_station__uuid=obj.uuid).exists()
 
 
 class VirtualStationAssociationInputSchema(Schema):
@@ -202,3 +220,9 @@ class VirtualStationAssociationSchema(Schema):
 
 class VirtualStationDetailOutputSchema(VirtualStationListOutputSchema):
     associations: list[VirtualStationAssociationSchema] = Field(None, alias="virtualstationassociation_set")
+
+
+class AssignedStationNestedSchema(UUIDSchemaMixin, Schema):
+    id: int
+    name: str
+    station_code: str

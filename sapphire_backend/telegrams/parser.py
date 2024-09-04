@@ -170,7 +170,7 @@ class KN15TelegramParser(BaseTelegramParser):
             if len(token) != 5:
                 self.save_parsing_error("Group must have 5 characters", token, InvalidTokenException)
 
-            if token[:3] in ["933", "966", "988"]:
+            if token[:3] in ["966"]:
                 if self.tokens[1][-1] != "2":
                     self.save_parsing_error(
                         f"Found the following token, but group {self.tokens[1]} doesn't end with 2",
@@ -444,7 +444,7 @@ class KN15TelegramParser(BaseTelegramParser):
             precipitation_mm = int(token[1:4])
             if precipitation_mm > 989:
                 precipitation_mm = (precipitation_mm - 990) / 10
-            duration_code = int(token[4])
+            duration_code = 0 if token[4] == "/" else int(token[4])
             return {"precipitation": precipitation_mm, "duration_code": duration_code}
 
         # water level at 08:00

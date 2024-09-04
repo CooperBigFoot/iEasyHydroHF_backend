@@ -40,7 +40,7 @@ class HydrologicalStationFactory(factory.django.DjangoModelFactory):
 class MeteorologicalStationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MeteorologicalStation
-        django_get_or_create = ("site", "name", "station_code", "description")
+        django_get_or_create = ("site", "station_code", "description")
 
     site = factory.SubFactory(SiteFactory)
     description = fake.catch_phrase()

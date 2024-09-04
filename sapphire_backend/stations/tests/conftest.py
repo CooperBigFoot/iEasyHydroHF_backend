@@ -1,6 +1,8 @@
 import pytest
 from pytest_factoryboy import register
 
+from sapphire_backend.users.tests.factories import UserAssignedStationFactory
+
 from .factories import (
     HydrologicalStation,
     HydrologicalStationFactory,
@@ -22,9 +24,7 @@ def another_site_station(db, hydro_station_factory, site_two):
 
 @pytest.fixture
 def virtual_station(db, organization):
-    return VirtualStationFactory(
-        name="Virtual Station Main", organization=organization, station_code="11111", longitude=None
-    )
+    return VirtualStationFactory(name="Virtual Station Main", organization=organization, station_code="11111")
 
 
 @pytest.fixture
@@ -52,6 +52,13 @@ def virtual_station_deleted(db, organization):
 def virtual_station_association_one(db, automatic_hydro_station, virtual_station):
     return VirtualStationAssociationFactory(
         virtual_station=virtual_station, hydro_station=automatic_hydro_station, weight=50
+    )
+
+
+@pytest.fixture
+def virtual_station_assignment_kyrgyz(db, virtual_station_kyrgyz, regular_user_kyrgyz):
+    return UserAssignedStationFactory(
+        user=regular_user_kyrgyz, hydro_station=None, meteo_station=None, virtual_station=virtual_station_kyrgyz
     )
 
 

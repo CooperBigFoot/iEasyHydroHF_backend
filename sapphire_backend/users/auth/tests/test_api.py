@@ -11,7 +11,6 @@ class TestAuthController:
         assert response.status_code == 200
 
         response_data = response.json()
-        print(response_data)
 
         assert all(key in response_data for key in ["refresh", "access", "user"])
         assert all(

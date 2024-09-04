@@ -57,7 +57,6 @@ class TestUserAPIController:
         response = authenticated_regular_user_api_client.put(
             f"{self.endpoint}/{regular_user.uuid}", update_data, content_type="application/json"
         )
-        print(response.json())
         assert response.status_code == 200
         regular_user.refresh_from_db()
 
@@ -131,7 +130,280 @@ class TestUserAPIController:
 
         assert regular_user.user_role == User.UserRoles.ORGANIZATION_ADMIN
 
-    def test_organization_admin_update_member_role(
-        self, authenticated_organization_user_api_client, organization_admin
+
+class TestUserAssignedStationsAPIController:
+    endpoint = "/api/v1/users"
+
+    def test_get_assigned_stations_for_empty_list(self, regular_user, authenticated_regular_user_api_client):
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{regular_user.uuid}/assigned-stations")
+
+        assert response.json() == []
+
+    @pytest.mark.parametrize(
+        "client, expected_status_code",
+        [
+            ("unauthenticated_api_client", 401),
+            ("regular_user_uzbek_api_client", 403),
+            ("regular_user_kyrgyz_api_client", 403),
+            ("organization_admin_uzbek_api_client", 403),
+            ("organization_admin_kyrgyz_api_client", 403),
+            ("authenticated_regular_user_other_organization_api_client", 403),
+            ("authenticated_regular_user_api_client", 200),
+            ("authenticated_regular_user_2_api_client", 200),
+            ("authenticated_organization_user_api_client", 200),
+            ("superadmin_kyrgyz_api_client", 200),
+            ("superadmin_uzbek_api_client", 200),
+        ],
+    )
+    def test_get_assigned_stations_for_different_users(self, client, expected_status_code, regular_user, request):
+        client = request.getfixturevalue(client)
+        response = client.get(f"{self.endpoint}/{regular_user.uuid}/assigned-stations")
+
+        assert response.status_code == expected_status_code
+
+    def test_get_assigned_stations(
+        self,
+        authenticated_regular_user_api_client,
+        regular_user,
+        regular_user_assigned_hydro_station,
+        regular_user_assigned_meteo_station,
+        regular_user_assigned_virtual_station,
     ):
-        pass
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{regular_user.uuid}/assigned-stations")
+
+        assert len(response.json()) == 3
+
+    def test_get_assigned_station_api_response(
+        self,
+        datetime_mock_auto_now_add,
+        authenticated_regular_user_api_client,
+        regular_user,
+        regular_user_assigned_hydro_station,
+        manual_hydro_station,
+        regular_user_assigned_meteo_station,
+        manual_meteo_station,
+    ):
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{regular_user.uuid}/assigned-stations")
+
+        EXPECTED_RESPONSE = [
+            {
+                "id": manual_hydro_station.id,
+                "name": manual_hydro_station.name,
+                "station_code": manual_hydro_station.station_code,
+                "uuid": str(manual_hydro_station.uuid),
+                "station_type": manual_hydro_station.station_type.value,
+                "created_date": "2024-08-25T12:00:00Z",
+            },
+            {
+                "id": manual_meteo_station.id,
+                "name": manual_meteo_station.name,
+                "station_code": manual_meteo_station.station_code,
+                "uuid": str(manual_meteo_station.uuid),
+                "station_type": None,
+                "created_date": "2024-08-25T12:00:00Z",
+            },
+        ]
+
+        assert response.json() == EXPECTED_RESPONSE
+
+    def test_bulk_assign(
+        self, regular_user, authenticated_regular_user_api_client, manual_hydro_station, manual_meteo_station
+    ):
+        assert regular_user.assigned_stations.count() == 0
+
+        payload = [
+            {"hydro_station_id": str(manual_hydro_station.uuid)},
+            {"meteo_station_id": str(manual_meteo_station.uuid)},
+        ]
+        _ = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{regular_user.uuid}/assigned-stations-bulk-create",
+            data=payload,
+            content_type="application/json",
+        )
+
+        regular_user.refresh_from_db()
+        assert regular_user.assigned_stations.count() == 2
+
+    @pytest.mark.parametrize(
+        "client, expected_status_code",
+        [
+            ("unauthenticated_api_client", 401),
+            ("regular_user_uzbek_api_client", 403),
+            ("regular_user_kyrgyz_api_client", 403),
+            ("organization_admin_uzbek_api_client", 403),
+            ("organization_admin_kyrgyz_api_client", 403),
+            ("authenticated_regular_user_other_organization_api_client", 403),
+            ("authenticated_regular_user_2_api_client", 403),
+            ("authenticated_regular_user_api_client", 201),
+            ("authenticated_organization_user_api_client", 201),
+            ("superadmin_kyrgyz_api_client", 201),
+            ("superadmin_uzbek_api_client", 201),
+        ],
+    )
+    def test_bulk_assign_to_other_users(
+        self, client, expected_status_code, regular_user, manual_hydro_station, request
+    ):
+        client = request.getfixturevalue(client)
+
+        payload = [{"hydro_station_id": str(manual_hydro_station.uuid)}]
+
+        response = client.post(
+            f"{self.endpoint}/{regular_user.uuid}/assigned-stations-bulk-create",
+            data=payload,
+            content_type="application/json",
+        )
+
+        assert response.status_code == expected_status_code
+
+    def test_bulk_assign_empty_payload_deletes_assigned_stations(
+        self,
+        authenticated_regular_user_api_client,
+        regular_user,
+        regular_user_assigned_hydro_station,
+        regular_user_assigned_meteo_station,
+    ):
+        assert regular_user.assigned_stations.count() == 2
+
+        _ = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{regular_user.uuid}/assigned-stations-bulk-create",
+            data=[],
+            content_type="application/json",
+        )
+
+        regular_user.refresh_from_db()
+        assert regular_user.assigned_stations.count() == 0
+
+    def test_bulk_assign_replaces_existing_with_payload(
+        self,
+        authenticated_regular_user_api_client,
+        regular_user,
+        regular_user_assigned_hydro_station,
+        manual_hydro_station,
+        manual_meteo_station,
+    ):
+        assert regular_user.assigned_stations.count() == 1
+        assert regular_user.assigned_stations.first().hydro_station == manual_hydro_station
+        assert regular_user.assigned_stations.first().meteo_station is None
+
+        payload = [{"meteo_station_id": str(manual_meteo_station.uuid)}]
+
+        _ = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{regular_user.uuid}/assigned-stations-bulk-create",
+            data=payload,
+            content_type="application/json",
+        )
+
+        regular_user.refresh_from_db()
+        assert regular_user.assigned_stations.count() == 1
+        assert regular_user.assigned_stations.first().hydro_station is None
+        assert regular_user.assigned_stations.first().meteo_station == manual_meteo_station
+
+    def test_toggle_assigned_station_removes_station_if_assigned(
+        self,
+        authenticated_regular_user_api_client,
+        regular_user,
+        regular_user_assigned_hydro_station,
+        manual_hydro_station,
+    ):
+        assert regular_user.assigned_stations.count() == 1
+
+        payload = {"hydro_station_id": str(manual_hydro_station.uuid)}
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{regular_user.uuid}/assigned-stations-single-toggle",
+            data=payload,
+            content_type="application/json",
+        )
+
+        regular_user.refresh_from_db()
+        assert regular_user.assigned_stations.count() == 0
+        assert response.status_code == 200
+
+    def test_toggle_assigned_station_assigns_station_if_not_assigned(
+        self, authenticated_regular_user_api_client, regular_user, manual_hydro_station
+    ):
+        assert regular_user.assigned_stations.count() == 0
+
+        payload = {"hydro_station_id": str(manual_hydro_station.uuid)}
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{regular_user.uuid}/assigned-stations-single-toggle",
+            data=payload,
+            content_type="application/json",
+        )
+
+        regular_user.refresh_from_db()
+        assert regular_user.assigned_stations.count() == 1
+        assert response.status_code == 201
+
+    def test_toggle_assigned_station_only_adds_selected_station(
+        self,
+        authenticated_regular_user_api_client,
+        regular_user,
+        manual_hydro_station,
+        regular_user_assigned_meteo_station,
+    ):
+        assert regular_user.assigned_stations.count() == 1
+
+        payload = {"hydro_station_id": str(manual_hydro_station.uuid)}
+
+        _ = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{regular_user.uuid}/assigned-stations-single-toggle",
+            data=payload,
+            content_type="application/json",
+        )
+
+        regular_user.refresh_from_db()
+        assert regular_user.assigned_stations.count() == 2
+
+    def test_toggle_assigned_station_only_removes_selected_station(
+        self,
+        authenticated_regular_user_api_client,
+        regular_user,
+        manual_hydro_station,
+        regular_user_assigned_meteo_station,
+        regular_user_assigned_hydro_station,
+    ):
+        assert regular_user.assigned_stations.count() == 2
+
+        payload = {"hydro_station_id": str(manual_hydro_station.uuid)}
+
+        _ = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{regular_user.uuid}/assigned-stations-single-toggle",
+            data=payload,
+            content_type="application/json",
+        )
+
+        regular_user.refresh_from_db()
+        assert regular_user.assigned_stations.count() == 1
+
+    @pytest.mark.parametrize(
+        "client, expected_status_code",
+        [
+            ("unauthenticated_api_client", 401),
+            ("regular_user_uzbek_api_client", 403),
+            ("regular_user_kyrgyz_api_client", 403),
+            ("organization_admin_uzbek_api_client", 403),
+            ("organization_admin_kyrgyz_api_client", 403),
+            ("authenticated_regular_user_other_organization_api_client", 403),
+            ("authenticated_regular_user_2_api_client", 403),
+            ("authenticated_regular_user_api_client", 201),
+            ("authenticated_organization_user_api_client", 201),
+            ("superadmin_kyrgyz_api_client", 201),
+            ("superadmin_uzbek_api_client", 201),
+        ],
+    )
+    def test_toggle_assigned_station_for_other_users(
+        self, client, expected_status_code, regular_user, manual_hydro_station, request
+    ):
+        client = request.getfixturevalue(client)
+
+        payload = {"hydro_station_id": str(manual_hydro_station.uuid)}
+
+        response = client.post(
+            f"{self.endpoint}/{regular_user.uuid}/assigned-stations-single-toggle",
+            data=payload,
+            content_type="application/json",
+        )
+
+        assert response.status_code == expected_status_code

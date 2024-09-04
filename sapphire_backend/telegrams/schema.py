@@ -34,7 +34,7 @@ class IcePhenomenaSchema(Schema):
 
 
 class DailyPrecipitationSchema(Schema):
-    precipitation: int
+    precipitation: int | float
     duration_code: int
     description: str
 
@@ -115,6 +115,7 @@ class ReportedDischargePointsOutputSchema(Schema):
     date: str
     h: int
     q: float
+    f: float | None
 
 
 class TelegramOverviewErrorOutputSchema(Schema):
