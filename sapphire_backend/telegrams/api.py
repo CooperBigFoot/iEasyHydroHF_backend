@@ -9,11 +9,6 @@ from ninja_jwt.authentication import JWTAuth
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
-
-from ..organizations.models import Organization
-from ..users.models import User
-from ..utils.datetime_helper import SmartDatetime
-from ..utils.mixins.schemas import Message
 from .models import TelegramReceived, TelegramStored
 from .schema import (
     InputAckSchema,
@@ -33,6 +28,10 @@ from .utils import (
     save_section_one_metrics,
     simulate_telegram_insertion,
 )
+from ..organizations.models import Organization
+from ..users.models import User
+from ..utils.datetime_helper import SmartDatetime
+from ..utils.mixins.schemas import Message
 
 
 @api_controller(
@@ -114,8 +113,11 @@ class TelegramsAPIController:
             end_created_date_tz = start_created_date_tz + timedelta(days=1) - timedelta(microseconds=1)
             queryset = queryset.filter(created_date__range=(start_created_date_tz, end_created_date_tz))
 
-        if filters.acknowledged_by:
-            queryset = queryset.filter(acknowledged_by=filters.acknowledged_by)
+        if filters.only_pending:
+            queryset = queryset.filter(acknowledged=False)
+
+        # if filters.acknowledged_by:
+        #     queryset = queryset.filter(acknowledged_by=filters.acknowledged_by)
 
         if filters.valid:
             queryset = queryset.filter(valid=filters.valid)
@@ -125,7 +127,7 @@ class TelegramsAPIController:
 
         if filters.auto_stored:
             queryset = queryset.filter(auto_stored=filters.auto_stored)
-
+        queryset = queryset.order_by('-created_date')
         return 200, queryset
 
     @route.post("received/ack", response={200: Message})
@@ -133,7 +135,7 @@ class TelegramsAPIController:
         user = request.user
         org = Organization.objects.get(uuid=organization_uuid)
         tg_received_queryset = TelegramReceived.objects.filter(
-            id__in=payload.ids, acknowledged=False, organization=org
+            id__in=payload.ids, organization=org
         )
 
         if tg_received_queryset.count() != len(payload.ids):
