@@ -66,6 +66,7 @@ class MeasuredDischargeMeasurementSchema(Schema):
     date: str
     h: float
     q: float
+    f: float | None
 
 
 class OperationalJournalDailyDataSchema(Schema):
