@@ -75,6 +75,6 @@ class EstimationsFilterSchema(FilterSchema):
     avg_value__lte: float = None
 
 
-class EstimationsWaterDischargeDailyAverageOutputSchema(Schema):
+class EstimationsDailyAverageOutputSchema(Schema):
     timestamp_local: datetime
     avg_value: float
