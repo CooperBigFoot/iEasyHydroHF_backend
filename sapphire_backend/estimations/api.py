@@ -14,14 +14,19 @@ from sapphire_backend.utils.permissions import (
 )
 
 from ..stations.models import HydrologicalStation
-from .models import DischargeModel, EstimationsWaterDischargeDailyAverage
+from .models import (
+    DischargeModel,
+    EstimationsWaterDischargeDailyAverage,
+    EstimationsWaterDischargeDailyVirtual,
+    EstimationsWaterLevelDailyAverage,
+)
 from .schema import (
     DischargeModelBaseSchema,
     DischargeModelCreateInputDeltaSchema,
     DischargeModelCreateInputPointsSchema,
     DischargeModelDeleteOutputSchema,
+    EstimationsDailyAverageOutputSchema,
     EstimationsFilterSchema,
-    EstimationsWaterDischargeDailyAverageOutputSchema,
     OrderQueryParamSchema,
 )
 from .utils import least_squares_fit
@@ -124,9 +129,24 @@ class DischargeModelsAPIController:
     "estimations/{organization_uuid}", tags=["Estimations"], auth=JWTAuth(), permissions=regular_permissions
 )
 class EstimationsAPIController:
+    def _get_averages_queryset(
+        self,
+        model,
+        filters: Query[EstimationsFilterSchema],
+        order: Query[OrderQueryParamSchema],
+        limit: int | None = 365,
+    ):
+        # Construct the order by clause
+        order_by_clause = F(order.order_param)
+        if order.order_direction.lower() == "desc":
+            order_by_clause = order_by_clause.desc()
+        # Filter, order, and limit the queryset
+        queryset = model.objects.filter(**filters.dict(exclude_none=True)).order_by(order_by_clause)[:limit]
+        return queryset
+
     @route.get(
         "discharge-daily-average",
-        response={200: list[EstimationsWaterDischargeDailyAverageOutputSchema], 400: Message},
+        response={200: list[EstimationsDailyAverageOutputSchema], 400: Message},
     )
     def get_water_discharge_daily_average(
         self,
@@ -135,11 +155,33 @@ class EstimationsAPIController:
         filters: Query[EstimationsFilterSchema],
         limit: int | None = 365,
     ):
-        # Construct the order by clause
-        order_by_clause = F(order.order_param)
-        if order.order_direction.lower() == "desc":
-            order_by_clause = order_by_clause.desc()
-        queryset = EstimationsWaterDischargeDailyAverage.objects.filter(**filters.dict(exclude_none=True)).order_by(
-            order_by_clause
-        )[:limit]
+        queryset = self._get_averages_queryset(EstimationsWaterDischargeDailyAverage, filters, order, limit)
+        return queryset
+
+    @route.get(
+        "discharge-daily-average-virtual",
+        response={200: list[EstimationsDailyAverageOutputSchema], 400: Message},
+    )
+    def get_water_discharge_daily_average_virtual(
+        self,
+        organization_uuid: str,
+        order: Query[OrderQueryParamSchema],
+        filters: Query[EstimationsFilterSchema],
+        limit: int | None = 365,
+    ):
+        queryset = self._get_averages_queryset(EstimationsWaterDischargeDailyVirtual, filters, order, limit)
+        return queryset
+
+    @route.get(
+        "water-level-daily-average",
+        response={200: list[EstimationsDailyAverageOutputSchema], 400: Message},
+    )
+    def get_water_level_daily_average(
+        self,
+        organization_uuid: str,
+        order: Query[OrderQueryParamSchema],
+        filters: Query[EstimationsFilterSchema],
+        limit: int | None = 365,
+    ):
+        queryset = self._get_averages_queryset(EstimationsWaterLevelDailyAverage, filters, order, limit)
         return queryset

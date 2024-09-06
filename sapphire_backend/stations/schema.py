@@ -88,7 +88,15 @@ class HydroStationUpdateSchema(HydroStationBaseSchema):
     site_data: SiteUpdateSchema | None = None
 
 
-class HydroStationOutputDetailSchema(HydroStationBaseSchema, UUIDSchemaMixin):
+class ForecastStatusSchema(Schema):
+    daily_forecast: bool
+    pentad_forecast: bool
+    decadal_forecast: bool
+    monthly_forecast: bool
+    seasonal_forecast: bool
+
+
+class HydroStationOutputDetailSchema(HydroStationBaseSchema, ForecastStatusSchema, UUIDSchemaMixin):
     site: SiteOutputSchema
     id: int
     remarks: list[RemarkOutputSchema] = None
@@ -98,14 +106,6 @@ class HydroStationOutputDetailSchema(HydroStationBaseSchema, UUIDSchemaMixin):
     def resolve_is_assigned(obj, context):
         user = context["request"].user
         return user.assigned_stations.filter(hydro_station__uuid=obj.uuid).exists()
-
-
-class ForecastStatusSchema(Schema):
-    daily_forecast: bool
-    pentad_forecast: bool
-    decadal_forecast: bool
-    monthly_forecast: bool
-    seasonal_forecast: bool
 
 
 class HydroStationForecastStatusInputSchema(ForecastStatusSchema):

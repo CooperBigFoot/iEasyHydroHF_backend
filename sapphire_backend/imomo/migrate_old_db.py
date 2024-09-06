@@ -2,12 +2,10 @@ import logging
 # Configure SQLAlchemy connection to the old database
 import math
 import os
-import zoneinfo
 from datetime import datetime
 
 import psycopg
 from django.db import connection
-from django.utils import timezone
 # Import necessary libraries
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -24,11 +22,9 @@ from sapphire_backend.metrics.choices import (
     HydrologicalMetricName,
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
-    MetricUnit,
-    NormType
+    MetricUnit
 )
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric, HydrologicalNorm
-from sapphire_backend.metrics.utils.helpers import PentadDecadeHelper
 from sapphire_backend.organizations.models import Basin, Organization, Region
 from sapphire_backend.stations.models import (
     HydrologicalStation,
@@ -37,7 +33,7 @@ from sapphire_backend.stations.models import (
     VirtualStation,
     VirtualStationAssociation,
 )
-from sapphire_backend.telegrams.models import Telegram
+from sapphire_backend.telegrams.models import TelegramStored, TelegramReceived, TelegramParserLog
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 
 nan_count = 0
@@ -404,22 +400,30 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                 hydro_station.save()
                 continue
 
-            if data_row.variable.variable_code == Variables.discharge_decade_average_historical.value:
-                if data_value == -9999:
-                    # empty value for some reason
-                    continue
-
-                decade = PentadDecadeHelper.calculate_decade_from_the_date_in_year(smart_datetime.local)
-                if decade not in station_decades:
-                    station_decades[decade] = [data_value]
-                else:
-                    station_decades[decade].append(data_value)
-
-                # right now we're only preparing the data, we need to go over all the data values
-                # to store every relevant value after which we average them and store to the HydrologicalNorm model
-                continue
+            # if data_row.variable.variable_code == Variables.discharge_decade_average_historical.value:  # temporarily commented
+            #     if data_value == -9999:
+            #         # empty value for some reason
+            #         continue
+            #
+            #     decade = PentadDecadeHelper.calculate_decade_from_the_date_in_year(smart_datetime.local)
+            #     if decade not in station_decades:
+            #         station_decades[decade] = [data_value]
+            #     else:
+            #         station_decades[decade].append(data_value)
+            #
+            #     # right now we're only preparing the data, we need to go over all the data values
+            #     # to store every relevant value after which we average them and store to the HydrologicalNorm model
+            #     continue
 
             metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
+
+            if metric_name in [HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
+                               HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+                               HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE,
+                               HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
+                               HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE]:
+                # These metrics are now replaced by estimation views and are calculated on demand, not stored
+                continue
 
             if data_row.variable.variable_code == Variables.ice_phenomena_observation.value:
                 ice_phenomena_values = parse_ice_phenomena(data_row)
@@ -453,6 +457,8 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                 nan_count = nan_count + 1
                 continue  # TODO skip NaN data value rows
 
+
+
             new_hydro_metric = HydrologicalMetric(
                 timestamp_local=timestamp_local,
                 min_value=None,
@@ -467,20 +473,20 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
             )
             new_hydro_metric.save(refresh_view=False)
 
-        for key, value in station_decades.items():
-            if len(value) > 0:
-                avg = sum(value) / len(value)
-                HydrologicalNorm.objects.filter(
-                    station=hydro_station,
-                    ordinal_number=key,
-                    norm_type=NormType.DECADAL
-                ).delete()
-                HydrologicalNorm.objects.create(
-                    station=hydro_station,
-                    ordinal_number=key,
-                    value=avg,
-                    norm_type=NormType.DECADAL
-                )
+        # for key, value in station_decades.items(): # temporarily commented
+        #     if len(value) > 0:
+        #         avg = sum(value) / len(value)
+        #         HydrologicalNorm.objects.filter(
+        #             station=hydro_station,
+        #             ordinal_number=key,
+        #             norm_type=NormType.DECADAL
+        #         ).delete()
+        #         HydrologicalNorm.objects.create(
+        #             station=hydro_station,
+        #             ordinal_number=key,
+        #             value=avg,
+        #             norm_type=NormType.DECADAL
+        #         )
     refresh_water_level_daily_average('2015-01-01', '2030-01-01')
 
 
@@ -513,7 +519,9 @@ def cleanup_all():
     logging.info("Cleaning up discharge models")
     DischargeModel.objects.all().delete()
     logging.info("Cleaning up telegrams")
-    Telegram.objects.all().delete()
+    TelegramStored.objects.all().delete()
+    TelegramParserLog.objects.all().delete()
+    TelegramReceived.objects.all().delete()
     logging.info("Cleaning up meteo metrics")
     MeteorologicalMetric.objects.all().delete()
     logging.info("Cleaning up discharge norms")
