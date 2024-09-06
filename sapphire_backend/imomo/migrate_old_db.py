@@ -33,7 +33,7 @@ from sapphire_backend.stations.models import (
     VirtualStation,
     VirtualStationAssociation,
 )
-from sapphire_backend.telegrams.models import Telegram
+from sapphire_backend.telegrams.models import TelegramStored
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 
 nan_count = 0
@@ -517,7 +517,7 @@ def cleanup_all():
     logging.info("Cleaning up discharge models")
     DischargeModel.objects.all().delete()
     logging.info("Cleaning up telegrams")
-    Telegram.objects.all().delete()
+    TelegramStored.objects.all().delete()
     logging.info("Cleaning up meteo metrics")
     MeteorologicalMetric.objects.all().delete()
     logging.info("Cleaning up discharge norms")
