@@ -1,3 +1,29 @@
+# Swap file location and size
+SWAPFILE="/mnt/swapfile"
+
+# Check if swap is already enabled
+if swapon --show | grep -q "$SWAPFILE"; then
+  echo "Swap is already enabled at $SWAPFILE. Continuing..."
+else
+  # Check if the swap file already exists
+  if [ -f "$SWAPFILE" ]; then
+    echo "Swap file already exists at $SWAPFILE."
+  else
+    # Create the swap file
+    echo "Creating swap file at $SWAPFILE."
+    sudo dd if=/dev/zero of="$SWAPFILE" bs=1G count=4  #4 GB swap file
+    sudo chmod 600 "$SWAPFILE"
+    sudo mkswap "$SWAPFILE"
+  fi
+
+  # Enable the swap file
+  sudo swapon "$SWAPFILE"
+fi
+
+# Verify and display swap status
+sudo swapon --show
+
+# Mount EBS
 sudo mkfs -t ext4 /dev/xvdh || echo 'filesystem /dev/svdh already created'
 sudo mkdir /ebs_volume || echo '/ebs_volume already created'
 sudo mount /dev/xvdh /ebs_volume/ || echo '/ebs_volume already mounted'
