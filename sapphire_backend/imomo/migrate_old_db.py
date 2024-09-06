@@ -33,7 +33,7 @@ from sapphire_backend.stations.models import (
     VirtualStation,
     VirtualStationAssociation,
 )
-from sapphire_backend.telegrams.models import TelegramStored
+from sapphire_backend.telegrams.models import TelegramStored, TelegramReceived, TelegramParserLog
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 
 nan_count = 0
@@ -417,6 +417,14 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
 
             metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
 
+            if metric_name in [HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
+                               HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+                               HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE,
+                               HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
+                               HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE]:
+                # These metrics are now replaced by estimation views and are calculated on demand, not stored
+                continue
+
             if data_row.variable.variable_code == Variables.ice_phenomena_observation.value:
                 ice_phenomena_values = parse_ice_phenomena(data_row)
                 for code_intensity_pair in ice_phenomena_values:
@@ -449,13 +457,7 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                 nan_count = nan_count + 1
                 continue  # TODO skip NaN data value rows
 
-            if metric_name in [HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
-                               HydrologicalMetricName.WATER_DISCHARGE_DAILY,
-                               HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE,
-                               HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
-                               HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE]:
-                # These metrics are now replaced by estimation views and are calculated on demand, not stored
-                continue
+
 
             new_hydro_metric = HydrologicalMetric(
                 timestamp_local=timestamp_local,
@@ -518,6 +520,8 @@ def cleanup_all():
     DischargeModel.objects.all().delete()
     logging.info("Cleaning up telegrams")
     TelegramStored.objects.all().delete()
+    TelegramParserLog.objects.all().delete()
+    TelegramReceived.objects.all().delete()
     logging.info("Cleaning up meteo metrics")
     MeteorologicalMetric.objects.all().delete()
     logging.info("Cleaning up discharge norms")
