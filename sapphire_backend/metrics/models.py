@@ -166,6 +166,10 @@ class HydrologicalMetric(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin
             cursor.execute(sql_refresh_view)
         conn.close()
 
+    @property
+    def history_log(self):
+        return self.history_log.first()
+
 
 class MeteorologicalMetric(models.Model):
     timestamp_local = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp local without timezone"))
@@ -233,6 +237,10 @@ class MeteorologicalMetric(models.Model):
                 cursor.execute(sql_query_upsert)
             else:
                 cursor.execute(sql_query_insert)
+
+    @property
+    def history_log(self):
+        return self.history_log.first()
 
 
 class HydrologicalNorm(NormModelMixin, models.Model):
