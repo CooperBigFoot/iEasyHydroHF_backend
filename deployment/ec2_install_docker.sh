@@ -34,7 +34,7 @@ sudo chown -R $USER:$USER /ebs_volume
 mkdir /ebs_volume/timescale_data || echo '/ebs_volume/timescale_data already created'
 mkdir /ebs_volume/backups || echo '/ebs_volume/backups already created'
 mkdir /ebs_volume/logs || echo '/ebs_volume/logs already created'
-touch /ebs_volume/logs/cron-ingestion.log
+touch /home/ubuntu/staging/cron-ingestion.log
 
 sudo apt update
 sudo apt install -y curl zip
