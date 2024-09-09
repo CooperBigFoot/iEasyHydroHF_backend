@@ -26,7 +26,7 @@ services:
       - "traefik.http.routers.django.entrypoints=websecure"
       - "traefik.http.routers.django.tls.certresolver=myresolver"
     volumes:
-      - /home/ubuntu/staging/logs/cron-ingestion.log:/app/cron-ingestion.log
+      - /home/ubuntu/staging/cron-ingestion.log:/app/cron-ingestion.log
       - /home/ubuntu/staging/imomo_auto_ingestion_storage:/app/imomo_auto_ingestion_storage
       - /home/ubuntu/staging/imomo_telegram_ingestion_storage:/app/imomo_telegram_ingestion_storage
       - /home/ubuntu/staging/media:/app/sapphire_backend/media
