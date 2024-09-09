@@ -26,9 +26,9 @@ services:
       - "traefik.http.routers.django.entrypoints=websecure"
       - "traefik.http.routers.django.tls.certresolver=myresolver"
     volumes:
-      - /ebs_volume/logs/cron-ingestion.log:/app/cron-ingestion.log
-      - /ebs_volume/imomo_ingestion_storage:/app/imomo_ingestion_storage
-      - /ebs_volume/imomo_telegram_ingestion_storage:/app/imomo_telegram_ingestion_storage
+      - /home/ubuntu/staging/logs/cron-ingestion.log:/app/cron-ingestion.log
+      - /home/ubuntu/staging/imomo_auto_ingestion_storage:/app/imomo_auto_ingestion_storage
+      - /home/ubuntu/staging/imomo_telegram_ingestion_storage:/app/imomo_telegram_ingestion_storage
       - /home/ubuntu/staging/media:/app/sapphire_backend/media
 
   timescale:
