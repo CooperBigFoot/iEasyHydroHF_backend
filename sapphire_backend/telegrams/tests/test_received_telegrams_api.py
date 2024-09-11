@@ -75,8 +75,8 @@ class TestListTelegramsReceivedAPI:
                 created_date__lt=target_smart_dt.day_beginning_tz + timedelta(days=1),
                 organization=organization_kyrgyz,
             )
-            .order_by("created_date")
-            .values()
+            .order_by("-created_date")
+            .values()t
         )
         for telegram_response, telegram_expected in zip(res, queryset_expected):
             assert datetime.fromisoformat(telegram_response["created_date"]) == telegram_expected["created_date"]

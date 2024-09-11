@@ -9,6 +9,11 @@ from ninja_jwt.authentication import JWTAuth
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
+
+from ..organizations.models import Organization
+from ..users.models import User
+from ..utils.datetime_helper import SmartDatetime
+from ..utils.mixins.schemas import Message
 from .models import TelegramReceived, TelegramStored
 from .schema import (
     InputAckSchema,
@@ -28,10 +33,6 @@ from .utils import (
     save_section_one_metrics,
     simulate_telegram_insertion,
 )
-from ..organizations.models import Organization
-from ..users.models import User
-from ..utils.datetime_helper import SmartDatetime
-from ..utils.mixins.schemas import Message
 
 
 @api_controller(
@@ -120,19 +121,17 @@ class TelegramsAPIController:
             queryset = queryset.filter(valid=False)
 
         if not filters.only_invalid and isinstance(filters.station_codes, str) and len(filters.station_codes) > 0:
-            list_station_codes = filters.station_codes.split(',')
+            list_station_codes = filters.station_codes.split(",")
             queryset = queryset.filter(station_code__in=list_station_codes)
 
-        queryset = queryset.order_by('-created_date')
+        queryset = queryset.order_by("-created_date")
         return 200, queryset
 
     @route.post("received/ack", response={200: Message})
     def acknowledge_received_telegrams(self, request, organization_uuid: str, payload: InputAckSchema):
         user = request.user
         org = Organization.objects.get(uuid=organization_uuid)
-        tg_received_queryset = TelegramReceived.objects.filter(
-            id__in=payload.ids, organization=org
-        )
+        tg_received_queryset = TelegramReceived.objects.filter(id__in=payload.ids, organization=org)
 
         if tg_received_queryset.count() != len(payload.ids):
             raise TelegramReceived.DoesNotExist("Not all provided IDs are available.")
