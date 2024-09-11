@@ -116,17 +116,13 @@ class TelegramsAPIController:
         if filters.only_pending:
             queryset = queryset.filter(acknowledged=False)
 
-        # if filters.acknowledged_by:
-        #     queryset = queryset.filter(acknowledged_by=filters.acknowledged_by)
+        if filters.only_invalid:
+            queryset = queryset.filter(valid=False)
 
-        if filters.valid:
-            queryset = queryset.filter(valid=filters.valid)
+        if not filters.only_invalid and isinstance(filters.station_codes, str) and len(filters.station_codes) > 0:
+            list_station_codes = filters.station_codes.split(',')
+            queryset = queryset.filter(station_code__in=list_station_codes)
 
-        if filters.station_code:
-            queryset = queryset.filter(station_code=filters.station_code)
-
-        if filters.auto_stored:
-            queryset = queryset.filter(auto_stored=filters.auto_stored)
         queryset = queryset.order_by('-created_date')
         return 200, queryset
 

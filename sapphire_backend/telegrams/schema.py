@@ -3,7 +3,6 @@ from typing import Any
 
 from ninja import FilterSchema, Schema
 
-from sapphire_backend.users.models import User
 from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitationCodeMapper
 from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
 
@@ -141,20 +140,14 @@ class TelegramReceivedOutputSchema(Schema):
     created_date: datetime
     station_code: str | None = None
     decoded_values: Any | None = None
-    errors: str | None = None
     acknowledged: bool
-    acknowledged_ts: datetime | None = None
-    # acknowledged_by: str| None = None
-    auto_stored: bool
 
 
 class TelegramReceivedFilterSchema(FilterSchema):
     created_date: str = None
     only_pending: bool = True
-    # acknowledged_by: User | None = None
-    valid: bool | None = None
-    station_code: str | None = None
-    auto_stored: bool | None = None
+    only_invalid: bool | None = False
+    station_codes: str | None = None
 
 
 class InputAckSchema(Schema):
