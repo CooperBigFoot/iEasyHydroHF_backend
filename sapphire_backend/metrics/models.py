@@ -6,6 +6,10 @@ from django import db
 from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
 
+from sapphire_backend.quality_control.choices import HistoryLogStationType
+from sapphire_backend.quality_control.models import HistoryLogEntry
+from sapphire_backend.utils.mixins.models import SourceTypeMixin
+
 from ..stations.models import HydrologicalStation, MeteorologicalStation
 from ..utils.datetime_helper import SmartDatetime
 from .choices import (
@@ -35,7 +39,7 @@ def resolve_timestamp_local_tz_pair(
     return timestamp_local, timestamp
 
 
-class HydrologicalMetric(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
+class HydrologicalMetric(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, SourceTypeMixin, models.Model):
     timestamp = models.DateTimeField(verbose_name=_("Timestamp with timezone"))
     station = models.ForeignKey("stations.HydrologicalStation", verbose_name=_("Station"), on_delete=models.PROTECT)
     value_code = models.IntegerField(verbose_name=_("Value code"), blank=True, null=True)
@@ -55,6 +59,22 @@ class HydrologicalMetric(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin
 
     def __str__(self):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp_local.strftime('%Y-%m-%d %H:%M:%S')}"
+
+    @property
+    def pk_fields(self):
+        return {
+            "timestamp_local": self.timestamp_local,
+            "station_id": self.station_id,
+            "metric_name": self.metric_name,
+            "value_type": self.value_type,
+            "sensor_identifier": self.sensor_identifier,
+        }
+
+    def get_existing_record(self):
+        try:
+            return self.__class__.objects.get(**self.pk_fields)
+        except self.__class__.DoesNotExist:
+            return None
 
     def delete(self, **kwargs):
         sql_query_delete = f"""
@@ -82,20 +102,22 @@ class HydrologicalMetric(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin
         sql_query_insert = f"""
             INSERT INTO metrics_hydrologicalmetric
             (timestamp_local, station_id, metric_name, value_type, sensor_identifier, timestamp, min_value, avg_value, max_value,
-            unit, sensor_type, value_code)
+            unit, sensor_type, value_code, source_type, source_id)
             VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}', '{self.timestamp}', {min_value},
-            {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}', {value_code});
+            {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}', {value_code}, '{self.source_type}', {self.source_id});
             """
 
         sql_query_upsert = f"""
-            INSERT INTO metrics_hydrologicalmetric (timestamp_local, station_id, metric_name, value_type, sensor_identifier, timestamp, min_value, avg_value, max_value, unit, sensor_type, value_code)
+            INSERT INTO metrics_hydrologicalmetric (timestamp_local, station_id, metric_name, value_type, sensor_identifier, timestamp, min_value, avg_value, max_value, unit, sensor_type, value_code, source_type, source_id)
             VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.value_type}', '{self.sensor_identifier}',  '{self.timestamp}', {min_value},
-            {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}', {value_code})
+            {avg_value}, {max_value}, '{self.unit}', '{self.sensor_type}', {value_code}, '{self.source_type}', {self.source_id})
             ON CONFLICT (timestamp_local, station_id, metric_name, value_type, sensor_identifier)
             DO UPDATE
             SET min_value = EXCLUDED.min_value,
                 avg_value = EXCLUDED.avg_value,
                 max_value = EXCLUDED.max_value,
+                source_type = EXCLUDED.source_type,
+                source_id = EXCLUDED.source_id,
                 unit = EXCLUDED.unit,
                 sensor_type = EXCLUDED.sensor_type;
         """
@@ -167,11 +189,21 @@ class HydrologicalMetric(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin
         conn.close()
 
     @property
-    def history_log(self):
-        return self.history_log.first()
+    def history_logs(self):
+        return HistoryLogEntry.objects.filter(**self.pk_fields, station_type=HistoryLogStationType.HYDRO)
+
+    def create_log_entry(self, old, description: str = ""):
+        log_entry_values = {
+            "source_type": old.source_type,
+            "source_id": old.source_id,
+            "description": description,
+            "value": old.avg_value,
+            "station_type": HistoryLogStationType.HYDRO,
+        }
+        return HistoryLogEntry.objects.create(**self.pk_fields, **log_entry_values)
 
 
-class MeteorologicalMetric(models.Model):
+class MeteorologicalMetric(SourceTypeMixin, models.Model):
     timestamp_local = models.DateTimeField(primary_key=True, verbose_name=_("Timestamp local without timezone"))
     timestamp = models.DateTimeField(verbose_name=_("Timestamp with timezone"))
     value = models.DecimalField(verbose_name=_("Value"), max_digits=10, decimal_places=5)
@@ -207,6 +239,39 @@ class MeteorologicalMetric(models.Model):
     def __str__(self):
         return f"{self.metric_name}, {self.station.name} on {self.timestamp_local.strftime('%Y-%m-%d %H:%M:%S')}"
 
+    @property
+    def pk_fields(self):
+        return {
+            "timestamp_local": self.timestamp_local,
+            "station_id": self.station_id,
+            "metric_name": self.metric_name,
+        }
+
+    def get_existing_record(self):
+        try:
+            return self.__class__.objects.get(**self.pk_fields)
+        except self.__class__.DoesNotExist:
+            return None
+
+    @property
+    def history_logs(self):
+        return HistoryLogEntry.objects.filter(
+            timestamp_local=self.timestamp_local,
+            station_id=self.station_id,
+            metric_name=self.metric_name,
+            station_type=HistoryLogStationType.METEO,
+        )
+
+    def create_log_entry(self, old, description: str = ""):
+        log_entry_values = {
+            "source_type": old.source_type,
+            "source_id": old.source_id,
+            "description": description,
+            "value": old.value,
+            "station_type": HistoryLogStationType.METEO,
+        }
+        return HistoryLogEntry.objects.create(**self.pk_fields, **log_entry_values)
+
     def delete(self, **kwargs) -> None:
         sql_query_delete = f"""
         DELETE FROM metrics_meteorologicalmetric WHERE
@@ -237,10 +302,6 @@ class MeteorologicalMetric(models.Model):
                 cursor.execute(sql_query_upsert)
             else:
                 cursor.execute(sql_query_insert)
-
-    @property
-    def history_log(self):
-        return self.history_log.first()
 
 
 class HydrologicalNorm(NormModelMixin, models.Model):

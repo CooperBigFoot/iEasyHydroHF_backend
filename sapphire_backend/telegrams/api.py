@@ -78,26 +78,32 @@ class TelegramsAPIController:
 
             for telegram_data in station_data["telegrams"]:
                 telegram_day_smart = telegram_data["telegram_day_smart"]
-                save_section_one_metrics(
-                    telegram_day_smart, section_one=telegram_data["section_one"], hydro_station=hydro_station
-                )
 
-                meteo_data = telegram_data.get("section_eight")
-                if meteo_data is not None:
-                    meteo_station = station_data["meteo_station_obj"]
-                    save_section_eight_metrics(meteo_data, meteo_station)
-
-                reported_discharge = telegram_data.get("section_six")
-                if reported_discharge is not None:
-                    save_reported_discharge(reported_discharge, hydro_station)
-
-                TelegramStored(
+                stored_telegram = TelegramStored(
                     telegram=telegram_data["raw"],
                     telegram_day=telegram_day_smart.morning_local.date(),
                     station_code=telegram_data["section_zero"]["station_code"],
                     stored_by=User.objects.get(id=request.user.id),
                     organization=Organization.objects.get(uuid=organization_uuid),
-                ).save()
+                )
+                stored_telegram.save()
+
+                save_section_one_metrics(
+                    telegram_day_smart,
+                    section_one=telegram_data["section_one"],
+                    hydro_station=hydro_station,
+                    source_telegram=stored_telegram,
+                )
+
+                meteo_data = telegram_data.get("section_eight")
+                if meteo_data is not None:
+                    meteo_station = station_data["meteo_station_obj"]
+                    save_section_eight_metrics(meteo_data, meteo_station, source_telegram=stored_telegram)
+
+                reported_discharge = telegram_data.get("section_six")
+                if reported_discharge is not None:
+                    save_reported_discharge(reported_discharge, hydro_station, source_telegram=stored_telegram)
+
         return 201, {"detail": _("Telegram metrics successfully saved"), "code": "success"}
 
     @route.get("received/list", response={200: list[TelegramReceivedOutputSchema], 404: Message})

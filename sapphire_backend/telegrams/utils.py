@@ -16,12 +16,15 @@ from sapphire_backend.metrics.choices import (
 )
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
 from sapphire_backend.metrics.timeseries.query import TimeseriesQueryManager
+from sapphire_backend.metrics.utils.helpers import save_metric_and_create_log
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
 from sapphire_backend.telegrams.exceptions import TelegramParserException
+from sapphire_backend.telegrams.models import TelegramStored
 from sapphire_backend.telegrams.parser import KN15TelegramParser
 from sapphire_backend.telegrams.schema import NewOldMetrics, TelegramBulkWithDatesInputSchema
 from sapphire_backend.users.models import User
 from sapphire_backend.utils.datetime_helper import SmartDatetime
+from sapphire_backend.utils.mixins.models import SourceTypeMixin
 from sapphire_backend.utils.rounding import custom_ceil, custom_round
 
 
@@ -80,7 +83,12 @@ def get_parsed_telegrams_data(
     return parsed_data
 
 
-def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dict, hydro_station: HydrologicalStation):
+def save_section_one_metrics(
+    telegram_day_smart: SmartDatetime,
+    section_one: dict,
+    hydro_station: HydrologicalStation,
+    source_telegram: TelegramStored = None,
+) -> None:
     yesterday_evening_wl_metric = HydrologicalMetric(
         timestamp_local=telegram_day_smart.previous_evening_local,
         min_value=None,
@@ -92,8 +100,10 @@ def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dic
         station=hydro_station,
         sensor_identifier="",
         sensor_type="",
+        source_type=SourceTypeMixin.SourceType.TELEGRAM,
+        source_id=source_telegram.id if source_telegram else 0,
     )
-    yesterday_evening_wl_metric.save(refresh_view=True)
+    save_metric_and_create_log(yesterday_evening_wl_metric, True)
 
     morning_wl_metric = HydrologicalMetric(
         timestamp_local=telegram_day_smart.morning_local,
@@ -106,8 +116,10 @@ def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dic
         station=hydro_station,
         sensor_identifier="",
         sensor_type="",
+        source_type=SourceTypeMixin.SourceType.TELEGRAM,
+        source_id=source_telegram.id if source_telegram else 0,
     )
-    morning_wl_metric.save(refresh_view=True)
+    save_metric_and_create_log(morning_wl_metric, True)
 
     if section_one.get("air_temperature", False):
         air_temp_metric = HydrologicalMetric(
@@ -121,8 +133,10 @@ def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dic
             station=hydro_station,
             sensor_identifier="",
             sensor_type="",
+            source_type=SourceTypeMixin.SourceType.TELEGRAM,
+            source_id=source_telegram.id if source_telegram else 0,
         )
-        air_temp_metric.save(refresh_view=False)
+        save_metric_and_create_log(air_temp_metric)
 
     if section_one.get("water_temperature", False):
         water_temp_metric = HydrologicalMetric(
@@ -136,8 +150,10 @@ def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dic
             station=hydro_station,
             sensor_identifier="",
             sensor_type="",
+            source_type=SourceTypeMixin.SourceType.TELEGRAM,
+            source_id=source_telegram.id if source_telegram else 0,
         )
-        water_temp_metric.save(refresh_view=False)
+        save_metric_and_create_log(water_temp_metric)
 
     if section_one.get("ice_phenomena"):
         for idx, record in enumerate(section_one["ice_phenomena"]):
@@ -153,8 +169,10 @@ def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dic
                 sensor_identifier="",
                 sensor_type="",
                 value_code=record["code"],
+                source_type=SourceTypeMixin.SourceType.TELEGRAM,
+                source_id=source_telegram.id if source_telegram else 0,
             )
-            ice_phenomena_metric.save(refresh_view=False)
+            save_metric_and_create_log(ice_phenomena_metric)
 
     if section_one.get("daily_precipitation"):
         daily_precipitation_metric = HydrologicalMetric(
@@ -169,11 +187,15 @@ def save_section_one_metrics(telegram_day_smart: SmartDatetime, section_one: dic
             sensor_identifier="",
             sensor_type="",
             value_code=section_one["daily_precipitation"]["duration_code"],
+            source_type=SourceTypeMixin.SourceType.TELEGRAM,
+            source_id=source_telegram.id if source_telegram else 0,
         )
-        daily_precipitation_metric.save(refresh_view=False)
+        save_metric_and_create_log(daily_precipitation_metric)
 
 
-def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStation):
+def save_reported_discharge(
+    measurements: dict, hydro_station: HydrologicalStation, source_telegram: TelegramStored = None
+) -> None:
     for input in measurements:
         timestamp_local = SmartDatetime(input["date"], hydro_station, tz_included=False).local
         water_level_decadal_metric = HydrologicalMetric(
@@ -187,9 +209,10 @@ def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStati
             station=hydro_station,
             sensor_identifier="",
             sensor_type="",
+            source_type=SourceTypeMixin.SourceType.TELEGRAM,
+            source_id=source_telegram.id if source_telegram else 0,
         )
-        water_level_decadal_metric.save()
-
+        save_metric_and_create_log(water_level_decadal_metric)
         discharge_metric = HydrologicalMetric(
             timestamp_local=timestamp_local,
             min_value=None,
@@ -201,8 +224,10 @@ def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStati
             station=hydro_station,
             sensor_identifier="",
             sensor_type="",
+            source_type=SourceTypeMixin.SourceType.TELEGRAM,
+            source_id=source_telegram.id if source_telegram else 0,
         )
-        discharge_metric.save()
+        save_metric_and_create_log(discharge_metric)
 
         cross_section_area_metric = HydrologicalMetric(
             timestamp_local=timestamp_local,
@@ -215,8 +240,11 @@ def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStati
             station=hydro_station,
             sensor_identifier="",
             sensor_type="",
+            source_type=SourceTypeMixin.SourceType.TELEGRAM,
+            source_id=source_telegram.id if source_telegram else 0,
         )
-        cross_section_area_metric.save()
+        save_metric_and_create_log(cross_section_area_metric)
+
         if input["maximum_depth"] is not None:
             maximum_depth_metric = HydrologicalMetric(
                 timestamp_local=timestamp_local,
@@ -229,11 +257,15 @@ def save_reported_discharge(measurements: dict, hydro_station: HydrologicalStati
                 station=hydro_station,
                 sensor_identifier="",
                 sensor_type="",
+                source_type=SourceTypeMixin.SourceType.TELEGRAM,
+                source_id=source_telegram.id if source_telegram else 0,
             )
-            maximum_depth_metric.save()
+            save_metric_and_create_log(maximum_depth_metric)
 
 
-def save_section_eight_metrics(meteo_data: dict, meteo_station: MeteorologicalStation) -> None:
+def save_section_eight_metrics(
+    meteo_data: dict, meteo_station: MeteorologicalStation, source_telegram: TelegramStored = None
+) -> None:
     timestamp = meteo_data["timestamp"]
     decade = meteo_data["decade"]
     precipitation_metric = MeteorologicalMetric(
@@ -245,8 +277,10 @@ def save_section_eight_metrics(meteo_data: dict, meteo_station: MeteorologicalSt
         else MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE,
         unit=MetricUnit.PRECIPITATION,
         station=meteo_station,
+        source_type=SourceTypeMixin.SourceType.TELEGRAM,
+        source_id=source_telegram.id if source_telegram else 0,
     )
-    precipitation_metric.save()
+    save_metric_and_create_log(precipitation_metric)
 
     temperature_metric = MeteorologicalMetric(
         timestamp=timestamp,
@@ -257,8 +291,10 @@ def save_section_eight_metrics(meteo_data: dict, meteo_station: MeteorologicalSt
         else MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE,
         unit=MetricUnit.TEMPERATURE,
         station=meteo_station,
+        source_type=SourceTypeMixin.SourceType.TELEGRAM,
+        source_id=source_telegram.id if source_telegram else 0,
     )
-    temperature_metric.save()
+    save_metric_and_create_log(temperature_metric)
 
 
 def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict:
