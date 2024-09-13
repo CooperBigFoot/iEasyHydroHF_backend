@@ -120,27 +120,24 @@ class TelegramsAPIController:
             end_created_date_tz = start_created_date_tz + timedelta(days=1) - timedelta(microseconds=1)
             queryset = queryset.filter(created_date__range=(start_created_date_tz, end_created_date_tz))
 
-        if filters.acknowledged_by:
-            queryset = queryset.filter(acknowledged_by=filters.acknowledged_by)
+        if filters.only_pending:
+            queryset = queryset.filter(acknowledged=False)
 
-        if filters.valid:
-            queryset = queryset.filter(valid=filters.valid)
+        if filters.only_invalid:
+            queryset = queryset.filter(valid=False)
 
-        if filters.station_code:
-            queryset = queryset.filter(station_code=filters.station_code)
+        if not filters.only_invalid and isinstance(filters.station_codes, str) and len(filters.station_codes) > 0:
+            list_station_codes = filters.station_codes.split(",")
+            queryset = queryset.filter(station_code__in=list_station_codes)
 
-        if filters.auto_stored:
-            queryset = queryset.filter(auto_stored=filters.auto_stored)
-
+        queryset = queryset.order_by("-created_date")
         return 200, queryset
 
     @route.post("received/ack", response={200: Message})
     def acknowledge_received_telegrams(self, request, organization_uuid: str, payload: InputAckSchema):
         user = request.user
         org = Organization.objects.get(uuid=organization_uuid)
-        tg_received_queryset = TelegramReceived.objects.filter(
-            id__in=payload.ids, acknowledged=False, organization=org
-        )
+        tg_received_queryset = TelegramReceived.objects.filter(id__in=payload.ids, organization=org)
 
         if tg_received_queryset.count() != len(payload.ids):
             raise TelegramReceived.DoesNotExist("Not all provided IDs are available.")

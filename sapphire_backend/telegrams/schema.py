@@ -140,19 +140,14 @@ class TelegramReceivedOutputSchema(Schema):
     created_date: datetime
     station_code: str | None = None
     decoded_values: Any | None = None
-    errors: str | None = None
     acknowledged: bool
-    acknowledged_ts: datetime | None = None
-    acknowledged_by: int | None = None
-    auto_stored: bool
 
 
 class TelegramReceivedFilterSchema(FilterSchema):
     created_date: str = None
-    acknowledged_by: str | None = None
-    valid: bool | None = None
-    station_code: str | None = None
-    auto_stored: bool | None = None
+    only_pending: bool = True
+    only_invalid: bool | None = False
+    station_codes: str | None = None
 
 
 class InputAckSchema(Schema):
