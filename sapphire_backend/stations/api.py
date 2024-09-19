@@ -14,6 +14,7 @@ from sapphire_backend.utils.permissions import (
     admin_permissions,
     regular_permissions,
 )
+
 from .models import HydrologicalStation, MeteorologicalStation, Remark, Site, VirtualStation, VirtualStationAssociation
 from .schema import (
     HydrologicalStationFilterSchema,
@@ -31,9 +32,11 @@ from .schema import (
     RemarkOutputSchema,
     VirtualStationAssociationInputSchema,
     VirtualStationDetailOutputSchema,
+    VirtualStationForecastStatusInputSchema,
+    VirtualStationForecastStatusOutputSchema,
     VirtualStationInputSchema,
     VirtualStationListOutputSchema,
-    VirtualStationUpdateSchema, VirtualStationForecastStatusOutputSchema, VirtualStationForecastStatusInputSchema,
+    VirtualStationUpdateSchema,
 )
 
 logger = logging.getLogger("api_logger")
@@ -213,9 +216,7 @@ class VirtualForecastStatusAPIController:
         station_uuids: list[str],
     ):
         status = action == "on"
-        stations = (
-            VirtualStation.objects.for_organization(organization_uuid).active().filter(uuid__in=station_uuids)
-        )
+        stations = VirtualStation.objects.for_organization(organization_uuid).active().filter(uuid__in=station_uuids)
         _ = stations.update(
             daily_forecast=status,
             pentad_forecast=status,

@@ -93,6 +93,11 @@ class TestVirtualStationsAPI:
                 "historical_discharge_maximum": None,
                 "station_type": "V",
                 "is_assigned": False,
+                "daily_forecast": False,
+                "pentad_forecast": False,
+                "decadal_forecast": False,
+                "monthly_forecast": False,
+                "seasonal_forecast": False,
             },
             {
                 "basin": {
@@ -130,6 +135,11 @@ class TestVirtualStationsAPI:
                 "historical_discharge_maximum": None,
                 "station_type": "V",
                 "is_assigned": False,
+                "daily_forecast": False,
+                "pentad_forecast": False,
+                "decadal_forecast": False,
+                "monthly_forecast": False,
+                "seasonal_forecast": False,
             },
         ]
 
@@ -209,6 +219,11 @@ class TestVirtualStationsAPI:
             "station_type": "V",
             "associations": [],
             "is_assigned": False,
+            "daily_forecast": False,
+            "pentad_forecast": False,
+            "decadal_forecast": False,
+            "monthly_forecast": False,
+            "seasonal_forecast": False,
         }
 
         assert response.json() == EXPECTED_RESPONSE
@@ -300,6 +315,11 @@ class TestVirtualStationsAPI:
                 },
             ],
             "is_assigned": True,
+            "daily_forecast": False,
+            "pentad_forecast": False,
+            "decadal_forecast": False,
+            "monthly_forecast": False,
+            "seasonal_forecast": False,
         }
 
         assert response.json() == EXPECTED_RESPONSE
@@ -397,6 +417,11 @@ class TestVirtualStationsAPI:
             "station_type": "V",
             "associations": [],
             "is_assigned": False,
+            "daily_forecast": False,
+            "pentad_forecast": False,
+            "decadal_forecast": False,
+            "monthly_forecast": False,
+            "seasonal_forecast": False,
         }
 
         assert response.json() == EXPECTED_RESPONSE
@@ -508,9 +533,9 @@ class TestVirtualStationsAPI:
         assert VirtualStationAssociation.objects.count() == 1
 
 
-class TestForecastStatusAPI:
-    endpoint = "/api/v1/stations/{}/forecast-status"
-    endpoint_detail = "/api/v1/stations/{}/forecast-status/{}"
+class TestHydroForecastStatusAPI:
+    endpoint = "/api/v1/stations/{}/hydro/forecast-status"
+    endpoint_detail = "/api/v1/stations/{}/hydro/forecast-status/{}"
 
     def test_get_status_for_unauthenticated_user(self, api_client, organization):
         response = api_client.get(self.endpoint.format(organization.uuid))
@@ -750,5 +775,251 @@ class TestForecastStatusAPI:
                 "id": automatic_hydro_station.id,
                 "name": automatic_hydro_station.name,
                 "station_type": "A",
+            },
+        ]
+
+
+class TestVirtualForecastStatusAPI:
+    endpoint = "/api/v1/stations/{}/virtual/forecast-status"
+    endpoint_detail = "/api/v1/stations/{}/virtual/forecast-status/{}"
+
+    def test_get_status_for_unauthenticated_user(self, api_client, organization):
+        response = api_client.get(self.endpoint.format(organization.uuid))
+
+        assert response.status_code == 401
+
+    def test_get_status_for_unauthorized_user(self, authenticated_regular_user_api_client, backup_organization):
+        response = authenticated_regular_user_api_client.get(self.endpoint.format(backup_organization.uuid))
+
+        assert response.status_code == 403
+
+    def test_get_status_for_no_stations(self, authenticated_regular_user_api_client, organization):
+        response = authenticated_regular_user_api_client.get(self.endpoint.format(organization.uuid))
+
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_get_status_for_all_stations(
+        self, authenticated_regular_user_api_client, organization, virtual_station, virtual_station_two
+    ):
+        response = authenticated_regular_user_api_client.get(self.endpoint.format(organization.uuid))
+
+        assert response.json() == [
+            {
+                "daily_forecast": False,
+                "pentad_forecast": False,
+                "decadal_forecast": False,
+                "monthly_forecast": False,
+                "seasonal_forecast": False,
+                "uuid": str(virtual_station.uuid),
+                "station_code": virtual_station.station_code,
+                "id": virtual_station.id,
+                "name": virtual_station.name,
+                "station_type": "V",
+            },
+            {
+                "daily_forecast": False,
+                "pentad_forecast": False,
+                "decadal_forecast": False,
+                "monthly_forecast": False,
+                "seasonal_forecast": False,
+                "uuid": str(virtual_station_two.uuid),
+                "station_code": virtual_station_two.station_code,
+                "id": virtual_station_two.id,
+                "name": virtual_station_two.name,
+                "station_type": "V",
+            },
+        ]
+
+    def test_for_single_non_existing_station(self, authenticated_regular_user_api_client, organization):
+        response = authenticated_regular_user_api_client.get(
+            self.endpoint_detail.format(organization.uuid, "11111111-aaaa-bbbb-cccc-222222222222")
+        )
+
+        assert response.status_code == 404
+
+    def test_for_single_station_from_different_organization(
+        self, authenticated_regular_user_other_organization_api_client, organization, virtual_station
+    ):
+        response = authenticated_regular_user_other_organization_api_client.get(
+            self.endpoint_detail.format(organization.uuid, virtual_station.uuid)
+        )
+
+        assert response.status_code == 403
+
+    def test_for_single_station(self, authenticated_regular_user_api_client, organization, virtual_station):
+        response = authenticated_regular_user_api_client.get(
+            self.endpoint_detail.format(organization.uuid, virtual_station.uuid)
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "daily_forecast": False,
+            "pentad_forecast": False,
+            "decadal_forecast": False,
+            "monthly_forecast": False,
+            "seasonal_forecast": False,
+            "uuid": str(virtual_station.uuid),
+            "station_code": virtual_station.station_code,
+            "id": virtual_station.id,
+            "name": virtual_station.name,
+            "station_type": "V",
+        }
+
+    def test_set_status_for_non_existing_station(self, authenticated_regular_user_api_client, organization):
+        data = {
+            "daily_forecast": True,
+            "pentad_forecast": True,
+            "decadal_forecast": False,
+            "monthly_forecast": False,
+            "seasonal_forecast": False,
+        }
+
+        response = authenticated_regular_user_api_client.post(
+            self.endpoint_detail.format(organization.uuid, "11111111-aaaa-bbbb-cccc-222222222222"),
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 404
+
+    def test_for_incomplete_payload(self, authenticated_regular_user_api_client, organization, virtual_station):
+        data = {"daily_forecast": True, "pentad_forecast": True, "seasonal_forecast": False}
+
+        response = authenticated_regular_user_api_client.post(
+            self.endpoint_detail.format(organization, virtual_station.uuid),
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 422
+
+    def test_set_forecast_status(self, authenticated_regular_user_api_client, organization, virtual_station):
+        data = {
+            "daily_forecast": True,
+            "pentad_forecast": True,
+            "decadal_forecast": False,
+            "monthly_forecast": False,
+            "seasonal_forecast": False,
+        }
+
+        response = authenticated_regular_user_api_client.post(
+            self.endpoint_detail.format(organization.uuid, virtual_station.uuid),
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        assert response.json() == {
+            "daily_forecast": True,
+            "pentad_forecast": True,
+            "decadal_forecast": False,
+            "monthly_forecast": False,
+            "seasonal_forecast": False,
+            "uuid": str(virtual_station.uuid),
+            "station_code": virtual_station.station_code,
+            "id": virtual_station.id,
+            "name": virtual_station.name,
+            "station_type": "V",
+        }
+
+    def test_bulk_toggle_for_non_existing_stations(self, authenticated_regular_user_api_client, organization):
+        data = ["11111111-aaaa-bbbb-cccc-222222222222"]
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint.format(organization.uuid)}/bulk-toggle?action=on",
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        assert response.json() == []
+
+    def test_bulk_toggle_for_single_station(
+        self, authenticated_regular_user_api_client, organization, virtual_station
+    ):
+        data = [str(virtual_station.uuid)]
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint.format(organization.uuid)}/bulk-toggle?action=on",
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        assert response.json() == [
+            {
+                "daily_forecast": True,
+                "pentad_forecast": True,
+                "decadal_forecast": True,
+                "monthly_forecast": True,
+                "seasonal_forecast": True,
+                "uuid": str(virtual_station.uuid),
+                "station_code": virtual_station.station_code,
+                "id": virtual_station.id,
+                "name": virtual_station.name,
+                "station_type": "V",
+            }
+        ]
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint.format(organization.uuid)}/bulk-toggle?action=off",
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        assert response.json() == [
+            {
+                "daily_forecast": False,
+                "pentad_forecast": False,
+                "decadal_forecast": False,
+                "monthly_forecast": False,
+                "seasonal_forecast": False,
+                "uuid": str(virtual_station.uuid),
+                "station_code": virtual_station.station_code,
+                "id": virtual_station.id,
+                "name": virtual_station.name,
+                "station_type": "V",
+            }
+        ]
+
+    def test_bulk_toggle_for_multiple_stations(
+        self, authenticated_regular_user_api_client, organization, virtual_station, virtual_station_two
+    ):
+        data = [
+            str(virtual_station.uuid),
+            str(virtual_station_two.uuid),
+            "11111111-aaaa-bbbb-cccc-222222222222",
+        ]
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint.format(organization.uuid)}/bulk-toggle?action=on",
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        assert response.json() == [
+            {
+                "daily_forecast": True,
+                "pentad_forecast": True,
+                "decadal_forecast": True,
+                "monthly_forecast": True,
+                "seasonal_forecast": True,
+                "uuid": str(virtual_station.uuid),
+                "station_code": virtual_station.station_code,
+                "id": virtual_station.id,
+                "name": virtual_station.name,
+                "station_type": "V",
+            },
+            {
+                "daily_forecast": True,
+                "pentad_forecast": True,
+                "decadal_forecast": True,
+                "monthly_forecast": True,
+                "seasonal_forecast": True,
+                "uuid": str(virtual_station_two.uuid),
+                "station_code": virtual_station_two.station_code,
+                "id": virtual_station_two.id,
+                "name": virtual_station_two.name,
+                "station_type": "V",
             },
         ]

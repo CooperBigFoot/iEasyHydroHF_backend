@@ -362,6 +362,11 @@ def virtual_station(db, organization):
 
 
 @pytest.fixture
+def virtual_station_two(db, organization):
+    return VirtualStationFactory(organization=organization, station_code="55556")
+
+
+@pytest.fixture
 def virtual_station_kyrgyz(db, organization_kyrgyz):
     return VirtualStationFactory(organization=organization_kyrgyz, station_code="12345")
 
