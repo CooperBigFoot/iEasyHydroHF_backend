@@ -14,7 +14,6 @@ from sapphire_backend.utils.permissions import (
     admin_permissions,
     regular_permissions,
 )
-
 from .models import HydrologicalStation, MeteorologicalStation, Remark, Site, VirtualStation, VirtualStationAssociation
 from .schema import (
     HydrologicalStationFilterSchema,
@@ -34,7 +33,7 @@ from .schema import (
     VirtualStationDetailOutputSchema,
     VirtualStationInputSchema,
     VirtualStationListOutputSchema,
-    VirtualStationUpdateSchema,
+    VirtualStationUpdateSchema, VirtualStationForecastStatusOutputSchema, VirtualStationForecastStatusInputSchema,
 )
 
 logger = logging.getLogger("api_logger")
@@ -144,12 +143,12 @@ class HydroStationsAPIController:
 
 
 @api_controller(
-    "stations/{organization_uuid}/forecast-status",
-    tags=["Forecast status"],
+    "stations/{organization_uuid}/hydro/forecast-status",
+    tags=["Forecast status for hydrological stations"],
     auth=JWTAuth(),
     permissions=regular_permissions,
 )
-class ForecastStatusAPIController:
+class HydroForecastStatusAPIController:
     @route.post("bulk-toggle", response={201: list[HydroStationForecastStatusOutputSchema]})
     def bulk_toggle_forecast_status(
         self,
@@ -190,6 +189,61 @@ class ForecastStatusAPIController:
         forecast_data: HydroStationForecastStatusInputSchema,
     ):
         station = HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
+        for forecast, value in forecast_data.dict().items():
+            setattr(station, forecast, value)
+
+        station.save()
+
+        return 201, station
+
+
+@api_controller(
+    "stations/{organization_uuid}/virtual/forecast-status",
+    tags=["Forecast status for virtual stations"],
+    auth=JWTAuth(),
+    permissions=regular_permissions,
+)
+class VirtualForecastStatusAPIController:
+    @route.post("bulk-toggle", response={201: list[VirtualStationForecastStatusOutputSchema]})
+    def bulk_toggle_forecast_status(
+        self,
+        request: HttpRequest,
+        organization_uuid: str,
+        action: Query[Literal["on", "off"]],
+        station_uuids: list[str],
+    ):
+        status = action == "on"
+        stations = (
+            VirtualStation.objects.for_organization(organization_uuid).active().filter(uuid__in=station_uuids)
+        )
+        _ = stations.update(
+            daily_forecast=status,
+            pentad_forecast=status,
+            decadal_forecast=status,
+            monthly_forecast=status,
+            seasonal_forecast=status,
+        )
+        return 201, stations
+
+    @route.get("", response=list[VirtualStationForecastStatusOutputSchema])
+    def get_virtual_stations_forecast_status(self, request: HttpRequest, organization_uuid: str):
+        return VirtualStation.objects.for_organization(organization_uuid).active()
+
+    @route.get("{station_uuid}", response=VirtualStationForecastStatusOutputSchema)
+    def get_single_virtual_station_forecast_status(
+        self, request: HttpRequest, organization_uuid: str, station_uuid: str
+    ):
+        return VirtualStation.objects.get(uuid=station_uuid, is_deleted=False)
+
+    @route.post("{station_uuid}", response={201: VirtualStationForecastStatusOutputSchema})
+    def set_virtual_station_forecast_status(
+        self,
+        request: HttpRequest,
+        organization_uuid: str,
+        station_uuid: str,
+        forecast_data: VirtualStationForecastStatusInputSchema,
+    ):
+        station = VirtualStation.objects.get(uuid=station_uuid, is_deleted=False)
         for forecast, value in forecast_data.dict().items():
             setattr(station, forecast, value)
 

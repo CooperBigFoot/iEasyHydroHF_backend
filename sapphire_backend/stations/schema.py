@@ -4,7 +4,6 @@ from ninja import Field, FilterSchema, ModelSchema, Schema
 
 from sapphire_backend.organizations.schema import BasinOutputSchema, RegionOutputSchema
 from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
-
 from .models import HydrologicalStation, Remark
 
 
@@ -180,6 +179,17 @@ class VirtualStationInputSchema(VirtualStationBaseSchema, SiteBasinRegionInputSc
     pass
 
 
+class VirtualStationForecastStatusInputSchema(ForecastStatusSchema):
+    pass
+
+
+class VirtualStationForecastStatusOutputSchema(UUIDSchemaMixin, ForecastStatusSchema):
+    station_code: str
+    id: int
+    name: str
+    station_type: str = "V"
+
+
 class VirtualStationUpdateSchema(VirtualStationInputSchema):
     name: str | None = None
     station_code: str | None = None
@@ -189,7 +199,8 @@ class VirtualStationUpdateSchema(VirtualStationInputSchema):
     country: str | None = None
 
 
-class VirtualStationListOutputSchema(VirtualStationBaseSchema, SiteBasinRegionOutputSchema, UUIDSchemaMixin):
+class VirtualStationListOutputSchema(VirtualStationBaseSchema, ForecastStatusSchema, SiteBasinRegionOutputSchema,
+                                     UUIDSchemaMixin):
     id: int
     timezone: str | None = Field(None, alias="get_timezone_display")
     station_type: str = "V"
