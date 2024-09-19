@@ -163,7 +163,7 @@ class Remark(UUIDMixin, CreateLastModifiedDateMixin, models.Model):
         return self.hydro_station or self.meteo_station
 
 
-class VirtualStation(UUIDMixin, LocationMixin, BulletinOrderMixin, models.Model):
+class VirtualStation(UUIDMixin, LocationMixin, ForecastToggleMixin, BulletinOrderMixin, models.Model):
     name = models.CharField(verbose_name=_("Virtual station name"), blank=False, max_length=150)
     secondary_name = models.CharField(verbose_name=_("Secondary name"), blank=True, max_length=150)
     description = models.TextField(verbose_name=_("Description"), blank=True)
