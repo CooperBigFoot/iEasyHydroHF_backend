@@ -1,9 +1,9 @@
 import datetime
 import re
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pytest
-from zoneinfo import ZoneInfo
 
 from sapphire_backend.telegrams.exceptions import (
     InvalidTokenException,
@@ -306,6 +306,7 @@ class TestKN15TelegramParserSectionOne:
             "air_temperature": None,
             "ice_phenomena": [],
             "daily_precipitation": None,
+            "date": "2024-04-14",
         }
 
     def test_parse_full_output(self, datetime_mock, organization, manual_hydro_station):
@@ -329,6 +330,7 @@ class TestKN15TelegramParserSectionOne:
                 "air_temperature": None,
                 "ice_phenomena": [],
                 "daily_precipitation": None,
+                "date": "2024-04-14",
             },
             # there are no empty objects for sections 933, 966 or 988 if they are not present
         }
@@ -471,6 +473,7 @@ class TestKN15TelegramParserSectionOne:
             "air_temperature": None,
             "ice_phenomena": [],
             "daily_precipitation": None,
+            "date": "2024-04-14",
         }
 
 

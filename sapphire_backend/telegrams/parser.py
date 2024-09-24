@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import datetime as dt
+from datetime import datetime as dt, datetime
 from datetime import timedelta
 from typing import Any
 
@@ -159,6 +159,7 @@ class KN15TelegramParser(BaseTelegramParser):
         user: User = None,
     ):
         super().__init__(telegram, organization_uuid, store_parsed_telegram, automatic_ingestion, user)
+        self._telegram_date = None
 
     def validate_format(self):
         if self.tokens[1][-1] not in ["1", "2"]:
@@ -191,10 +192,10 @@ class KN15TelegramParser(BaseTelegramParser):
         decoded_values["section_eight"] = {}
 
         if section_zero["section_code"] == 1:
-            section_one = self.parse_section_one()
+            section_one = self.parse_section_one(section_date=self._telegram_date)
             decoded_values["section_one"] = section_one
         elif section_zero["section_code"] == 2:
-            section_one = self.parse_section_one()
+            section_one = self.parse_section_one(section_date=self._telegram_date)
             decoded_values["section_one"] = section_one
             while self.tokens:
                 token = self.tokens[0]
@@ -374,17 +375,17 @@ class KN15TelegramParser(BaseTelegramParser):
         parsed_day_in_month = extract_day_from_token(input_token)
         parsed_hour = extract_hour_from_token(input_token)
         date = self.determine_date(parsed_day_in_month, parsed_hour)
-
+        self._telegram_date = date
         section_code = int(input_token[4])
 
         return {
             "station_code": station_code,
             "station_name": getattr(self.hydro_station, "name", None) or getattr(self.meteo_station, "name", None),
-            "date": date.isoformat(),
+            "date": self._telegram_date.isoformat(),
             "section_code": section_code,
         }
 
-    def parse_section_one(self) -> dict:
+    def parse_section_one(self, section_date: datetime) -> dict:
         """
         Parses section 1 of the KN15 telegram.
         """
@@ -493,6 +494,7 @@ class KN15TelegramParser(BaseTelegramParser):
             "air_temperature": air_temperature,
             "ice_phenomena": ice_phenomena,
             "daily_precipitation": daily_precipitation,
+            "date": section_date.date().isoformat(),
         }
 
     def parse_section_two(self):
@@ -514,8 +516,8 @@ class KN15TelegramParser(BaseTelegramParser):
         hour = 8
         date = self.determine_date(day, hour)
 
-        parsed = self.parse_section_one()
-        return {**parsed, 'date': date.isoformat()}
+        parsed = self.parse_section_one(section_date=date)
+        return parsed
 
     def parse_section_three(self) -> dict[str, int | float]:
         """

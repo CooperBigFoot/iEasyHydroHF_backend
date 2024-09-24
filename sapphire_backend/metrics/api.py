@@ -171,8 +171,7 @@ class HydroMetricsAPIController:
 
         for entry in measurements:
             grouped_data[entry.timestamp_local][entry.metric_name] = entry.avg_value
-
-        return [
+        ret = [
             {
                 "date": str(date),
                 "h": custom_ceil(values.get("WLDC")),
@@ -181,6 +180,7 @@ class HydroMetricsAPIController:
             }
             for date, values in grouped_data.items()
         ]
+        return ret
 
 
 @api_controller(

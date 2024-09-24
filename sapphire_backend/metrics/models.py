@@ -283,18 +283,20 @@ class MeteorologicalMetric(SourceTypeMixin, models.Model):
 
     def save(self, upsert=True, **kwargs) -> None:
         sql_query_insert = f"""
-        INSERT INTO metrics_meteorologicalmetric (timestamp_local, station_id, metric_name, timestamp, value, value_type, unit )
-        VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.timestamp}', {self.value}, '{self.value_type}', '{self.unit}');
+        INSERT INTO metrics_meteorologicalmetric (timestamp_local, station_id, metric_name, timestamp, value, value_type, unit, source_type, source_id )
+        VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.timestamp}', {self.value}, '{self.value_type}', '{self.unit}', '{self.source_type}', {self.source_id});
         """
 
         sql_query_upsert = f"""
-    INSERT INTO metrics_meteorologicalmetric (timestamp_local, station_id, metric_name, timestamp, value, value_type, unit)
-    VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.timestamp}', {self.value}, '{self.value_type}', '{self.unit}')
+    INSERT INTO metrics_meteorologicalmetric (timestamp_local, station_id, metric_name, timestamp, value, value_type, unit, source_type, source_id)
+    VALUES ('{self.timestamp_local}', {self.station_id}, '{self.metric_name}', '{self.timestamp}', {self.value}, '{self.value_type}', '{self.unit}', '{self.source_type}', {self.source_id})
     ON CONFLICT (timestamp_local, station_id, metric_name)
     DO UPDATE
     SET value = EXCLUDED.value,
         value_type = EXCLUDED.value_type,
-        unit = EXCLUDED.unit;
+        unit = EXCLUDED.unit,
+        source_type = EXCLUDED.source_type,
+        source_id = EXCLUDED.source_id;
         """
 
         with connection.cursor() as cursor:

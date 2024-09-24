@@ -802,7 +802,6 @@ class TestGetTelegramOverviewSaveDataOverviewMetaAPI:
         assert res["save_data_overview"][0]["station_code"] == manual_hydro_station_kyrgyz.station_code
         assert res["save_data_overview"][0]["station_name"] == manual_hydro_station_kyrgyz.name
         assert res["save_data_overview"][0]["telegram_day_date"] == "2020-04-01"
-        assert res["save_data_overview"][0]["previous_day_date"] == "2020-03-31"
         assert res["save_data_overview"][0]["type"] == "discharge / meteo"
 
     def test_get_multi_telegram_overview_save_data_overview_meta(
@@ -852,17 +851,15 @@ class TestGetTelegramOverviewSaveDataOverviewMetaAPI:
                 decoded_data["section_zero"]["date"], parser.hydro_station, tz_included=True
             )
             telegram_date = telegram_day_smart.local.date().isoformat()
-            telegram_previous_date = telegram_day_smart.previous_local.date().isoformat()
 
             assert entry["station_code"] == decoded_data["section_zero"]["station_code"]
             assert entry["station_name"] == parser.hydro_station.name
             assert entry["telegram_day_date"] == telegram_date
-            assert entry["previous_day_date"] == telegram_previous_date
             assert entry["type"] == "discharge / meteo" if decoded_data.get("section_eight", False) else "discharge"
 
 
 class TestGetTelegramOverviewSaveDataOverviewSectionOneAPI:
-    def test_get_multi_telegram_overview_save_data_overview_section_one(
+    def test_get_single_telegram_overview_save_data_overview_section_one(
         self,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
@@ -883,32 +880,36 @@ class TestGetTelegramOverviewSaveDataOverviewSectionOneAPI:
         res = response.json()
 
         assert (
-            res["save_data_overview"][0]["section_one"]["morning_water_level"]
+            res["save_data_overview"][0]["section_one_two"][0]["date"]
+            == decoded_data["section_one"]["date"]
+        )
+        assert (
+            res["save_data_overview"][0]["section_one_two"][0]["morning_water_level"]
             == decoded_data["section_one"]["morning_water_level"]
         )
         assert (
-            res["save_data_overview"][0]["section_one"]["water_level_20h_period"]
+            res["save_data_overview"][0]["section_one_two"][0]["water_level_20h_period"]
             == decoded_data["section_one"]["water_level_20h_period"]
         )
         assert (
-            res["save_data_overview"][0]["section_one"]["water_temperature"]
+            res["save_data_overview"][0]["section_one_two"][0]["water_temperature"]
             == decoded_data["section_one"]["water_temperature"]
         )
         assert (
-            res["save_data_overview"][0]["section_one"]["air_temperature"]
+            res["save_data_overview"][0]["section_one_two"][0]["air_temperature"]
             == decoded_data["section_one"]["air_temperature"]
         )
 
         assert (
-            res["save_data_overview"][0]["section_one"]["daily_precipitation"]["precipitation"]
+            res["save_data_overview"][0]["section_one_two"][0]["daily_precipitation"]["precipitation"]
             == decoded_data["section_one"]["daily_precipitation"]["precipitation"]
         )
         assert (
-            res["save_data_overview"][0]["section_one"]["daily_precipitation"]["duration_code"]
+            res["save_data_overview"][0]["section_one_two"][0]["daily_precipitation"]["duration_code"]
             == decoded_data["section_one"]["daily_precipitation"]["duration_code"]
         )
 
-    def test_get_telegram_overview_save_data_overview_section_one(
+    def test_get_multi_telegram_overview_save_data_overview_section_one(
         self,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
@@ -948,21 +949,24 @@ class TestGetTelegramOverviewSaveDataOverviewSectionOneAPI:
         for idx, entry in enumerate(res["save_data_overview"]):
             parser = KN15TelegramParser(telegrams[idx]["raw"], organization_kyrgyz.uuid)
             decoded_data = parser.parse()
-            assert entry["section_one"]["morning_water_level"] == decoded_data["section_one"]["morning_water_level"]
+            assert entry["section_one_two"][0]["morning_water_level"] == decoded_data["section_one"]["morning_water_level"]
             assert (
-                entry["section_one"]["water_level_20h_period"] == decoded_data["section_one"]["water_level_20h_period"]
+                entry["section_one_two"][0]["water_level_20h_period"] == decoded_data["section_one"]["water_level_20h_period"]
             )
-            assert entry["section_one"]["water_temperature"] == decoded_data["section_one"]["water_temperature"]
-            assert entry["section_one"]["air_temperature"] == decoded_data["section_one"]["air_temperature"]
+            assert entry["section_one_two"][0]["water_temperature"] == decoded_data["section_one"]["water_temperature"]
+            assert entry["section_one_two"][0]["air_temperature"] == decoded_data["section_one"]["air_temperature"]
             assert (
-                entry["section_one"]["daily_precipitation"]["precipitation"]
+                entry["section_one_two"][0]["daily_precipitation"]["precipitation"]
                 == decoded_data["section_one"]["daily_precipitation"]["precipitation"]
             )
             assert (
-                entry["section_one"]["daily_precipitation"]["duration_code"]
+                entry["section_one_two"][0]["daily_precipitation"]["duration_code"]
                 == decoded_data["section_one"]["daily_precipitation"]["duration_code"]
             )
-
+            assert (
+                entry["section_one_two"][0]["date"]
+                == decoded_data["section_one"]["date"]
+            )
 
 class TestGetTelegramOverviewSaveDataOverviewSectionOneIcePhenomenaAPI:
     def test_get_telegram_overview_save_data_overview_section_one_ice_phenomena(
@@ -985,15 +989,15 @@ class TestGetTelegramOverviewSaveDataOverviewSectionOneIcePhenomenaAPI:
         decoded_data = KN15TelegramParser(telegram, organization_kyrgyz.uuid).parse()
         res = response.json()
 
-        assert len(res["save_data_overview"][0]["section_one"]["ice_phenomena"]) == len(
+        assert len(res["save_data_overview"][0]["section_one_two"][0]["ice_phenomena"]) == len(
             decoded_data["section_one"]["ice_phenomena"]
         )
         assert (
-            res["save_data_overview"][0]["section_one"]["ice_phenomena"][0]["code"]
+            res["save_data_overview"][0]["section_one_two"][0]["ice_phenomena"][0]["code"]
             == decoded_data["section_one"]["ice_phenomena"][0]["code"]
         )
         assert (
-            res["save_data_overview"][0]["section_one"]["ice_phenomena"][0]["intensity"]
+            res["save_data_overview"][0]["section_one_two"][0]["ice_phenomena"][0]["intensity"]
             == decoded_data["section_one"]["ice_phenomena"][0]["intensity"]
         )
 
@@ -1034,7 +1038,7 @@ class TestGetTelegramOverviewSaveDataOverviewSectionOneIcePhenomenaAPI:
             parser = KN15TelegramParser(telegrams[idx]["raw"], organization_kyrgyz.uuid)
             decoded_data = parser.parse()
             # in case of multiple ice phenomenas
-            for idx_ice, ice_ph_entry in enumerate(entry["section_one"]["ice_phenomena"]):
+            for idx_ice, ice_ph_entry in enumerate(entry["section_one_two"][0]["ice_phenomena"]):
                 assert ice_ph_entry["code"] == decoded_data["section_one"]["ice_phenomena"][idx_ice]["code"]
                 assert ice_ph_entry["intensity"] == decoded_data["section_one"]["ice_phenomena"][idx_ice]["intensity"]
 

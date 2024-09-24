@@ -9,11 +9,6 @@ from ninja_jwt.authentication import JWTAuth
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
-
-from ..organizations.models import Organization
-from ..users.models import User
-from ..utils.datetime_helper import SmartDatetime
-from ..utils.mixins.schemas import Message
 from .models import TelegramReceived, TelegramStored
 from .schema import (
     InputAckSchema,
@@ -33,6 +28,10 @@ from .utils import (
     save_section_one_metrics,
     simulate_telegram_insertion,
 )
+from ..organizations.models import Organization
+from ..users.models import User
+from ..utils.datetime_helper import SmartDatetime
+from ..utils.mixins.schemas import Message
 
 
 @api_controller(
@@ -94,6 +93,14 @@ class TelegramsAPIController:
                     hydro_station=hydro_station,
                     source_telegram=stored_telegram,
                 )
+
+                for section_two_entry in telegram_data.get("section_two", []):
+                    save_section_one_metrics(
+                        section_two_entry["date_smart"],
+                        section_one=section_two_entry,
+                        hydro_station=hydro_station,
+                        source_telegram=stored_telegram,
+                    )
 
                 meteo_data = telegram_data.get("section_eight")
                 if meteo_data is not None:

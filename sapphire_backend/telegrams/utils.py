@@ -1,5 +1,5 @@
 import logging
-from datetime import timedelta, datetime
+from datetime import timedelta
 
 from sapphire_backend.estimations.models import (
     EstimationsWaterDischargeDaily,
@@ -46,7 +46,7 @@ def get_parsed_telegrams_data(
         telegram = telegram_input.raw
         override_date = telegram_input.override_date
         parser = KN15TelegramParser(
-            telegram, organization_uuid=organization_uuid, store_parsed_telegram=save_telegrams, user=user
+            telegram, organization_uuid=organization_uuid, store_parsed_telegram=save_telegrams, user=user,
         )
         try:
             decoded = parser.parse()
@@ -56,7 +56,8 @@ def get_parsed_telegrams_data(
             )
             if override_date is not None:
                 telegram_day_smart = SmartDatetime(override_date, parser.hydro_station, tz_included=False)
-
+            if override_date is not None and decoded.get("section_two", None) is not None:
+                raise TelegramParserException("Telegram with section 922 doesn't support date override.")
             decoded["telegram_day_smart"] = telegram_day_smart
             station_code = decoded["section_zero"]["station_code"]
             if parsed_data["stations"].get(station_code) is None:
@@ -70,8 +71,12 @@ def get_parsed_telegrams_data(
 
             for entry in decoded.get("section_two", []):
                 entry["date_smart"] = SmartDatetime(entry["date"], parser.hydro_station, tz_included=False)
+
             if decoded.get("section_one") is not None:
                 hydro_station_codes.add((station_code, str(parser.hydro_station.uuid)))
+                decoded["section_one"]["date_smart"] = telegram_day_smart
+                if override_date is not None:
+                    decoded["section_one"]["date"] = telegram_day_smart.local.isoformat()
 
             if decoded.get("section_eight") is not None:
                 meteo_station_codes.add((station_code, str(parser.meteo_station.uuid)))
@@ -86,13 +91,13 @@ def get_parsed_telegrams_data(
 
 
 def save_section_one_metrics(
-    telegram_day_smart: SmartDatetime,
+    section_day_smart: SmartDatetime,
     section_one: dict,
     hydro_station: HydrologicalStation,
     source_telegram: TelegramStored = None,
 ) -> None:
     yesterday_evening_wl_metric = HydrologicalMetric(
-        timestamp_local=telegram_day_smart.previous_evening_local,
+        timestamp_local=section_day_smart.previous_evening_local,
         min_value=None,
         avg_value=section_one["water_level_20h_period"],
         max_value=None,
@@ -108,7 +113,7 @@ def save_section_one_metrics(
     save_metric_and_create_log(yesterday_evening_wl_metric, True)
 
     morning_wl_metric = HydrologicalMetric(
-        timestamp_local=telegram_day_smart.morning_local,
+        timestamp_local=section_day_smart.morning_local,
         min_value=None,
         avg_value=section_one["morning_water_level"],
         max_value=None,
@@ -125,7 +130,7 @@ def save_section_one_metrics(
 
     if section_one.get("air_temperature", False):
         air_temp_metric = HydrologicalMetric(
-            timestamp_local=telegram_day_smart.morning_local,
+            timestamp_local=section_day_smart.morning_local,
             min_value=None,
             avg_value=section_one["air_temperature"],
             max_value=None,
@@ -142,7 +147,7 @@ def save_section_one_metrics(
 
     if section_one.get("water_temperature", False):
         water_temp_metric = HydrologicalMetric(
-            timestamp_local=telegram_day_smart.morning_local,
+            timestamp_local=section_day_smart.morning_local,
             min_value=None,
             avg_value=section_one["water_temperature"],
             max_value=None,
@@ -160,7 +165,7 @@ def save_section_one_metrics(
     if section_one.get("ice_phenomena"):
         for idx, record in enumerate(section_one["ice_phenomena"]):
             ice_phenomena_metric = HydrologicalMetric(
-                timestamp_local=telegram_day_smart.morning_local + timedelta(milliseconds=idx),
+                timestamp_local=section_day_smart.morning_local + timedelta(milliseconds=idx),
                 min_value=None,
                 avg_value=record["intensity"] if record["intensity"] else -1,
                 max_value=None,
@@ -178,7 +183,7 @@ def save_section_one_metrics(
 
     if section_one.get("daily_precipitation"):
         daily_precipitation_metric = HydrologicalMetric(
-            timestamp_local=telegram_day_smart.previous_evening_local,
+            timestamp_local=section_day_smart.previous_evening_local,
             min_value=None,
             avg_value=section_one["daily_precipitation"]["precipitation"],
             max_value=None,
@@ -404,85 +409,45 @@ def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict
 
 def insert_template_with_new_metrics(data_template: dict, parsed_data: dict) -> dict:
     result = data_template
-
-    def insert_section_one_or_two_metrics(telegram_data, date_field_name, section_name):
-        smart_datetime = telegram_data[date_field_name]
-        telegram_day_date = smart_datetime.local.date().isoformat()
-        previous_day_date = smart_datetime.previous_local.date().isoformat()
-
-        wl_morning_new = telegram_data[section_name]["morning_water_level"]
-
-        discharge_model_morning = get_discharge_model_from_timestamp_local(
-            station=hydro_station, timestamp_local=smart_datetime.morning_local
-        )
-        discharge_morning_new = None
-        if discharge_model_morning is not None:
-            discharge_morning_new = discharge_model_morning.estimate_discharge(wl_morning_new)
-
-        result[station_code][telegram_day_date]["morning"].water_level_new = custom_ceil(wl_morning_new)
-        result[station_code][telegram_day_date]["morning"].discharge_new = custom_round(discharge_morning_new, 1)
-
-        # previous day evening
-        wl_previous_evening_new = telegram_data[section_name]["water_level_20h_period"]
-
-        discharge_model_previous_evening = get_discharge_model_from_timestamp_local(
-            station=hydro_station, timestamp_local=smart_datetime.previous_evening_local
-        )
-        discharge_previous_evening_new = None
-        if discharge_model_previous_evening is not None:
-            discharge_previous_evening_new = discharge_model_previous_evening.estimate_discharge(
-                wl_previous_evening_new
-            )
-
-        result[station_code][previous_day_date]["evening"].water_level_new = custom_ceil(wl_previous_evening_new)
-        result[station_code][previous_day_date]["evening"].discharge_new = custom_round(
-            discharge_previous_evening_new, 1
-        )
-
-    def insert_section_one_new_metrics(telegram_data):
-        insert_section_one_or_two_metrics(telegram_data, "telegram_day_smart", "section_one")
-
-    def insert_section_two_new_metrics(section_two_data):
-        insert_section_one_or_two_metrics(section_two_data,"date_smart", "section_two")
-
     for station_code, station_data in parsed_data["stations"].items():
         hydro_station = station_data["hydro_station_obj"]
         for telegram_data in station_data["telegrams"]:
-            insert_section_one_new_metrics(telegram_data)
-            for entry_922 in telegram_data.get("section_two", []):
-                insert_section_two_new_metrics(entry_922)
-            # smart_datetime = telegram_data["telegram_day_smart"]
-            # telegram_day_date = smart_datetime.local.date().isoformat()
-            # previous_day_date = smart_datetime.previous_local.date().isoformat()
-            #
-            # wl_morning_new = telegram_data["section_one"]["morning_water_level"]
-            #
-            # discharge_model_morning = get_discharge_model_from_timestamp_local(
-            #     station=hydro_station, timestamp_local=smart_datetime.morning_local
-            # )
-            # discharge_morning_new = None
-            # if discharge_model_morning is not None:
-            #     discharge_morning_new = discharge_model_morning.estimate_discharge(wl_morning_new)
-            #
-            # result[station_code][telegram_day_date]["morning"].water_level_new = custom_ceil(wl_morning_new)
-            # result[station_code][telegram_day_date]["morning"].discharge_new = custom_round(discharge_morning_new, 1)
-            #
-            # # previous day evening
-            # wl_previous_evening_new = telegram_data["section_one"]["water_level_20h_period"]
-            #
-            # discharge_model_previous_evening = get_discharge_model_from_timestamp_local(
-            #     station=hydro_station, timestamp_local=smart_datetime.previous_evening_local
-            # )
-            # discharge_previous_evening_new = None
-            # if discharge_model_previous_evening is not None:
-            #     discharge_previous_evening_new = discharge_model_previous_evening.estimate_discharge(
-            #         wl_previous_evening_new
-            #     )
-            #
-            # result[station_code][previous_day_date]["evening"].water_level_new = custom_ceil(wl_previous_evening_new)
-            # result[station_code][previous_day_date]["evening"].discharge_new = custom_round(
-            #     discharge_previous_evening_new, 1
-            # )
+            section_one_and_two = [telegram_data["section_one"]] + telegram_data.get("section_two", [])
+            for section_data in section_one_and_two:
+                smart_datetime = section_data["date_smart"]
+                telegram_day_date = smart_datetime.local.date().isoformat()
+                previous_day_date = smart_datetime.previous_local.date().isoformat()
+
+                wl_morning_new = section_data["morning_water_level"]
+
+                discharge_model_morning = get_discharge_model_from_timestamp_local(
+                    station=hydro_station, timestamp_local=smart_datetime.morning_local
+                )
+                discharge_morning_new = None
+                if discharge_model_morning is not None:
+                    discharge_morning_new = discharge_model_morning.estimate_discharge(wl_morning_new)
+
+                result[station_code][telegram_day_date]["morning"].water_level_new = custom_ceil(wl_morning_new)
+                result[station_code][telegram_day_date]["morning"].discharge_new = custom_round(discharge_morning_new,
+                                                                                                1)
+
+                # previous day evening
+                wl_previous_evening_new = section_data["water_level_20h_period"]
+
+                discharge_model_previous_evening = get_discharge_model_from_timestamp_local(
+                    station=hydro_station, timestamp_local=smart_datetime.previous_evening_local
+                )
+                discharge_previous_evening_new = None
+                if discharge_model_previous_evening is not None:
+                    discharge_previous_evening_new = discharge_model_previous_evening.estimate_discharge(
+                        wl_previous_evening_new
+                    )
+
+                result[station_code][previous_day_date]["evening"].water_level_new = custom_ceil(
+                    wl_previous_evening_new)
+                result[station_code][previous_day_date]["evening"].discharge_new = custom_round(
+                    discharge_previous_evening_new, 1
+                )
     return result
 
 
@@ -565,6 +530,7 @@ def generate_daily_overview(parsed_data: dict):
                 "telegram_day_date": telegram_day_smart.local.date().isoformat(),
                 "previous_day_date": telegram_day_smart.previous_local.date().isoformat(),
                 "section_one": decoded.get("section_one", None),
+                "section_two": sorted(decoded.get("section_two", []), key=lambda x: x["date"]),
                 "calc_trend_ok": trend_ok,
                 "calc_previous_day_water_level_average": previous_day_water_level_average,
                 "db_previous_day_morning_water_level": previous_day_morning_water_level,
@@ -648,16 +614,35 @@ def generate_save_data_overview(parsed_data: dict, simulation_result: str) -> li
     for station_code, station_data in parsed_data["stations"].items():
         for telegram_data in station_data["telegrams"]:
             item = {}
+
+            dates_affected = set()
+            section_one_two = [telegram_data.get("section_one")] + telegram_data.get("section_two", [])
+
+            for section_data in section_one_two:
+                date_smart = section_data["date_smart"]
+                day_date = date_smart.local.date().isoformat()
+                previous_day_date = date_smart.previous_local.date().isoformat()
+                dates_affected.add(day_date)
+                dates_affected.add(previous_day_date)
+                section_data["date"] = day_date
+
+            dates_affected = sorted(dates_affected, key=lambda x: x)  # sort by date asc
+            section_one_two = sorted(section_one_two, key=lambda entry: entry["date"])
+            wl_q_triplets = []
+            for date in dates_affected:
+                wl_q_triplets.append(
+                    {
+                        "date": date,
+                        "metrics": simulation_result[station_code][date],
+                    }
+                )
             telegram_day_smart = telegram_data["telegram_day_smart"]
             telegram_day_date = telegram_day_smart.local.date().isoformat()
-            previous_day_date = telegram_day_smart.previous_local.date().isoformat()
             item["station_code"] = station_code
             item["station_name"] = telegram_data["section_zero"]["station_name"]
             item["telegram_day_date"] = telegram_day_date
-            item["previous_day_date"] = previous_day_date
-            item["previous_day_data"] = simulation_result[station_code][previous_day_date]
-            item["telegram_day_data"] = simulation_result[station_code][telegram_day_date]
-            item["section_one"] = telegram_data.get("section_one")
+            item["section_one_two"] = section_one_two
+            item["wl_q_triplets"] = wl_q_triplets
             item["section_six"] = telegram_data.get("section_six", [])
             item["section_eight"] = telegram_data.get("section_eight")
             telegram_type = ""
@@ -665,6 +650,6 @@ def generate_save_data_overview(parsed_data: dict, simulation_result: str) -> li
                 telegram_type += "discharge"
             if telegram_data.get("section_eight"):
                 telegram_type += " / meteo" if telegram_type else "meteo"
-            item["type"] = telegram_type  # TODO determine if discharge / meteo or both or single
+            item["type"] = telegram_type
             save_data_overview.append(item)
     return save_data_overview
