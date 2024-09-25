@@ -9,6 +9,11 @@ from ninja_jwt.authentication import JWTAuth
 from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
+
+from ..organizations.models import Organization
+from ..users.models import User
+from ..utils.datetime_helper import SmartDatetime
+from ..utils.mixins.schemas import Message
 from .models import TelegramReceived, TelegramStored
 from .schema import (
     InputAckSchema,
@@ -28,10 +33,6 @@ from .utils import (
     save_section_one_metrics,
     simulate_telegram_insertion,
 )
-from ..organizations.models import Organization
-from ..users.models import User
-from ..utils.datetime_helper import SmartDatetime
-from ..utils.mixins.schemas import Message
 
 
 @api_controller(

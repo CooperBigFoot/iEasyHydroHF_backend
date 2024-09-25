@@ -46,7 +46,10 @@ def get_parsed_telegrams_data(
         telegram = telegram_input.raw
         override_date = telegram_input.override_date
         parser = KN15TelegramParser(
-            telegram, organization_uuid=organization_uuid, store_parsed_telegram=save_telegrams, user=user,
+            telegram,
+            organization_uuid=organization_uuid,
+            store_parsed_telegram=save_telegrams,
+            user=user,
         )
         try:
             decoded = parser.parse()
@@ -428,8 +431,9 @@ def insert_template_with_new_metrics(data_template: dict, parsed_data: dict) -> 
                     discharge_morning_new = discharge_model_morning.estimate_discharge(wl_morning_new)
 
                 result[station_code][telegram_day_date]["morning"].water_level_new = custom_ceil(wl_morning_new)
-                result[station_code][telegram_day_date]["morning"].discharge_new = custom_round(discharge_morning_new,
-                                                                                                1)
+                result[station_code][telegram_day_date]["morning"].discharge_new = custom_round(
+                    discharge_morning_new, 1
+                )
 
                 # previous day evening
                 wl_previous_evening_new = section_data["water_level_20h_period"]
@@ -444,7 +448,8 @@ def insert_template_with_new_metrics(data_template: dict, parsed_data: dict) -> 
                     )
 
                 result[station_code][previous_day_date]["evening"].water_level_new = custom_ceil(
-                    wl_previous_evening_new)
+                    wl_previous_evening_new
+                )
                 result[station_code][previous_day_date]["evening"].discharge_new = custom_round(
                     discharge_previous_evening_new, 1
                 )
@@ -559,8 +564,7 @@ def simulate_telegram_insertion(parsed_data: dict) -> dict:
             for entry in telegram_data.get("section_two", []):
                 date_922 = entry["date_smart"].local.date().isoformat()
                 date_922_previous = entry["date_smart"].previous_local.date().isoformat()
-                initial_template[station_code][date_922] = initial_template[station_code][
-                    date_922_previous] = {
+                initial_template[station_code][date_922] = initial_template[station_code][date_922_previous] = {
                     "morning": {},
                     "evening": {},
                     "average": {},

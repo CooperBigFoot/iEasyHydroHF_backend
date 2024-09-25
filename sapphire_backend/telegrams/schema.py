@@ -84,6 +84,7 @@ class DataProcessingDayTimes(Schema):
     evening: NewOldMetrics
     average: NewOldMetrics
 
+
 class SingleDateWithDataProcessingDayTimes(Schema):
     date: str
     metrics: DataProcessingDayTimes
