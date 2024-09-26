@@ -385,6 +385,161 @@ class TestMultipleTelegramSaveSectionOneIcePhenomenaAPI:
                 )
 
 
+class TestMultipleTelegramSaveSectionTwoAPI:
+    def test_save_input_multi_telegrams_section_two_metrics(
+        self,
+        datetime_kyrgyz_mock,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        manual_meteo_station_kyrgyz,
+        manual_second_hydro_station_kyrgyz,
+        manual_second_meteo_station_kyrgyz,
+    ):
+        endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
+        telegrams = [
+            {
+                "raw": "12345 20082 10572 20000 30575 "
+                "92219 10582 20022 30586 45820 51209 52020 00011 "
+                "92218 10554 20011 30558 "
+                "92217 10524 20011 30555 40162 00003 "
+                "96603 10150 23050 32521 46830 51308 00011 "
+                "96604 10250 22830 32436 52920 "
+                "98805 111// 20013 30200="
+            },
+            {
+                "raw": "12346 20082 10672 20000 30675 00003 "
+                "92219 10682 20022 30686 40192 52020 00011 "
+                "92218 10654 20011 30658 00100 "
+                "92217 10624 20011 30666="
+            },
+        ]
+
+        regular_user_kyrgyz_api_client.post(
+            endpoint,
+            data={"telegrams": telegrams},
+            content_type="application/json",
+        )
+
+        for telegram in telegrams:
+            parser = KN15TelegramParser(telegram["raw"], organization_kyrgyz.uuid)
+            decoded_data = parser.parse()
+            for section_data in decoded_data["section_two"]:
+                section_date = section_data["date"]
+                section_date_smart = SmartDatetime(section_date, parser.hydro_station, tz_included=False)
+
+                assert (
+                    HydrologicalMetric.objects.filter(
+                        station=parser.hydro_station,
+                        timestamp_local=section_date_smart.morning_local,
+                        avg_value=float(section_data["morning_water_level"]),
+                        metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+                        value_type=HydrologicalMeasurementType.MANUAL,
+                    ).exists()
+                    is True
+                )
+
+                assert (
+                    HydrologicalMetric.objects.filter(
+                        station=parser.hydro_station,
+                        timestamp_local=section_date_smart.previous_evening_local,
+                        avg_value=float(section_data["water_level_20h_period"]),
+                        metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+                        value_type=HydrologicalMeasurementType.MANUAL,
+                    ).exists()
+                    is True
+                )
+
+                if section_data["air_temperature"] is not None:
+                    assert (
+                        HydrologicalMetric.objects.filter(
+                            timestamp_local=section_date_smart.morning_local,
+                            avg_value=float(section_data["air_temperature"]),
+                            value_type=HydrologicalMeasurementType.MANUAL,
+                            metric_name=HydrologicalMetricName.AIR_TEMPERATURE,
+                            station=parser.hydro_station,
+                        ).exists()
+                        is True
+                    )
+
+                    assert (
+                        HydrologicalMetric.objects.filter(
+                            timestamp_local=section_date_smart.morning_local,
+                            avg_value=float(section_data["water_temperature"]),
+                            value_type=HydrologicalMeasurementType.MANUAL,
+                            metric_name=HydrologicalMetricName.WATER_TEMPERATURE,
+                            station=parser.hydro_station,
+                        ).exists()
+                        is True
+                    )
+                if section_data["daily_precipitation"] is not None:
+                    assert (
+                        HydrologicalMetric.objects.filter(
+                            timestamp_local=section_date_smart.previous_evening_local,
+                            avg_value=float(section_data["daily_precipitation"]["precipitation"]),
+                            value_code=section_data["daily_precipitation"]["duration_code"],
+                            value_type=HydrologicalMeasurementType.MANUAL,
+                            metric_name=HydrologicalMetricName.PRECIPITATION_DAILY,
+                            station=parser.hydro_station,
+                        ).exists()
+                        is True
+                    )
+
+    def test_save_input_multi_telegrams_section_two_ice_phenomena(
+        self,
+        datetime_kyrgyz_mock,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        manual_meteo_station_kyrgyz,
+        manual_second_hydro_station_kyrgyz,
+        manual_second_meteo_station_kyrgyz,
+    ):
+        endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/save-input-telegrams"
+        telegrams = [
+            {
+                "raw": "12345 20082 10572 20000 30575 "
+                "92219 10582 20022 30586 45820 51209 52020 00011 "
+                "92218 10554 20011 30558 "
+                "92217 10524 20011 30555 40162 51308 00003 "
+                "96603 10150 23050 32521 46830 51308 "
+                "96604 10250 22830 32436 52920 "
+                "98805 111// 20013 30200="
+            },
+            {
+                "raw": "12346 20082 10672 20000 30675 00003 "
+                "92219 10682 20022 30686 40192 51610 00011 "
+                "92218 10654 20011 30658 54141 00100 "
+                "92217 10624 20011 30666="
+            },
+        ]
+
+        regular_user_kyrgyz_api_client.post(
+            endpoint,
+            data={"telegrams": telegrams},
+            content_type="application/json",
+        )
+
+        for telegram in telegrams:
+            parser = KN15TelegramParser(telegram["raw"], organization_kyrgyz.uuid)
+            decoded_data = parser.parse()
+            for section_data in decoded_data["section_two"]:
+                section_date = section_data["date"]
+                section_date_smart = SmartDatetime(section_date, parser.hydro_station, tz_included=False)
+                for ice_ph_entry in section_data["ice_phenomena"]:
+                    assert (
+                        HydrologicalMetric.objects.filter(
+                            timestamp_local__date=section_date_smart.morning_local.date(),
+                            avg_value=ice_ph_entry["intensity"] if ice_ph_entry["intensity"] else -1,
+                            value_code=ice_ph_entry["code"],
+                            value_type=HydrologicalMeasurementType.MANUAL,
+                            metric_name=HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION,
+                            station=parser.hydro_station,
+                        ).exists()
+                        is True
+                    )
+
+
 class TestMultipleTelegramSaveSectionSixAPI:
     def test_save_input_multi_telegrams_section_six_metrics(
         self,

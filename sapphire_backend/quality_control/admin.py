@@ -7,11 +7,13 @@ from .models import HistoryLogEntry
 class HistoryLogEntryAdmin(admin.ModelAdmin):
     list_display = [
         "created_date",
-        "timestamp_local",
-        "value",
+        "timestamp_local_display",  # Use the custom display method
         "metric_name",
         "station_id",
         "source_type",
         "source_id",
     ]
     list_filter = ["source_type"]
+
+    def timestamp_local_display(self, obj):
+        return obj.timestamp_local.replace(tzinfo=None)
