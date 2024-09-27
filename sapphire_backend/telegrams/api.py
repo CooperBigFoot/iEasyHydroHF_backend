@@ -135,7 +135,7 @@ class TelegramsAPIController:
                 hydro_codes = set(site.hydro_stations.values_list("station_code", flat=True))
                 meteo_codes = set(site.meteo_stations.values_list("station_code", flat=True))
                 station_codes = station_codes | hydro_codes | meteo_codes
-            station_codes.add("")  # to include all the invalid telegrams since station code might not be parsable
+            station_codes.add("")  # to include all the invalid telegrams since station code might not be known
             queryset = queryset.filter(station_code__in=station_codes)
 
         if filters.only_pending:
