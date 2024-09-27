@@ -11,6 +11,7 @@ from sapphire_backend.utils.permissions import (
 )
 
 from ..organizations.models import Organization
+from ..stations.models import Site
 from ..users.models import User
 from ..utils.datetime_helper import SmartDatetime
 from ..utils.mixins.schemas import Message
@@ -127,6 +128,15 @@ class TelegramsAPIController:
             ).day_beginning_tz
             end_created_date_tz = start_created_date_tz + timedelta(days=1) - timedelta(microseconds=1)
             queryset = queryset.filter(created_date__range=(start_created_date_tz, end_created_date_tz))
+
+        if filters.basin_uuid is not None:
+            station_codes = set()
+            for site in Site.objects.filter(basin=filters.basin_uuid):
+                hydro_codes = set(site.hydro_stations.values_list("station_code", flat=True))
+                meteo_codes = set(site.meteo_stations.values_list("station_code", flat=True))
+                station_codes = station_codes | hydro_codes | meteo_codes
+            station_codes.add("")  # to include all the invalid telegrams since station code might not be parsable
+            queryset = queryset.filter(station_code__in=station_codes)
 
         if filters.only_pending:
             queryset = queryset.filter(acknowledged=False)

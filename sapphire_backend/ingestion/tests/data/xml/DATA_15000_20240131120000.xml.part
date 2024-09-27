@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<message>
+    <report TIME="31-01-2024T11:50:00Z">
+        <station ID="15000"/>
+        <parameter VAR="LW" SENSTYPE="RADAR">
+            <value PROC="AVE" T="10M">///</value>
+            <value PROC="MIN" T="10M">///</value>
+            <value PROC="MAX" T="10M">///</value>
+        </parameter>
+        <parameter VAR="SPW">
+            <value PROC="AVE" T="10M">///</value>
+            <value PROC="MIN" T="10M">///</value>
+            <value PROC="MAX" T="10M">///</value>
+        </parameter>
+        <parameter VAR="LB">
+            <value PROC="AVE" T="10M">///</value>
+            <value PROC="MIN" T="10M">///</value>
+            <value PROC="MAX" T="10M">///</value>
+        </parameter>
+        <parameter VAR="SELEM" SENSTYPE="SolarPanel">
+            <value PROC="INS">0</value>
+        </parameter>
+        <parameter VAR="DRS">
+            <value PROC="INS">0</value>
+        </parameter>
+        <parameter VAR="CHCU" SENSTYPE="ICPAN">
+            <value PROC="AVE" T="10M">///</value>
+            <value PROC="MIN" T="10M">///</value>
+            <value PROC="MAX" T="10M">///</value>
+        </parameter>
+        <parameter VAR="CHCU" SENSTYPE="IBATT">
+            <value PROC="AVE" T="10M">///</value>
+            <value PROC="MIN" T="10M">///</value>
+            <value PROC="MAX" T="10M">///</value>
+        </parameter>
+        <parameter VAR="TELEM" SENSTYPE="CASE_TYPE">
+            <value PROC="AVE" T="10M">///</value>
+            <value PROC="MIN" T="10M">///</value>
+            <value PROC="MAX" T="10M">///</value>
+        </parameter>
+    </report>
+    <report TIME="31-01-2024T12:00:00Z">
+        <station ID="15000"/>
+        <parameter VAR="LW" SENSTYPE="RADAR">
+            <value PROC="AVE" T="10M">-21.18</value>
+            <value PROC="MIN" T="10M">-21.18</value>
+            <value PROC="MAX" T="10M">-21.18</value>
+        </parameter>
+        <parameter VAR="SPW">
+            <value PROC="AVE" T="10M">0.000</value>
+            <value PROC="MIN" T="10M">0.000</value>
+            <value PROC="MAX" T="10M">0.000</value>
+        </parameter>
+        <parameter VAR="LB">
+            <value PROC="AVE" T="10M">///</value>
+            <value PROC="MIN" T="10M">///</value>
+            <value PROC="MAX" T="10M">///</value>
+        </parameter>
+        <parameter VAR="SELEM" SENSTYPE="SolarPanel">
+            <value PROC="INS">0</value>
+        </parameter>
+        <parameter VAR="DRS">
+            <value PROC="INS">0</value>
+        </parameter>
+        <parameter VAR="CHCU" SENSTYPE="ICPAN">
+            <value PROC="AVE" T="10M">///</value>
+            <value PROC="MIN" T="10M">///</value>
+            <value PROC="MAX" T="10M">///</value>
+        </parameter>
+        <parameter VAR="CHCU" SENSTYPE="IBATT">
+            <value PROC="AVE" T="10M">///</value>
+            <value PROC="MIN" T="10M">///</value>
+            <value PROC="MAX" T="10M">///</value>
+        </parameter>
+        <parameter VAR="TELEM" SENSTYPE="CASE_TYPE">
+            <value PROC="AVE" T="10M">///</value>
+            <value PROC="MIN" T="10M">///</value>
+            <value PROC="MAX" T="10M">///</value>
+        </parameter>
+    </report>
+    <report TIME="31-01-2024T12:10:00Z">
+        <station ID="15000"/>
+        <parameter VAR="WS">
+            <value PROC="AVE" T="10M">1.1</value>
+            <value PROC="MAX" T="10M">1.8</value>
+        </parameter>
+        <parameter VAR="WD">
+            <value PROC="AVE" T="10M">359</value>
+            <value PROC="MAX" T="10M">359</value>
+        </parameter>
+        <parameter VAR="TA">
+            <value PROC="AVE" T="10M">-1.9</value>
+            <value PROC="MIN" T="10M">-2.1</value>
+            <value PROC="MAX" T="10M">-1.8</value>
+        </parameter>
+        <parameter VAR="RH">
+            <value PROC="AVE" T="10M">83.2</value>
+            <value PROC="MIN" T="10M">82.9</value>
+            <value PROC="MAX" T="10M">83.3</value>
+        </parameter>
+        <parameter VAR="P">
+            <value PROC="SUM" T="10M">0.0</value>
+        </parameter>
+        <parameter VAR="LB">
+            <value PROC="AVE" T="10M">13.0</value>
+            <value PROC="MIN" T="10M">13.0</value>
+            <value PROC="MAX" T="10M">13.0</value>
+        </parameter>
+        <parameter VAR="SELEM" SENSTYPE="SolarPanel">
+            <value PROC="INS">1</value>
+        </parameter>
+        <parameter VAR="DRS">
+            <value PROC="INS">0</value>
+        </parameter>
+        <parameter VAR="CHCU" SENSTYPE="ICPAN">
+            <value PROC="AVE" T="10M">0</value>
+            <value PROC="MIN" T="10M">0</value>
+            <value PROC="MAX" T="10M">0</value>
+        </parameter>
+        <parameter VAR="CHCU" SENSTYPE="IBATT">
+            <value PROC="AVE" T="10M">230</value>
+            <value PROC="MIN" T="10M">169</value>
+            <value PROC="MAX" T="10M">334</value>
+        </parameter>
+        <parameter VAR="TELEM" SENSTYPE="CASE_TYPE">
+            <value PROC="AVE" T="10M">-1.2</value>
+            <value PROC="MIN" T="10M">-1.3</value>
+            <value PROC="MAX" T="10M">-1.2</value>
+        </parameter>
+    </report>
+    <report TIME="31-01-2024T12:20:00Z">
+        <station ID="15000"/>
+        <parameter VAR="WS">
+            <value PROC="AVE" T="10M">0.3</value>
+            <value PROC="MAX" T="10M">1.0</value>
+        </parameter>
+        <parameter VAR="WD">
+            <value PROC="AVE" T="10M">359</value>
+            <value PROC="MAX" T="10M">359</value>
+        </parameter>
+        <parameter VAR="TA">
+            <value PROC="AVE" T="10M">-2.1</value>
+            <value PROC="MIN" T="10M">-2.2</value>
+            <value PROC="MAX" T="10M">-2.0</value>
+        </parameter>
+        <parameter VAR="RH">
+            <value PROC="AVE" T="10M">84.4</value>
+            <value PROC="MIN" T="10M">83.2</value>
+            <value PROC="MAX" T="10M">84.9</value>
+        </parameter>
+        <parameter VAR="P">
+            <value PROC="SUM" T="10M">0.0</value>
+        </parameter>
+        <parameter VAR="LB">
+            <value PROC="AVE" T="10M">13.0</value>
+            <value PROC="MIN" T="10M">13.0</value>
+            <value PROC="MAX" T="10M">13.0</value>
+        </parameter>
+        <parameter VAR="SELEM" SENSTYPE="SolarPanel">
+            <value PROC="INS">1</value>
+        </parameter>
+        <parameter VAR="DRS">
+            <value PROC="INS">0</value>
+        </parameter>
+        <parameter VAR="CHCU" SENSTYPE="ICPAN">
+            <value PROC="AVE" T="10M">0</value>
+            <value PROC="MIN" T="10M">0</value>
+            <value PROC="MAX" T="10M">0</value>
+        </parameter>
+        <parameter VAR="CHCU" SENSTYPE="IBATT">
+            <value PROC="AVE" T="10M">238</value>
+            <value PROC="MIN" T="10M">161</value>
+            <value PROC="MAX" T="10M">303</value>
+        </parameter>
+        <parameter VAR="TELEM" SENSTYPE="CASE_TYPE">
+            <value PROC="AVE" T="10M">-1.4</value>
+            <value PROC="MIN" T="10M">-1.5</value>
+            <value PROC="MAX" T="10M">-1.3</value>
+        </parameter>
+    </report>
+</message>

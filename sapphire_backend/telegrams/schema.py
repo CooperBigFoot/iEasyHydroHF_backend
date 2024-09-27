@@ -153,6 +153,7 @@ class TelegramReceivedFilterSchema(FilterSchema):
     only_pending: bool = True
     only_invalid: bool | None = False
     station_codes: str | None = None
+    basin_uuid: str | None = None
 
 
 class InputAckSchema(Schema):
