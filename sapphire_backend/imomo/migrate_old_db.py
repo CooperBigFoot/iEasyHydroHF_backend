@@ -417,11 +417,12 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
 
             metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
 
-            if metric_name in [HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
-                               HydrologicalMetricName.WATER_DISCHARGE_DAILY,
-                               HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE,
-                               HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
-                               HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE]:
+            if measurement_type == HydrologicalMeasurementType.IMPORTED and metric_name in [
+                HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
+                HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+                HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE,
+                HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
+                HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE]:
                 # These metrics are now replaced by estimation views and are calculated on demand, not stored
                 continue
 
@@ -456,8 +457,6 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
             if math.isnan(data_value):
                 nan_count = nan_count + 1
                 continue  # TODO skip NaN data value rows
-
-
 
             new_hydro_metric = HydrologicalMetric(
                 timestamp_local=timestamp_local,
