@@ -43,6 +43,7 @@ class DailyPrecipitationSchema(Schema):
 
 
 class TelegramSectionOneSchema(Schema):
+    date: str
     morning_water_level: int
     water_level_trend: int
     water_level_20h_period: int
@@ -84,12 +85,18 @@ class DataProcessingDayTimes(Schema):
     average: NewOldMetrics
 
 
+class SingleDateWithDataProcessingDayTimes(Schema):
+    date: str
+    metrics: DataProcessingDayTimes
+
+
 class DailyOverviewSingleSchema(Schema):
     station_code: str
     station_name: str
     telegram_day_date: str
     previous_day_date: str
     section_one: TelegramSectionOneSchema
+    section_two: list[TelegramSectionOneSchema]
     section_six: list[TelegramSectionSixSingleSchema]
     section_eight: TelegramSectionEightSchema | None
     calc_trend_ok: bool
@@ -101,10 +108,8 @@ class SaveDataOverviewSingleSchema(Schema):
     station_code: str
     station_name: str
     telegram_day_date: str
-    previous_day_date: str
-    previous_day_data: DataProcessingDayTimes
-    telegram_day_data: DataProcessingDayTimes
-    section_one: TelegramSectionOneSchema
+    wl_q_triplets: list[SingleDateWithDataProcessingDayTimes]
+    section_one_two: list[TelegramSectionOneSchema]
     section_six: list[TelegramSectionSixSingleSchema]
     section_eight: TelegramSectionEightSchema | None
     type: str
@@ -148,6 +153,7 @@ class TelegramReceivedFilterSchema(FilterSchema):
     only_pending: bool = True
     only_invalid: bool | None = False
     station_codes: str | None = None
+    basin_uuid: str | None = None
 
 
 class InputAckSchema(Schema):
