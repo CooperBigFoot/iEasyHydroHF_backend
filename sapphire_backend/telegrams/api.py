@@ -11,6 +11,7 @@ from sapphire_backend.utils.permissions import (
 )
 
 from ..organizations.models import Organization
+from ..stations.models import Site
 from ..users.models import User
 from ..utils.datetime_helper import SmartDatetime
 from ..utils.mixins.schemas import Message
@@ -78,26 +79,40 @@ class TelegramsAPIController:
 
             for telegram_data in station_data["telegrams"]:
                 telegram_day_smart = telegram_data["telegram_day_smart"]
-                save_section_one_metrics(
-                    telegram_day_smart, section_one=telegram_data["section_one"], hydro_station=hydro_station
-                )
 
-                meteo_data = telegram_data.get("section_eight")
-                if meteo_data is not None:
-                    meteo_station = station_data["meteo_station_obj"]
-                    save_section_eight_metrics(meteo_data, meteo_station)
-
-                reported_discharge = telegram_data.get("section_six")
-                if reported_discharge is not None:
-                    save_reported_discharge(reported_discharge, hydro_station)
-
-                TelegramStored(
+                stored_telegram = TelegramStored(
                     telegram=telegram_data["raw"],
                     telegram_day=telegram_day_smart.morning_local.date(),
                     station_code=telegram_data["section_zero"]["station_code"],
                     stored_by=User.objects.get(id=request.user.id),
                     organization=Organization.objects.get(uuid=organization_uuid),
-                ).save()
+                )
+                stored_telegram.save()
+
+                save_section_one_metrics(
+                    telegram_day_smart,
+                    section_one=telegram_data["section_one"],
+                    hydro_station=hydro_station,
+                    source_telegram=stored_telegram,
+                )
+
+                for section_two_entry in telegram_data.get("section_two", []):
+                    save_section_one_metrics(
+                        section_two_entry["date_smart"],
+                        section_one=section_two_entry,
+                        hydro_station=hydro_station,
+                        source_telegram=stored_telegram,
+                    )
+
+                meteo_data = telegram_data.get("section_eight")
+                if meteo_data is not None:
+                    meteo_station = station_data["meteo_station_obj"]
+                    save_section_eight_metrics(meteo_data, meteo_station, source_telegram=stored_telegram)
+
+                reported_discharge = telegram_data.get("section_six")
+                if reported_discharge is not None:
+                    save_reported_discharge(reported_discharge, hydro_station, source_telegram=stored_telegram)
+
         return 201, {"detail": _("Telegram metrics successfully saved"), "code": "success"}
 
     @route.get("received/list", response={200: list[TelegramReceivedOutputSchema], 404: Message})
@@ -113,6 +128,15 @@ class TelegramsAPIController:
             ).day_beginning_tz
             end_created_date_tz = start_created_date_tz + timedelta(days=1) - timedelta(microseconds=1)
             queryset = queryset.filter(created_date__range=(start_created_date_tz, end_created_date_tz))
+
+        if filters.basin_uuid is not None:
+            station_codes = set()
+            for site in Site.objects.filter(basin=filters.basin_uuid):
+                hydro_codes = set(site.hydro_stations.values_list("station_code", flat=True))
+                meteo_codes = set(site.meteo_stations.values_list("station_code", flat=True))
+                station_codes = station_codes | hydro_codes | meteo_codes
+            station_codes.add("")  # to include all the invalid telegrams since station code might not be known
+            queryset = queryset.filter(station_code__in=station_codes)
 
         if filters.only_pending:
             queryset = queryset.filter(acknowledged=False)

@@ -306,6 +306,7 @@ class TestKN15TelegramParserSectionOne:
             "air_temperature": None,
             "ice_phenomena": [],
             "daily_precipitation": None,
+            "date": "2024-04-14",
         }
 
     def test_parse_full_output(self, datetime_mock, organization, manual_hydro_station):
@@ -329,6 +330,7 @@ class TestKN15TelegramParserSectionOne:
                 "air_temperature": None,
                 "ice_phenomena": [],
                 "daily_precipitation": None,
+                "date": "2024-04-14",
             },
             # there are no empty objects for sections 933, 966 or 988 if they are not present
         }
@@ -471,6 +473,121 @@ class TestKN15TelegramParserSectionOne:
             "air_temperature": None,
             "ice_phenomena": [],
             "daily_precipitation": None,
+            "date": "2024-04-14",
+        }
+
+
+class TestKN15TelegramParserSectionTwo:
+    def test_parse_single_section_two(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 11082 10215 20100 30210 92210 10205 20100 30200 45820 51209 52020 00003=",
+            organization.uuid,
+        )
+        decoded_data = parser.parse()
+        assert decoded_data["section_two"][0] == {
+            "air_temperature": 20,
+            "daily_precipitation": {"duration_code": 3, "precipitation": 0},
+            "date": "2024-04-10",
+            "ice_phenomena": [{"code": 12, "intensity": 9}, {"code": 20, "intensity": None}],
+            "morning_water_level": 205,
+            "water_level_20h_period": 200,
+            "water_level_trend": 10,
+            "water_temperature": 5.8,
+        }
+
+    def test_parse_single_section_two_date_past_month(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 01082 10215 20100 30210 92231 10205 20100 30200 45820 51209 52020 00003=",
+            organization.uuid,
+        )
+        decoded_data = parser.parse()
+        assert decoded_data["section_two"][0] == {
+            "air_temperature": 20,
+            "daily_precipitation": {"duration_code": 3, "precipitation": 0},
+            "date": "2024-03-31",
+            "ice_phenomena": [{"code": 12, "intensity": 9}, {"code": 20, "intensity": None}],
+            "morning_water_level": 205,
+            "water_level_20h_period": 200,
+            "water_level_trend": 10,
+            "water_temperature": 5.8,
+        }
+
+    def test_parse_multiple_section_two_basic(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 11082 10215 20100 30210 92210 10205 20100 30200 92209 10195 20100 30190 92208 10185 20100 30180=",
+            organization.uuid,
+        )
+        decoded_data = parser.parse()
+        assert decoded_data["section_two"][0] == {
+            "air_temperature": None,
+            "daily_precipitation": None,
+            "date": "2024-04-10",
+            "ice_phenomena": [],
+            "morning_water_level": 205,
+            "water_level_20h_period": 200,
+            "water_level_trend": 10,
+            "water_temperature": None,
+        }
+
+        assert decoded_data["section_two"][1] == {
+            "air_temperature": None,
+            "daily_precipitation": None,
+            "date": "2024-04-09",
+            "ice_phenomena": [],
+            "morning_water_level": 195,
+            "water_level_20h_period": 190,
+            "water_level_trend": 10,
+            "water_temperature": None,
+        }
+
+        assert decoded_data["section_two"][2] == {
+            "air_temperature": None,
+            "daily_precipitation": None,
+            "date": "2024-04-08",
+            "ice_phenomena": [],
+            "morning_water_level": 185,
+            "water_level_20h_period": 180,
+            "water_level_trend": 10,
+            "water_temperature": None,
+        }
+
+    def test_parse_multiple_section_two_additional(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 11082 10215 20100 30210 92210 10205 20100 30200 45820 51209 52020 00003 92209 10195 20100 30190 92208 10185 20100 30180 46830=",
+            organization.uuid,
+        )
+        decoded_data = parser.parse()
+        assert decoded_data["section_two"][0] == {
+            "air_temperature": 20,
+            "daily_precipitation": {"duration_code": 3, "precipitation": 0},
+            "date": "2024-04-10",
+            "ice_phenomena": [{"code": 12, "intensity": 9}, {"code": 20, "intensity": None}],
+            "morning_water_level": 205,
+            "water_level_20h_period": 200,
+            "water_level_trend": 10,
+            "water_temperature": 5.8,
+        }
+
+        assert decoded_data["section_two"][1] == {
+            "air_temperature": None,
+            "daily_precipitation": None,
+            "date": "2024-04-09",
+            "ice_phenomena": [],
+            "morning_water_level": 195,
+            "water_level_20h_period": 190,
+            "water_level_trend": 10,
+            "water_temperature": None,
+        }
+
+        assert decoded_data["section_two"][2] == {
+            "air_temperature": 30,
+            "daily_precipitation": None,
+            "date": "2024-04-08",
+            "ice_phenomena": [],
+            "morning_water_level": 185,
+            "water_level_20h_period": 180,
+            "water_level_trend": 10,
+            "water_temperature": 6.8,
         }
 
 

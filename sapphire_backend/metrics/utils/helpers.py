@@ -13,6 +13,7 @@ from sapphire_backend.utils.rounding import hydrological_round
 
 from ...stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
 from ..choices import HydrologicalMetricName, MeteorologicalMetricName
+from ..models import HydrologicalMetric, MeteorologicalMetric
 
 
 class PentadDecadeHelper:
@@ -457,3 +458,16 @@ class HydrologicalYearResolver:
             return SmartDatetime(datetime(self.year + 1, 1, 1), self.organization).local
         else:
             return SmartDatetime(datetime(self.year, 10, 1), self.organization).local
+
+
+def save_metric_and_create_log(
+    metric_instance: HydrologicalMetric | MeteorologicalMetric, refresh_view: bool = False, description: str = ""
+):
+    existing = metric_instance.get_existing_record()
+    metric_instance.save(refresh_view=refresh_view)
+    if existing:
+        log = metric_instance.create_log_entry(existing, description)
+    else:
+        log = None
+
+    return metric_instance, log

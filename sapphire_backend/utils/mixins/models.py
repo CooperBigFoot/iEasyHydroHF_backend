@@ -70,3 +70,19 @@ class BulletinOrderMixin(models.Model):
 
     class Meta:
         abstract = True
+
+
+class SourceTypeMixin(models.Model):
+    class SourceType(models.TextChoices):
+        USER = "US", _("User")
+        TELEGRAM = "TL", _("Telegram")
+        INGESTER = "IN", _("Ingester")
+        UNKNOWN = "UN", _("Unknown")
+
+    source_type = models.CharField(
+        verbose_name=_("Entry type"), choices=SourceType, default=SourceType.UNKNOWN, max_length=2
+    )
+    source_id = models.PositiveIntegerField(verbose_name=_("Source ID"), default=0)
+
+    class Meta:
+        abstract = True

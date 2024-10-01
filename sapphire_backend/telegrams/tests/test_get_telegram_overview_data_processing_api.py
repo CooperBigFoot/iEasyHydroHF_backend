@@ -22,8 +22,48 @@ from sapphire_backend.utils.db_helper import refresh_continuous_aggregate
 
 
 class TestGetTelegramOverviewDataProcessingOverviewAPI:
-    def test_multi_telegram_station_codes(
+    def test_get_telegram_overview_data_processing_overview(
         self,
+        datetime_kyrgyz_mock,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        manual_meteo_station_kyrgyz,
+        regular_user_kyrgyz_api_client,
+    ):
+        endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
+        station_code = manual_hydro_station_kyrgyz.station_code
+        telegram = (
+            f"{station_code} 01082 10251 20022 30249 45820 51209 00100 "
+            "96603 10150 23050 32521 40162 50313 "
+            "96604 10250 22830 32436 52920 "
+            "98805 111// 20013 30200="
+        )
+
+        response = regular_user_kyrgyz_api_client.post(
+            endpoint,
+            data={"telegrams": [{"raw": telegram}]},
+            content_type="application/json",
+        )
+
+        decoded_data = KN15TelegramParser(telegram, organization_kyrgyz.uuid).parse()
+        res = response.json()
+
+        assert list(res["data_processing_overview"].keys()) == [station_code]
+        assert len(res["data_processing_overview"][station_code]) == 2
+        assert res["data_processing_overview"][station_code][0][0] == "2020-03-31"
+        assert (
+            res["data_processing_overview"][station_code][0][1]["evening"]["water_level_new"]
+            == decoded_data["section_one"]["water_level_20h_period"]
+        )
+        assert res["data_processing_overview"][station_code][1][0] == "2020-04-01"
+        assert (
+            res["data_processing_overview"][station_code][1][1]["morning"]["water_level_new"]
+            == decoded_data["section_one"]["morning_water_level"]
+        )
+
+    def test_get_multiple_telegram_overview_data_processing_overview_keys(
+        self,
+        datetime_kyrgyz_mock,
         organization_kyrgyz,
         manual_hydro_station_kyrgyz,
         manual_meteo_station_kyrgyz,
@@ -31,15 +71,25 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         manual_second_meteo_station_kyrgyz,
         regular_user_kyrgyz_api_client,
     ):
-        station_code1 = manual_hydro_station_kyrgyz.station_code
-        station_code2 = manual_second_hydro_station_kyrgyz.station_code
-
-        telegrams = [
-            {"raw": f"{station_code1} 01082 10251 20022 30249="},
-            {"raw": f"{station_code2}  01082 10151 20010 30149="},
-        ]
-
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
+        station1_code = manual_hydro_station_kyrgyz.station_code
+        station2_code = manual_second_hydro_station_kyrgyz.station_code
+
+        # to simplify the test logic, make sure the telegrams are ordered by station code
+        telegrams = [
+            {
+                "raw": f"{station1_code} 01082 10251 20022 30249 45820 52020 51210 00100 "
+                "96603 10150 23050 32521 40162 50313 "
+                "96604 10250 22830 32436 52920 "
+                "98805 111// 20013 30200="
+            },
+            {"raw": f"{station1_code} 02082 10261 20010 30256 46822 51210 00100="},
+            {
+                "raw": f"{station2_code} 01082 10151 20010 30149 45820 55008 00100 "
+                f"96607 10150 23050 32521 40162 50308="
+            },
+            {"raw": f"{station2_code} 02082 10161 20010 30156 46822 52121 00100 " f"98805 111// 20013 30300="},
+        ]
 
         response = regular_user_kyrgyz_api_client.post(
             endpoint,
@@ -48,9 +98,8 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
         )
 
         res = response.json()
-        dp_overview = res["data_processing_overview"]
 
-        assert set(dp_overview.keys()) == {station_code1, station_code2}
+        assert set(res["data_processing_overview"].keys()) == {station1_code, station2_code}
 
     def test_multi_telegram_consecutive_dates_single_station(
         self,
@@ -154,6 +203,55 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
             "2020-04-10",
             "2020-04-12",
             "2020-04-13",
+        ]
+
+        endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
+
+        response = regular_user_kyrgyz_api_client.post(
+            endpoint,
+            data={"telegrams": telegrams},
+            content_type="application/json",
+        )
+
+        res = response.json()
+        dp_overview = res["data_processing_overview"]
+
+        for idx, expected_date in enumerate(EXPECTED_DATES_STATION_1):
+            assert dp_overview[station_code1][idx][0] == expected_date
+
+        for idx, expected_date in enumerate(EXPECTED_DATES_STATION_2):
+            assert dp_overview[station_code2][idx][0] == expected_date
+
+    def test_multi_telegram_mix_dates_multi_station_section_two(
+        self,
+        datetime_kyrgyz_mock,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        manual_meteo_station_kyrgyz,
+        manual_second_hydro_station_kyrgyz,
+        manual_second_meteo_station_kyrgyz,
+        regular_user_kyrgyz_api_client,
+    ):
+        station_code1 = manual_hydro_station_kyrgyz.station_code
+        station_code2 = manual_second_meteo_station_kyrgyz.station_code
+
+        # mix of consecutive and non-consecutive telegrams
+        telegrams = [
+            {
+                "raw": f"{station_code1} 11082 10172 20000 30175 92210 10172 20022 30176 92209 10174 20011 30178 92202 10174 20011 30178="
+            },
+            {
+                "raw": f"{station_code2} 20082 10272 20000 30275 92219 10282 20022 30286 92218 10254 20011 30258 92217 10124 20011 30248="
+            },
+        ]
+
+        EXPECTED_DATES_STATION_1 = ["2020-04-01", "2020-04-02", "2020-04-08", "2020-04-09", "2020-04-10", "2020-04-11"]
+        EXPECTED_DATES_STATION_2 = [
+            "2020-03-16",
+            "2020-03-17",
+            "2020-03-18",
+            "2020-03-19",
+            "2020-03-20",
         ]
 
         endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
@@ -295,6 +393,168 @@ class TestGetTelegramOverviewDataProcessingOverviewAPI:
             expected_evening_discharge_new[telegram_previous_date] = custom_round(
                 discharge_model.estimate_discharge(decoded_data["section_one"]["water_level_20h_period"]), 1
             )
+
+        for date, metrics in dp_overview[station_code]:
+            expected_average_water_level_new = custom_ceil(
+                custom_average(
+                    [
+                        expected_morning_water_level_new.get(date, None),
+                        expected_evening_water_level_new.get(date, None),
+                    ]
+                )
+            )
+            expected_average_discharge_new = custom_round(
+                discharge_model.estimate_discharge(expected_average_water_level_new), 1
+            )
+
+            assert metrics["morning"]["water_level_new"] == expected_morning_water_level_new.get(date, None)
+            assert metrics["morning"]["discharge_new"] == expected_morning_discharge_new.get(date, None)
+            assert metrics["evening"]["water_level_new"] == expected_evening_water_level_new.get(date, None)
+            assert metrics["evening"]["discharge_new"] == expected_evening_discharge_new.get(date, None)
+            assert metrics["average"]["water_level_new"] == expected_average_water_level_new
+            assert metrics["average"]["discharge_new"] == expected_average_discharge_new
+
+    def test_single_telegram_single_station_section_two(
+        self,
+        datetime_kyrgyz_mock,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        manual_meteo_station_kyrgyz,
+        regular_user_kyrgyz_api_client,
+    ):
+        station_code = manual_hydro_station_kyrgyz.station_code
+
+        discharge_model = DischargeModel(
+            name="Test discharge curve",
+            param_a=10,
+            param_b=2,
+            param_c=0.001,
+            valid_from_local=dt.datetime(2020, 3, 1, tzinfo=ZoneInfo("UTC")),
+            station=manual_hydro_station_kyrgyz,
+        )
+        discharge_model.save()
+        INPUT_TELEGRAM = f"{station_code} 11082 10215 20100 30210 92210 10205 20100 30200 92209 10195 20100 30190 92208 10185 20100 30180="
+
+        endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
+
+        response = regular_user_kyrgyz_api_client.post(
+            endpoint,
+            data={"telegrams": [{"raw": INPUT_TELEGRAM}]},
+            content_type="application/json",
+        )
+
+        res = response.json()
+        dp_overview = res["data_processing_overview"]
+
+        expected_evening_water_level_new = {}
+        expected_evening_discharge_new = {}
+        expected_morning_water_level_new = {}
+        expected_morning_discharge_new = {}
+
+        parser = KN15TelegramParser(INPUT_TELEGRAM, organization_kyrgyz.uuid)
+        decoded_data = parser.parse()
+        section_one_two = sorted([decoded_data["section_one"]] + decoded_data["section_two"], key=lambda x: x["date"])
+
+        for decoded_entry in section_one_two:
+            day_smart = SmartDatetime(decoded_entry["date"], parser.hydro_station, tz_included=False)
+            section_date = day_smart.local.date().isoformat()
+            section_previous_date = day_smart.previous_local.date().isoformat()
+
+            expected_morning_water_level_new[section_date] = decoded_entry["morning_water_level"]
+            expected_morning_discharge_new[section_date] = custom_round(
+                discharge_model.estimate_discharge(decoded_entry["morning_water_level"]), 1
+            )
+
+            expected_evening_water_level_new[section_previous_date] = decoded_entry["water_level_20h_period"]
+            expected_evening_discharge_new[section_previous_date] = custom_round(
+                discharge_model.estimate_discharge(decoded_entry["water_level_20h_period"]), 1
+            )
+
+        for date, metrics in dp_overview[station_code]:
+            expected_average_water_level_new = custom_ceil(
+                custom_average(
+                    [
+                        expected_morning_water_level_new.get(date, None),
+                        expected_evening_water_level_new.get(date, None),
+                    ]
+                )
+            )
+            expected_average_discharge_new = custom_round(
+                discharge_model.estimate_discharge(expected_average_water_level_new), 1
+            )
+
+            assert metrics["morning"]["water_level_new"] == expected_morning_water_level_new.get(date, None)
+            assert metrics["morning"]["discharge_new"] == expected_morning_discharge_new.get(date, None)
+            assert metrics["evening"]["water_level_new"] == expected_evening_water_level_new.get(date, None)
+            assert metrics["evening"]["discharge_new"] == expected_evening_discharge_new.get(date, None)
+            assert metrics["average"]["water_level_new"] == expected_average_water_level_new
+            assert metrics["average"]["discharge_new"] == expected_average_discharge_new
+
+    def test_multi_telegram_single_station_section_two(
+        self,
+        datetime_kyrgyz_mock,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        manual_meteo_station_kyrgyz,
+        regular_user_kyrgyz_api_client,
+    ):
+        station_code = manual_hydro_station_kyrgyz.station_code
+
+        discharge_model = DischargeModel(
+            name="Test discharge curve",
+            param_a=10,
+            param_b=2,
+            param_c=0.001,
+            valid_from_local=dt.datetime(2020, 3, 1, tzinfo=ZoneInfo("UTC")),
+            station=manual_hydro_station_kyrgyz,
+        )
+        discharge_model.save()
+        telegrams = [
+            {
+                "raw": f"{station_code} 11082 10215 20100 30210 92210 10205 20100 30200 92209 10195 20100 30190 92208 10185 20100 30180="
+            },
+            {
+                "raw": f"{station_code}  20082 10272 20000 30275 00003 92219 10282 20022 30286 00011 92218 10254 20011 30258 92217 10124 20011 30248="
+            },
+        ]
+
+        endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
+
+        response = regular_user_kyrgyz_api_client.post(
+            endpoint,
+            data={"telegrams": telegrams},
+            content_type="application/json",
+        )
+
+        res = response.json()
+        dp_overview = res["data_processing_overview"]
+
+        expected_evening_water_level_new = {}
+        expected_evening_discharge_new = {}
+        expected_morning_water_level_new = {}
+        expected_morning_discharge_new = {}
+
+        for telegram_entry in telegrams:
+            parser = KN15TelegramParser(telegram_entry["raw"], organization_kyrgyz.uuid)
+            decoded_data = parser.parse()
+            section_one_two = sorted(
+                [decoded_data["section_one"]] + decoded_data["section_two"], key=lambda x: x["date"]
+            )
+
+            for decoded_entry in section_one_two:
+                day_smart = SmartDatetime(decoded_entry["date"], parser.hydro_station, tz_included=False)
+                section_date = day_smart.local.date().isoformat()
+                section_previous_date = day_smart.previous_local.date().isoformat()
+
+                expected_morning_water_level_new[section_date] = decoded_entry["morning_water_level"]
+                expected_morning_discharge_new[section_date] = custom_round(
+                    discharge_model.estimate_discharge(decoded_entry["morning_water_level"]), 1
+                )
+
+                expected_evening_water_level_new[section_previous_date] = decoded_entry["water_level_20h_period"]
+                expected_evening_discharge_new[section_previous_date] = custom_round(
+                    discharge_model.estimate_discharge(decoded_entry["water_level_20h_period"]), 1
+                )
 
         for date, metrics in dp_overview[station_code]:
             expected_average_water_level_new = custom_ceil(

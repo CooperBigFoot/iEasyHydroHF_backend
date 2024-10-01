@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
+from datetime import datetime, timedelta
 from datetime import datetime as dt
-from datetime import timedelta
 from typing import Any
-
-from zoneinfo import ZoneInfo
 
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
@@ -161,6 +159,7 @@ class KN15TelegramParser(BaseTelegramParser):
         user: User = None,
     ):
         super().__init__(telegram, organization_uuid, store_parsed_telegram, automatic_ingestion, user)
+        self._telegram_date = None
 
     def validate_format(self):
         if self.tokens[1][-1] not in ["1", "2"]:
@@ -187,22 +186,24 @@ class KN15TelegramParser(BaseTelegramParser):
         # start by parsing section zero
         section_zero = self.parse_section_zero()
         decoded_values["section_zero"] = section_zero
+        decoded_values["section_two"] = []
         decoded_values["section_three"] = {}
         decoded_values["section_six"] = []
         decoded_values["section_eight"] = {}
 
         if section_zero["section_code"] == 1:
-            section_one = self.parse_section_one()
+            section_one = self.parse_section_one(section_date=self._telegram_date)
             decoded_values["section_one"] = section_one
-
         elif section_zero["section_code"] == 2:
-            section_one = self.parse_section_one()
+            section_one = self.parse_section_one(section_date=self._telegram_date)
             decoded_values["section_one"] = section_one
             while self.tokens:
                 token = self.tokens[0]
                 section_number = token[:3]
-
-                if section_number == "933":
+                if section_number == "922":
+                    section_two = self.parse_section_two()
+                    decoded_values["section_two"].append(section_two)
+                elif section_number == "933":
                     section_three = self.parse_section_three()
                     decoded_values["section_three"] = section_three
                 elif section_number == "966":
@@ -222,6 +223,8 @@ class KN15TelegramParser(BaseTelegramParser):
             )
 
         # remove sections three and six if they are still empty
+        if len(decoded_values["section_two"]) == 0:
+            decoded_values.pop("section_two")
         if not decoded_values["section_three"]:
             decoded_values.pop("section_three")
         if not decoded_values["section_six"]:
@@ -306,6 +309,38 @@ class KN15TelegramParser(BaseTelegramParser):
         """
         return value if value <= 5000 else 5000 - value
 
+    def determine_date(self, day_in_month: int, hour: int) -> dt:
+        today = dt.now(tz=self.site_timezone)
+        current_year, current_month = today.year, today.month
+
+        # try setting the day of the current month to day_in_month
+        try:
+            parsed_date = dt(current_year, current_month, day_in_month, hour, tzinfo=self.site_timezone)
+        except ValueError:
+            # if day_in_month is invalid for the current month,
+            # set parsed_date to the last day of the previous month
+            if current_month == 1:  # if January, move to December of the previous year
+                parsed_date = dt(current_year - 1, 12, 31, hour, tzinfo=self.site_timezone)
+            else:
+                last_day_prev_month = (dt(current_year, current_month, 1) - timedelta(days=1)).day
+                parsed_date = dt(current_year, current_month - 1, last_day_prev_month, hour, tzinfo=self.site_timezone)
+
+        # if parsed_date is in the future, move it to the previous month
+        if parsed_date > today:
+            if parsed_date.month == 1:  # if January, move to December of the previous year
+                parsed_date = parsed_date.replace(year=parsed_date.year - 1, month=12)
+            else:
+                try:
+                    parsed_date = parsed_date.replace(month=parsed_date.month - 1)
+                except ValueError:  # could fall into 31st which might not exist for the previous month
+                    last_day_prev_month = (dt(parsed_date.year, parsed_date.month, 1) - timedelta(days=1)).day
+                    parsed_date = parsed_date.replace(month=parsed_date.month - 1, day=last_day_prev_month)
+
+        # set the time to the given hour and zero out minutes, seconds and microseconds
+        parsed_date = parsed_date.replace(minute=0, second=0, microsecond=0)
+
+        return parsed_date
+
     def parse_section_zero(self) -> dict[str, str | dt]:
         """
         Parses section 0 of the KN15 telegram.
@@ -336,53 +371,21 @@ class KN15TelegramParser(BaseTelegramParser):
             except ValueError:
                 self.save_parsing_error(f"Invalid hour for token {date_token}", date_token[2:4], InvalidTokenException)
 
-        def determine_date(day_in_month: int, hour: int, site_timezone: ZoneInfo) -> dt:
-            today = dt.now(tz=site_timezone)
-            current_year, current_month = today.year, today.month
-
-            # try setting the day of the current month to day_in_month
-            try:
-                parsed_date = dt(current_year, current_month, day_in_month, hour, tzinfo=site_timezone)
-            except ValueError:
-                # if day_in_month is invalid for the current month,
-                # set parsed_date to the last day of the previous month
-                if current_month == 1:  # if January, move to December of the previous year
-                    parsed_date = dt(current_year - 1, 12, 31, hour, tzinfo=site_timezone)
-                else:
-                    last_day_prev_month = (dt(current_year, current_month, 1) - timedelta(days=1)).day
-                    parsed_date = dt(current_year, current_month - 1, last_day_prev_month, hour, tzinfo=site_timezone)
-
-            # if parsed_date is in the future, move it to the previous month
-            if parsed_date > today:
-                if parsed_date.month == 1:  # if January, move to December of the previous year
-                    parsed_date = parsed_date.replace(year=parsed_date.year - 1, month=12)
-                else:
-                    try:
-                        parsed_date = parsed_date.replace(month=parsed_date.month - 1)
-                    except ValueError:  # could fall into 31st which might not exist for the previous month
-                        last_day_prev_month = (dt(parsed_date.year, parsed_date.month, 1) - timedelta(days=1)).day
-                        parsed_date = parsed_date.replace(month=parsed_date.month - 1, day=last_day_prev_month)
-
-            # set the time to the given hour and zero out minutes, seconds and microseconds
-            parsed_date = parsed_date.replace(minute=0, second=0, microsecond=0)
-
-            return parsed_date
-
         input_token = self.get_next_token()
         parsed_day_in_month = extract_day_from_token(input_token)
         parsed_hour = extract_hour_from_token(input_token)
-        date = determine_date(parsed_day_in_month, parsed_hour, site_timezone=self.site_timezone)
-
+        date = self.determine_date(parsed_day_in_month, parsed_hour)
+        self._telegram_date = date
         section_code = int(input_token[4])
 
         return {
             "station_code": station_code,
             "station_name": getattr(self.hydro_station, "name", None) or getattr(self.meteo_station, "name", None),
-            "date": date.isoformat(),
+            "date": self._telegram_date.isoformat(),
             "section_code": section_code,
         }
 
-    def parse_section_one(self) -> dict:
+    def parse_section_one(self, section_date: datetime) -> dict:
         """
         Parses section 1 of the KN15 telegram.
         """
@@ -491,7 +494,30 @@ class KN15TelegramParser(BaseTelegramParser):
             "air_temperature": air_temperature,
             "ice_phenomena": ice_phenomena,
             "daily_precipitation": daily_precipitation,
+            "date": section_date.date().isoformat(),
         }
+
+    def parse_section_two(self):
+        def extract_day_from_token(date_token: str) -> int:
+            try:
+                day_in_month = int(date_token[3:])
+                if not (1 <= day_in_month <= 31):
+                    self.save_parsing_error(
+                        f"Invalid day in month for token {date_token}", day_in_month, InvalidTokenException
+                    )
+                return day_in_month
+            except ValueError:
+                self.save_parsing_error(
+                    f"Invalid day in month for token {date_token}", date_token[:2], InvalidTokenException
+                )
+
+        input_token = self.get_next_token()
+        day = extract_day_from_token(input_token)
+        hour = 8
+        date = self.determine_date(day, hour)
+
+        parsed = self.parse_section_one(section_date=date)
+        return parsed
 
     def parse_section_three(self) -> dict[str, int | float]:
         """

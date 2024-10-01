@@ -81,6 +81,7 @@ LOCAL_APPS = [
     "sapphire_backend.imomo",
     "sapphire_backend.ingestion",
     "sapphire_backend.estimations",
+    "sapphire_backend.quality_control",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
