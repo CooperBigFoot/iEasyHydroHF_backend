@@ -18,3 +18,23 @@ def other_organization(db, organization_factory):
         year_type=Organization.YearType.HYDROLOGICAL,
         timezone=ZoneInfo("Asia/Almaty"),
     )
+
+
+@pytest.fixture
+def chu_basin(db, organization_kyrgyz):
+    return BasinFactory(name="Чу", organization=organization_kyrgyz)
+
+
+@pytest.fixture
+def talas_basin(db, organization_kyrgyz):
+    return BasinFactory(name="Талас", organization=organization_kyrgyz)
+
+
+@pytest.fixture
+def talas_region(db, organization_kyrgyz):
+    return RegionFactory(name="ТАЛАССКАЯ ОБЛАСТЬ", organization=organization_kyrgyz)
+
+
+@pytest.fixture
+def osh_region(db, organization_kyrgyz):
+    return RegionFactory(name="Ошская область", organization=organization_kyrgyz)
