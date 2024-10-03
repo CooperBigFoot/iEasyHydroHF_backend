@@ -76,7 +76,7 @@ class BasinRegionStandardizer:
         for site in tqdm(sites, desc="Standardizing basins for sites", total=sites.count()):
             old_basin = site.basin
             if old_basin.name not in self.basin_map:
-                pass
+                continue
             new_basin, _ = Basin.objects.get_or_create(
                 name=self.basin_map[old_basin.name],
                 defaults={"secondary_name": "", "organization": self.organization, "bulletin_order": 0},
@@ -89,7 +89,7 @@ class BasinRegionStandardizer:
         for site in tqdm(sites, desc="Standardizing regions for sites", total=sites.count()):
             old_region = site.region
             if old_region.name not in self.region_map:
-                pass
+                continue
             new_region, _ = Region.objects.get_or_create(
                 name=self.region_map[old_region.name],
                 defaults={"secondary_name": "", "organization": self.organization, "bulletin_order": 0},
@@ -104,7 +104,7 @@ class BasinRegionStandardizer:
         ):
             old_basin = vs.basin
             if old_basin.name not in self.basin_map:
-                pass
+                continue
             new_basin, _ = Basin.objects.get_or_create(
                 name=self.basin_map[old_basin.name],
                 defaults={"secondary_name": "", "organization": self.organization, "bulletin_order": 0},
@@ -122,7 +122,7 @@ class BasinRegionStandardizer:
         ):
             old_region = vs.region
             if old_region.name not in self.region_map:
-                pass
+                continue
             new_region, _ = Region.objects.get_or_create(
                 name=self.region_map[old_region.name],
                 defaults={"secondary_name": "", "organization": self.organization, "bulletin_order": 0},
