@@ -135,7 +135,7 @@ class BasinRegionStandardizer:
             site_count=Count("site_related"), vs_count=Count("virtualstation_related")
         ).filter(site_count=0, vs_count=0, organization=self.organization)
 
-        cnt_basins = unused_basins.delete()
+        cnt_basins, _ = unused_basins.delete()
         return cnt_basins
 
     def cleanup_empty_regions(self):
@@ -143,5 +143,5 @@ class BasinRegionStandardizer:
             site_count=Count("site_related"), vs_count=Count("virtualstation_related")
         ).filter(site_count=0, vs_count=0, organization=self.organization)
 
-        cnt_regions = unused_regions.delete()
+        cnt_regions, _ = unused_regions.delete()
         return cnt_regions

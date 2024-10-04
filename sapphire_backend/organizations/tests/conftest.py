@@ -30,8 +30,13 @@ def kyrgyz_hydromet(db):
 
 
 @pytest.fixture
-def chu_basin(db, kyrgyz_hydromet):
-    return BasinFactory(name="Чу", organization=kyrgyz_hydromet)
+def issyk_kul_basin(db, kyrgyz_hydromet):
+    return BasinFactory(name="Иссык Куль", organization=kyrgyz_hydromet)
+
+
+@pytest.fixture
+def issyk_kul_basin_second(db, kyrgyz_hydromet):
+    return BasinFactory(name="Иссык-Куль", organization=kyrgyz_hydromet)
 
 
 @pytest.fixture
@@ -60,8 +65,13 @@ def osh_region(db, kyrgyz_hydromet):
 
 
 @pytest.fixture
-def chu_site(db, kyrgyz_hydromet, chu_basin):
-    return SiteFactory(country="Kyrgyzstan", organization=kyrgyz_hydromet, basin=chu_basin)
+def issyk_kul_site(db, kyrgyz_hydromet, issyk_kul_basin):
+    return SiteFactory(country="Kyrgyzstan", organization=kyrgyz_hydromet, basin=issyk_kul_basin)
+
+
+@pytest.fixture
+def issyk_kul_site_second(db, kyrgyz_hydromet, issyk_kul_basin_second):
+    return SiteFactory(country="Kyrgyzstan", organization=kyrgyz_hydromet, basin=issyk_kul_basin_second)
 
 
 @pytest.fixture
@@ -80,9 +90,9 @@ def dummy_site(db, kyrgyz_hydromet, dummy_basin, dummy_region):
 
 
 @pytest.fixture
-def chu_virtual_station(db, kyrgyz_hydromet, chu_basin):
+def issyk_kul_virtual_station(db, kyrgyz_hydromet, issyk_kul_basin):
     return VirtualStationFactory(
-        name="Virtual Station Chu", organization=kyrgyz_hydromet, station_code="77777", basin=chu_basin
+        name="Virtual Station Chu", organization=kyrgyz_hydromet, station_code="77777", basin=issyk_kul_basin
     )
 
 
