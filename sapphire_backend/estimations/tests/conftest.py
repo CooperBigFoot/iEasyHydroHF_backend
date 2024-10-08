@@ -4,7 +4,6 @@ from decimal import Decimal
 
 import pytest
 from pytest_factoryboy import register
-from zoneinfo import ZoneInfo
 
 from sapphire_backend.estimations.tests.factories import DischargeModelFactory
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, MetricUnit, NormType
@@ -47,39 +46,6 @@ def virtual_station_association_two(db, manual_second_hydro_station_kyrgyz, virt
 def virtual_station_association_three(db, manual_third_hydro_station_kyrgyz, virtual_station):
     return VirtualStationAssociationFactory(
         virtual_station=virtual_station, hydro_station=manual_third_hydro_station_kyrgyz, weight=43
-    )
-
-
-@pytest.fixture
-def discharge_model_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz):
-    return DischargeModelFactory(
-        name="Discharge model station 1",
-        param_a=-30,
-        param_c=0.007,
-        valid_from_local=datetime(2020, 1, 15, tzinfo=ZoneInfo("UTC")),  # must be 2020-01-15
-        station=manual_hydro_station_kyrgyz,
-    )
-
-
-@pytest.fixture
-def discharge_second_model_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz):
-    return DischargeModelFactory(
-        name="Second discharge model station 1",
-        param_a=20,
-        param_c=0.003,
-        valid_from_local=datetime(2020, 3, 1, tzinfo=ZoneInfo("UTC")),  # must be 2020-03-01
-        station=manual_hydro_station_kyrgyz,
-    )
-
-
-@pytest.fixture
-def discharge_model_manual_second_hydro_station_kyrgyz(db, manual_second_hydro_station_kyrgyz):
-    return DischargeModelFactory(
-        name="Discharge model station 2",
-        param_a=51,
-        param_c=0.0017,
-        valid_from_local=datetime(2020, 1, 15),
-        station=manual_second_hydro_station_kyrgyz,
     )
 
 

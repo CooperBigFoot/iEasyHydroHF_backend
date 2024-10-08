@@ -1,7 +1,9 @@
 import datetime as dt
+from unittest.mock import patch
 
 import pytest
 from pytest_factoryboy import register
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.metrics.choices import (
     HydrologicalMeasurementType,
@@ -170,3 +172,11 @@ def monthly_temperature_norm(db, manual_meteo_station):
         ordinal_number=1,
         norm_metric=MeteorologicalNormMetric.TEMPERATURE,
     )
+
+
+@pytest.fixture
+def mock_datetime():
+    with patch("sapphire_backend.metrics.management.metrics_data_anonymizer.datetime") as mock:
+        mock.now.return_value = dt.datetime(2024, 10, 8, tzinfo=ZoneInfo("UTC"))
+        mock.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
+        yield mock

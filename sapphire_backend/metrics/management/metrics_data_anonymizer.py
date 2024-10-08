@@ -41,7 +41,7 @@ class MetricsDataAnonymizer:
         try:
             return self.station_cls.objects.get(id=station_id)
         except self.station_cls.DoesNotExist:
-            raise ValueError(f"{self.station_cls} with ID {station_id} does not exist.")
+            raise ValueError(f"{self.station_cls.__name__} with ID {station_id} does not exist.")
 
     def _get_dt(self, str_date: str) -> datetime:
         dt_obj = parse(str_date)
@@ -77,8 +77,9 @@ class MetricsDataAnonymizer:
             valid_from_local__range=(self.start_date, self.end_date)
         )
         for dm in tqdm(existing_dm.values(), total=existing_dm.count(), desc="Copying discharge curves..."):
-            new_dm_dict = {**dm, "station": self.dest_station}
+            new_dm_dict = {**dm, "station_id": self.dest_station.id}
             new_dm_dict.pop("id", None)
+            new_dm_dict.pop("uuid", None)
             new_dm = DischargeModel(**new_dm_dict)
             new_dm.save()
 
@@ -93,7 +94,7 @@ class MetricsDataAnonymizer:
             new_tr_dict = {
                 **tr,
                 "station_code": self.dest_station.station_code,
-                "organization": self.dest_station.site.organization,
+                "organization_id": self.dest_station.site.organization.id,
                 "acknowledged": False,
                 "acknowledged_by": None,
                 "acknowledged_ts": None,
