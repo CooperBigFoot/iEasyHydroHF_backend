@@ -7,7 +7,16 @@ from django.test import Client
 from pytest_factoryboy import register
 from zoneinfo import ZoneInfo
 
+from sapphire_backend.estimations.tests.factories import DischargeModelFactory
 from sapphire_backend.ingestion.tests.factories import FileStateFactory
+from sapphire_backend.metrics.choices import (
+    HydrologicalMeasurementType,
+    HydrologicalMetricName,
+    MeteorologicalMeasurementType,
+    MeteorologicalMetricName,
+    MetricUnit,
+)
+from sapphire_backend.metrics.tests.factories import HydrologicalMetricFactory, MeteorologicalMetricFactory
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.organizations.tests.factories import BasinFactory, OrganizationFactory, RegionFactory
 from sapphire_backend.stations.models import HydrologicalStation
@@ -18,9 +27,13 @@ from sapphire_backend.stations.tests.factories import (
     VirtualStationAssociationFactory,
     VirtualStationFactory,
 )
+from sapphire_backend.telegrams.tests.factories import TelegramReceivedFactory
 from sapphire_backend.users.conftest import get_api_client_for_user
 from sapphire_backend.users.tests.factories import UserAssignedStationFactory, UserFactory
 
+register(HydrologicalMetricFactory)
+register(MeteorologicalMetricFactory)
+register(DischargeModelFactory)
 register(SiteFactory)
 register(HydrologicalStationFactory)
 register(VirtualStationFactory)
@@ -30,6 +43,7 @@ register(BasinFactory)
 register(RegionFactory)
 register(FileStateFactory)
 register(UserAssignedStationFactory)
+register(TelegramReceivedFactory)
 User = get_user_model()
 
 
@@ -269,6 +283,11 @@ def manual_meteo_station_kyrgyz(db, site_kyrgyz):
 
 
 @pytest.fixture
+def manual_meteo_station_uzbek(db, site_uzbek):
+    return MeteorologicalStationFactory(site=site_uzbek, station_code="12347", name="Manual Meteorological Station")
+
+
+@pytest.fixture
 def manual_second_meteo_station_kyrgyz(db, site_kyrgyz):
     return MeteorologicalStationFactory(
         site=site_kyrgyz, station_code="12346", name="Manual Meteorological Station number two"
@@ -410,3 +429,135 @@ def datetime_mock_auto_now_add():
     with patch("django.utils.timezone.now") as mock:
         mock.return_value = fixed_datetime
         yield mock
+
+
+@pytest.fixture
+def discharge_model_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz):
+    return DischargeModelFactory(
+        name="Discharge model station 1",
+        param_a=-30,
+        param_c=0.007,
+        valid_from_local=datetime(2020, 1, 15, tzinfo=ZoneInfo("UTC")),  # must be 2020-01-15
+        station=manual_hydro_station_kyrgyz,
+    )
+
+
+@pytest.fixture
+def discharge_second_model_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz):
+    return DischargeModelFactory(
+        name="Second discharge model station 1",
+        param_a=20,
+        param_c=0.003,
+        valid_from_local=datetime(2020, 3, 1, tzinfo=ZoneInfo("UTC")),  # must be 2020-03-01
+        station=manual_hydro_station_kyrgyz,
+    )
+
+
+@pytest.fixture
+def discharge_model_manual_second_hydro_station_kyrgyz(db, manual_second_hydro_station_kyrgyz):
+    return DischargeModelFactory(
+        name="Discharge model station 2",
+        param_a=51,
+        param_c=0.0017,
+        valid_from_local=datetime(2020, 1, 15),
+        station=manual_second_hydro_station_kyrgyz,
+    )
+
+
+@pytest.fixture
+def discharge_model_manual_hydro_station_uzbek(db, manual_hydro_station_uzbek):
+    return DischargeModelFactory(
+        name="Discharge model station 1",
+        param_a=51,
+        param_c=0.0017,
+        valid_from_local=datetime(2020, 1, 16),
+        station=manual_hydro_station_uzbek,
+    )
+
+
+@pytest.fixture
+def telegram_received_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz, organization_kyrgyz):
+    return TelegramReceivedFactory(
+        station_code=manual_hydro_station_kyrgyz.station_code, filestate=None, organization=organization_kyrgyz
+    )
+
+
+@pytest.fixture
+def telegram_received_second_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz, organization_kyrgyz):
+    return TelegramReceivedFactory(
+        station_code=manual_hydro_station_kyrgyz.station_code, filestate=None, organization=organization_kyrgyz
+    )
+
+
+@pytest.fixture
+def telegram_received_manual_second_hydro_station_kyrgyz(db, manual_second_hydro_station_kyrgyz, organization_kyrgyz):
+    return TelegramReceivedFactory(
+        station_code=manual_second_hydro_station_kyrgyz.station_code, filestate=None, organization=organization_kyrgyz
+    )
+
+
+@pytest.fixture
+def telegram_received_manual_hydro_station_uzbek(db, manual_hydro_station_uzbek, organization_uzbek):
+    return TelegramReceivedFactory(
+        station_code=manual_hydro_station_uzbek.station_code, filestate=None, organization=organization_uzbek
+    )
+
+
+@pytest.fixture
+def water_level_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz):
+    return HydrologicalMetricFactory(
+        timestamp=datetime(2024, 9, 1, 8, 0, 0, tzinfo=ZoneInfo("UTC")),
+        station=manual_hydro_station_kyrgyz,
+        avg_value=10.0,
+        value_type=HydrologicalMeasurementType.MANUAL,
+        metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+        unit=MetricUnit.WATER_LEVEL,
+    )
+
+
+@pytest.fixture
+def water_level_manual_hydro_station_uzbek(db, manual_hydro_station_uzbek):
+    return HydrologicalMetricFactory(
+        timestamp=datetime(2024, 9, 2, 8, 0, 0, tzinfo=ZoneInfo("UTC")),
+        station=manual_hydro_station_uzbek,
+        avg_value=15.0,
+        value_type=HydrologicalMeasurementType.MANUAL,
+        metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+        unit=MetricUnit.WATER_LEVEL,
+    )
+
+
+@pytest.fixture
+def water_discharge_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz):
+    return HydrologicalMetricFactory(
+        timestamp=datetime(2024, 9, 2, 8, 0, 0, tzinfo=ZoneInfo("UTC")),
+        station=manual_hydro_station_kyrgyz,
+        avg_value=50.0,
+        value_type=HydrologicalMeasurementType.MANUAL,
+        metric_name=HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+        unit=MetricUnit.WATER_DISCHARGE,
+    )
+
+
+@pytest.fixture
+def precipitation_meteo_station_kyrgyz(db, manual_meteo_station_kyrgyz):
+    return MeteorologicalMetricFactory(
+        timestamp=datetime(2024, 9, 2, 8, 0, 0, tzinfo=ZoneInfo("UTC")),
+        station=manual_meteo_station_kyrgyz,
+        value=15.0,
+        value_type=MeteorologicalMeasurementType.MANUAL,
+        metric_name=MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE,
+        unit=MetricUnit.PRECIPITATION,
+    )
+
+
+@pytest.fixture
+def temperature_meteo_station_uzbek(db, manual_meteo_station_uzbek):
+    return MeteorologicalMetricFactory(
+        timestamp=datetime(2024, 9, 1, 8, 0, 0, tzinfo=ZoneInfo("UTC")),
+        station=manual_meteo_station_uzbek,
+        value=20.0,
+        value_type=MeteorologicalMeasurementType.MANUAL,
+        metric_name=MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
+        unit=MetricUnit.TEMPERATURE,
+    )
