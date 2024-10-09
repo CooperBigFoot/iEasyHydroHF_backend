@@ -478,28 +478,109 @@ def discharge_model_manual_hydro_station_uzbek(db, manual_hydro_station_uzbek):
 @pytest.fixture
 def telegram_received_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz, organization_kyrgyz):
     return TelegramReceivedFactory(
-        station_code=manual_hydro_station_kyrgyz.station_code, filestate=None, organization=organization_kyrgyz
+        station_code=manual_hydro_station_kyrgyz.station_code,
+        filestate=None,
+        organization=organization_kyrgyz,
+        telegram=f"{manual_hydro_station_kyrgyz.station_code} 28081 10123 20012 30124 00000=",
+        decoded_values={
+            "raw": f"{manual_hydro_station_kyrgyz.station_code} 28081 10123 20012 30124 00000=",
+            "section_zero": {
+                "section_code": 1,
+                "station_code": manual_hydro_station_kyrgyz.station_code,
+                "station_name": manual_hydro_station_kyrgyz.name,
+            },
+            "section_one": {
+                "date": "2024-09-28",
+                "ice_phenomena": [],
+                "air_temperature": None,
+                "water_level_trend": -1,
+                "morning_water_level": 123,
+                "water_level_20h_period": 124,
+                "daily_precipitation": {"duration_code": 0, "precipitation": 0},
+            },
+        },
     )
 
 
 @pytest.fixture
 def telegram_received_second_manual_hydro_station_kyrgyz(db, manual_hydro_station_kyrgyz, organization_kyrgyz):
     return TelegramReceivedFactory(
-        station_code=manual_hydro_station_kyrgyz.station_code, filestate=None, organization=organization_kyrgyz
+        station_code=manual_hydro_station_kyrgyz.station_code,
+        filestate=None,
+        organization=organization_kyrgyz,
+        telegram=f"{manual_hydro_station_kyrgyz.station_code} 29081 10121 20000 30121 00000=",
+        decoded_values={
+            "raw": f"{manual_hydro_station_kyrgyz.station_code} 29081 10121 20000 30121 00000=",
+            "section_zero": {
+                "section_code": 1,
+                "station_code": manual_hydro_station_kyrgyz.station_code,
+                "station_name": manual_hydro_station_kyrgyz.name,
+            },
+            "section_one": {
+                "date": "2024-09-29",
+                "ice_phenomena": [],
+                "air_temperature": None,
+                "water_level_trend": 0,
+                "morning_water_level": 121,
+                "water_level_20h_period": 121,
+                "daily_precipitation": {"duration_code": 0, "precipitation": 0},
+            },
+        },
     )
 
 
 @pytest.fixture
 def telegram_received_manual_second_hydro_station_kyrgyz(db, manual_second_hydro_station_kyrgyz, organization_kyrgyz):
     return TelegramReceivedFactory(
-        station_code=manual_second_hydro_station_kyrgyz.station_code, filestate=None, organization=organization_kyrgyz
+        station_code=manual_second_hydro_station_kyrgyz.station_code,
+        filestate=None,
+        organization=organization_kyrgyz,
+        telegram=f"{manual_second_hydro_station_kyrgyz.station_code} 30081 10126 20012 30127 00000=",
+        decoded_values={
+            "raw": f"{manual_second_hydro_station_kyrgyz.station_code} 30081 10126 20012 30127 00000=",
+            "section_zero": {
+                "section_code": 1,
+                "station_code": manual_second_hydro_station_kyrgyz.station_code,
+                "station_name": manual_second_hydro_station_kyrgyz.name,
+            },
+            "section_one": {
+                "date": "2024-09-30",
+                "ice_phenomena": [],
+                "air_temperature": None,
+                "water_level_trend": -1,
+                "morning_water_level": 126,
+                "water_level_20h_period": 127,
+                "daily_precipitation": {"duration_code": 0, "precipitation": 0},
+            },
+        },
     )
 
 
 @pytest.fixture
 def telegram_received_manual_hydro_station_uzbek(db, manual_hydro_station_uzbek, organization_uzbek):
     return TelegramReceivedFactory(
-        station_code=manual_hydro_station_uzbek.station_code, filestate=None, organization=organization_uzbek
+        station_code=manual_hydro_station_uzbek.station_code,
+        filestate=None,
+        organization=organization_uzbek,
+        telegram=f"{manual_hydro_station_uzbek.station_code} 24081 10120 20000 30120 00000=",
+        decoded_values={
+            "raw": f"{manual_hydro_station_uzbek.station_code} 24081 10120 20000 30120 00000=",
+            "section_zero": {
+                "section_code": 1,
+                "station_code": manual_hydro_station_uzbek.station_code,
+                "station_name": manual_hydro_station_uzbek.name,
+            },
+            "station_name": manual_hydro_station_uzbek.name,
+            "section_one": {
+                "date": "2024-09-24",
+                "ice_phenomena": [],
+                "air_temperature": None,
+                "water_level_trend": 0,
+                "morning_water_level": 120,
+                "water_level_20h_period": 120,
+                "daily_precipitation": {"duration_code": 0, "precipitation": 0},
+            },
+        },
     )
 
 

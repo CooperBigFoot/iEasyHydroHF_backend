@@ -91,13 +91,23 @@ class MetricsDataAnonymizer:
         )
 
         for tr in tqdm(existing_telegrams.values(), total=existing_telegrams.count(), desc="Copying telegrams..."):
+            telegram_string = tr.pop("telegram")
+            telegram_parts = telegram_string.split()
+            telegram_parts[0] = self.dest_station.station_code
+            updated_telegram_string = " ".join(telegram_parts)
+
+            decoded_values = tr.pop("decoded_values", {})
+            if decoded_values:
+                decoded_values["raw"] = updated_telegram_string
+                decoded_values["section_zero"]["station_code"] = self.dest_station.station_code
+                decoded_values["section_zero"]["station_name"] = self.dest_station.name
+
             new_tr_dict = {
                 **tr,
+                "telegram": updated_telegram_string,
+                "decoded_values": decoded_values,
                 "station_code": self.dest_station.station_code,
                 "organization_id": self.dest_station.site.organization.id,
-                "acknowledged": False,
-                "acknowledged_by": None,
-                "acknowledged_ts": None,
                 "filestate": None,
             }
             new_tr_dict.pop("id", None)
