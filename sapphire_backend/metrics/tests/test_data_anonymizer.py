@@ -176,6 +176,18 @@ class TestMetricsDataAnonymizer:
     ):
         assert TelegramReceived.objects.filter(station_code=manual_hydro_station_kyrgyz.station_code).count() == 1
         assert TelegramReceived.objects.filter(station_code=manual_hydro_station_uzbek.station_code).count() == 0
+        assert (
+            telegram_received_manual_hydro_station_kyrgyz.decoded_values["raw"]
+            == telegram_received_manual_hydro_station_kyrgyz.telegram
+        )
+        assert (
+            telegram_received_manual_hydro_station_kyrgyz.decoded_values["section_zero"]["station_name"]
+            == manual_hydro_station_kyrgyz.name
+        )
+        assert (
+            telegram_received_manual_hydro_station_kyrgyz.decoded_values["section_zero"]["station_code"]
+            == manual_hydro_station_kyrgyz.station_code
+        )
 
         anonymizer = MetricsDataAnonymizer(
             "hydro",
@@ -189,8 +201,14 @@ class TestMetricsDataAnonymizer:
         assert TelegramReceived.objects.filter(station_code=manual_hydro_station_uzbek.station_code).count() == 1
 
         new_telegram = TelegramReceived.objects.filter(station_code=manual_hydro_station_uzbek.station_code).first()
+        new_telegram_str = telegram_received_manual_hydro_station_kyrgyz.telegram.replace(
+            telegram_received_manual_hydro_station_kyrgyz.station_code, manual_hydro_station_uzbek.station_code
+        )
 
-        assert new_telegram.telegram == telegram_received_manual_hydro_station_kyrgyz.telegram
+        assert new_telegram.telegram == new_telegram_str
+        assert new_telegram.decoded_values["raw"] == new_telegram_str
+        assert new_telegram.decoded_values["section_zero"]["station_code"] == manual_hydro_station_uzbek.station_code
+        assert new_telegram.decoded_values["section_zero"]["station_name"] == manual_hydro_station_uzbek.name
         assert new_telegram.organization == organization_uzbek
         assert new_telegram.station_code == manual_hydro_station_uzbek.station_code
 
