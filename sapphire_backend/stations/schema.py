@@ -25,6 +25,28 @@ class RemarkOutputSchema(RemarkInputSchema):
         return str(obj.uuid)
 
 
+class NestedStationSchema(Schema):
+    uuid: str
+    name: str
+
+    @staticmethod
+    def resolve_uuid(obj):
+        return str(obj.uuid)
+
+
+class RelatedStationsSchema(Schema):
+    related_hydro_stations: list[NestedStationSchema]
+    related_meteo_stations: list[NestedStationSchema]
+
+    @staticmethod
+    def resolve_related_hydro_stations(obj):
+        return obj.site.hydro_stations.exclude(uuid=obj.uuid)
+
+    @staticmethod
+    def resolve_related_meteo_stations(obj):
+        return obj.site.meteo_stations.exclude(uuid=obj.uuid)
+
+
 class SiteBasinRegionInputSchema(Schema):
     region_id: str
     basin_id: str
@@ -96,7 +118,9 @@ class ForecastStatusSchema(Schema):
     seasonal_forecast: bool
 
 
-class HydroStationOutputDetailSchema(HydroStationBaseSchema, ForecastStatusSchema, UUIDSchemaMixin):
+class HydroStationOutputDetailSchema(
+    HydroStationBaseSchema, ForecastStatusSchema, RelatedStationsSchema, UUIDSchemaMixin
+):
     site: SiteOutputSchema
     id: int
     remarks: list[RemarkOutputSchema] = None
@@ -149,7 +173,7 @@ class MeteoStationUpdateSchema(MeteoStationBaseSchema):
     site_data: SiteUpdateSchema | None = None
 
 
-class MeteoStationOutputDetailSchema(MeteoStationBaseSchema, UUIDSchemaMixin):
+class MeteoStationOutputDetailSchema(MeteoStationBaseSchema, RelatedStationsSchema, UUIDSchemaMixin):
     site: SiteOutputSchema
     id: int
     remarks: list[RemarkOutputSchema] = None

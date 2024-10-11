@@ -196,6 +196,7 @@ class MeteoMetricsAPIController:
         organization_uuid: str,
         order: Query[OrderQueryParamSchema],
         filters: Query[MeteoMetricFilterSchema] = None,
+        limit: int | None = 365,
     ):
         filter_dict = filters.dict(exclude_none=True)
         filter_dict["station__site__organization"] = organization_uuid
@@ -205,7 +206,7 @@ class MeteoMetricsAPIController:
             order_param=order_param,
             order_direction=order_direction,
             filter_dict=filter_dict,
-        ).execute_query()
+        ).execute_query()[:limit]
 
     @route.get("metric-count", response={200: list[MetricCountSchema] | MetricTotalCountSchema})
     def get_meteo_metric_count(
