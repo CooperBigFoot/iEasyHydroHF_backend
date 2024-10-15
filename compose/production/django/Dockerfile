@@ -73,7 +73,7 @@ RUN chmod 0644 /etc/cron.d/cronjobs
 # copy application code to WORKDIR
 COPY  . ${APP_HOME}
 RUN touch /app/cron-ingestion.log
-RUN touch /app/cron-ingestion-simulation.log
+RUN touch /app/cron-simulate.log
 
 RUN DATABASE_URL="" \
   DJANGO_SETTINGS_MODULE="config.settings.production" \
