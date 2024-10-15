@@ -15,6 +15,11 @@ class Command(BaseCommand):
         parser.add_argument("--skip-xml", action="store_true", default=False, help="Ingest auto stations XMLs")
 
     def handle(self, *args, **options):
+        ingestion_scheduled = os.environ.get("INGESTION_SCHEDULED", "False")
+        if ingestion_scheduled != "True":
+            logging.info("Ingestion is not scheduled. Exiting...")
+            return
+
         skip_telegrams = options["skip_telegrams"]
         skip_xml = options["skip_xml"]
         logging.info(

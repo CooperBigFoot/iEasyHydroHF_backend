@@ -66,9 +66,14 @@ COPY ./compose/production/django/start /start
 RUN sed -i 's/\r$//g' /start
 RUN chmod +x /start
 
+# Copy the cron job file into /etc/cron.d/
+COPY ./cronjobs /etc/cron.d/cronjobs
+RUN chmod 0644 /etc/cron.d/cronjobs
+
 # copy application code to WORKDIR
 COPY  . ${APP_HOME}
 RUN touch /app/cron-ingestion.log
+RUN touch /app/cron-ingestion-simulation.log
 
 RUN DATABASE_URL="" \
   DJANGO_SETTINGS_MODULE="config.settings.production" \

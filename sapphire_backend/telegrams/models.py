@@ -13,7 +13,7 @@ class TelegramReceived(CreatedDateMixin, models.Model):
     decoded_values = models.JSONField(verbose_name=_("Decoded values"), blank=True, null=True)
     errors = models.TextField(verbose_name=_("Errors"), blank=True)
     acknowledged = models.BooleanField(default=False)
-    acknowledged_ts = models.DateTimeField(null=True, verbose_name=_("Acknowledged timestamp"))
+    acknowledged_ts = models.DateTimeField(null=True, blank=True, verbose_name=_("Acknowledged timestamp"))
     acknowledged_by = models.ForeignKey(User, to_field="id", on_delete=models.SET_NULL, null=True, blank=True)
     filestate = models.ForeignKey(FileState, to_field="id", on_delete=models.SET_NULL, null=True, blank=True)
     auto_stored = models.BooleanField(verbose_name=_("Was telegram automatically stored?"), default=False)

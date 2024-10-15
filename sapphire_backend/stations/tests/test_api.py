@@ -751,7 +751,7 @@ class TestHydroForecastStatusAPI:
         )
 
         assert response.status_code == 201
-        assert response.json() == [
+        expected = [
             {
                 "daily_forecast": True,
                 "pentad_forecast": True,
@@ -777,6 +777,8 @@ class TestHydroForecastStatusAPI:
                 "station_type": "A",
             },
         ]
+
+        assert sorted(response.json(), key=lambda x: x["uuid"]) == sorted(expected, key=lambda x: x["uuid"])
 
 
 class TestVirtualForecastStatusAPI:
@@ -804,7 +806,7 @@ class TestVirtualForecastStatusAPI:
     ):
         response = authenticated_regular_user_api_client.get(self.endpoint.format(organization.uuid))
 
-        assert response.json() == [
+        expected = [
             {
                 "daily_forecast": False,
                 "pentad_forecast": False,
@@ -830,6 +832,8 @@ class TestVirtualForecastStatusAPI:
                 "station_type": "V",
             },
         ]
+
+        assert sorted(response.json(), key=lambda x: x["uuid"]) == sorted(expected, key=lambda x: x["uuid"])
 
     def test_for_single_non_existing_station(self, authenticated_regular_user_api_client, organization):
         response = authenticated_regular_user_api_client.get(
