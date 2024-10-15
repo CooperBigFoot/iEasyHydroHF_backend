@@ -67,7 +67,7 @@ RUN sed -i 's/\r$//g' /start
 RUN chmod +x /start
 
 # Copy the cron job file into /etc/cron.d/
-COPY ./cronjobs /etc/cron.d/cronjobs
+COPY ./compose/production/django/cronjobs /etc/cron.d/cronjobs
 RUN chmod 0644 /etc/cron.d/cronjobs
 
 # copy application code to WORKDIR
