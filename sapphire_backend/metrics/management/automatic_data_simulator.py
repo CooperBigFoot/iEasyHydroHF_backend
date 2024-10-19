@@ -32,7 +32,7 @@ class AutomaticDataSimulator:
             raise ValueError(f"Automatic station with ID {station_id} does not exist")
 
     def _get_dt(self) -> datetime:
-        return SmartDatetime(datetime.now(), self.src_station).local
+        return SmartDatetime(datetime.now(tz=self.src_station.timezone), self.src_station, True).local
 
     @staticmethod
     def _get_value_with_offset(value: Decimal, offset: float) -> Decimal:

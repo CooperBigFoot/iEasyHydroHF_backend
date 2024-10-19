@@ -45,7 +45,7 @@ class MetricsDataAnonymizer:
 
     def _get_dt(self, str_date: str) -> datetime:
         dt_obj = parse(str_date)
-        return SmartDatetime(dt_obj, self.src_station).local
+        return SmartDatetime(dt_obj.replace(tzinfo=self.src_station.timezone), self.src_station, True).local
 
     def copy_metrics(self, metric_names: list[str], value_types: list[str], offset_factor: float = 0.0):
         qm = TimeseriesQueryManager(
