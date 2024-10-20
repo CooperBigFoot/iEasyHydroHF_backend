@@ -102,16 +102,30 @@ class HydroMetricsAPIController:
         organization_uuid: str,
         order: Query[OrderQueryParamSchema],
         filters: Query[HydroMetricFilterSchema] = None,
+        page: int = 1,
+        page_size: int = 300,
     ):
         filter_dict = filters.dict(exclude_none=True)
         filter_dict["station__site__organization"] = organization_uuid
+        page_size = max(page_size, 300)
         order_param, order_direction = order.order_param, order.order_direction
-        return TimeseriesQueryManager(
+        qs = TimeseriesQueryManager(
             model=HydrologicalMetric,
             order_param=order_param,
             order_direction=order_direction,
             filter_dict=filter_dict,
         ).execute_query()
+        offset = (page - 1) * page_size
+        sliced_qs = qs[offset : offset + page_size]
+        df = pd.DataFrame(sliced_qs)
+        pivot_table = df.pivot_table(
+            index="timestamp_local", columns="metric_name", values="avg_value", aggfunc="first"
+        ).reset_index()
+
+        result = pivot_table.to_dict(orient="records")
+
+        print(result)
+        return result
 
     @route.get("metric-count", response={200: list[MetricCountSchema] | MetricTotalCountSchema})
     def get_hydro_metric_count(
