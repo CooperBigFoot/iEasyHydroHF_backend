@@ -14,7 +14,6 @@ from django.http import FileResponse
 from django.templatetags.static import static
 from ninja import File, Query
 from ninja.files import UploadedFile
-from ninja.pagination import PageNumberPagination, paginate
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
@@ -96,7 +95,6 @@ agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": S
 )
 class HydroMetricsAPIController:
     @route.get("", response={200: list[HydrologicalMetricOutputSchema]})
-    @paginate(PageNumberPagination, page_size=100)
     def get_hydro_metrics(
         self,
         organization_uuid: str,
