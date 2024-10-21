@@ -41,11 +41,21 @@ class TestHydroMetricsAPI:
         water_level_manual,
     ):
         response = authenticated_regular_user_other_organization_api_client.get(
-            self.endpoint.format(backup_organization.uuid)
+            self.endpoint.format(backup_organization.uuid),
+            {
+                "timestamp_local__gte": water_level_manual_other_organization.timestamp_local
+                - dt.timedelta(minutes=1),
+                "timestamp_local__lt": water_level_manual_other_organization.timestamp_local + dt.timedelta(minutes=1),
+            },
         )
 
         assert response.status_code == 200
-        assert len(response.json()) == 1
+
+        response_json = response.json()
+        assert len(response_json["results"]) == 1
+        assert response_json["count"] == 1
+        assert response_json["next"] is None
+        assert response_json["previous"] is None
 
     def test_get_hydro_metrics_for_super_admin_from_other_organization(
         self,
@@ -57,18 +67,41 @@ class TestHydroMetricsAPI:
         water_level_manual,
         water_level_automatic,
     ):
-        response = authenticated_superadmin_user_api_client.get(self.endpoint.format(backup_organization.uuid))
-
-        assert response.status_code == 200
-        assert len(response.json()) == 1
-
-    def test_get_hydro_metrics_with_invalid_filter(self, authenticated_regular_user_api_client, organization):
-        response = authenticated_regular_user_api_client.get(
-            self.endpoint.format(organization.uuid), {"filter": "invalid"}
+        response = authenticated_superadmin_user_api_client.get(
+            self.endpoint.format(backup_organization.uuid),
+            {
+                "timestamp_local__gte": water_level_manual_other_organization.timestamp_local
+                - dt.timedelta(minutes=1),
+                "timestamp_local__lt": water_level_manual_other_organization.timestamp_local + dt.timedelta(minutes=1),
+            },
         )
 
         assert response.status_code == 200
-        assert response.json() == []
+
+        response_json = response.json()
+        assert len(response_json["results"]) == 1
+        assert response_json["count"] == 1
+        assert response_json["next"] is None
+        assert response_json["previous"] is None
+
+    def test_get_hydro_metrics_with_invalid_filter(
+        self, authenticated_regular_user_api_client, water_level_manual, organization
+    ):
+        response = authenticated_regular_user_api_client.get(
+            self.endpoint.format(organization.uuid),
+            {
+                "filter": "invalid",
+                "timestamp_local__gte": water_level_manual.timestamp_local - dt.timedelta(minutes=1),
+                "timestamp_local__lt": water_level_manual.timestamp_local + dt.timedelta(minutes=1),
+            },
+        )
+
+        assert response.status_code == 200
+        response_json = response.json()
+        assert len(response_json["results"]) == 1
+        assert response_json["count"] == 1
+        assert response_json["next"] is None
+        assert response_json["previous"] is None
 
     def test_get_hydro_metrics_with_filters(
         self,
@@ -84,6 +117,8 @@ class TestHydroMetricsAPI:
         response = authenticated_regular_user_api_client.get(
             self.endpoint.format(organization.uuid),
             {
+                "timestamp_local__gte": water_level_manual.timestamp_local - dt.timedelta(minutes=1),
+                "timestamp_local__lt": water_level_manual.timestamp_local + dt.timedelta(minutes=1),
                 "metric_name__in": HydrologicalMetricName.WATER_LEVEL_DAILY,
                 "value_type__in": HydrologicalMeasurementType.MANUAL,
                 "station__station_code": manual_hydro_station.station_code,
@@ -91,15 +126,6 @@ class TestHydroMetricsAPI:
         )
 
         EXPECTED_OUTPUT = [
-            {
-                "avg_value": water_level_manual_other.avg_value,
-                "timestamp_local": water_level_manual_other.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
-                "metric_name": water_level_manual_other.metric_name,
-                "value_type": water_level_manual_other.value_type,
-                "sensor_identifier": water_level_manual_other.sensor_identifier,
-                "station_id": manual_hydro_station.id,
-                "value_code": None,
-            },
             {
                 "avg_value": water_level_manual.avg_value,
                 "timestamp_local": water_level_manual.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
@@ -111,7 +137,11 @@ class TestHydroMetricsAPI:
             },
         ]
 
-        assert response.json() == EXPECTED_OUTPUT
+        response_json = response.json()
+        assert response_json["results"] == EXPECTED_OUTPUT
+        assert response_json["count"] == 1
+        assert response_json["next"] is None
+        assert response_json["previous"] is None
 
     def test_get_hydro_metric_count(
         self,

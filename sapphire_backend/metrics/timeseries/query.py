@@ -176,7 +176,7 @@ class TimeseriesQueryManager:
 
         query = f"""
             SELECT
-            time_bucket(%s, timestamp) AS bucket,
+            time_bucket(%s, timestamp_local) AS bucket,
             {agg_func}(avg_value)
             FROM {db_table}
             {join_string}

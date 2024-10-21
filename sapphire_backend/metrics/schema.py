@@ -62,6 +62,13 @@ class HydrologicalMetricOutputSchema(Schema):
     value_code: int | None
 
 
+class TimestampGroupedHydroMetricSchema(Schema):
+    timestamp_local: datetime
+    WLD: float
+    ATO: float | None
+    WTO: float | None
+
+
 class MeasuredDischargeMeasurementSchema(Schema):
     date: str
     h: float
