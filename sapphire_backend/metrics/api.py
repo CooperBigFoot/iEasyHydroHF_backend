@@ -33,6 +33,7 @@ from ..estimations.models import (
     EstimationsWaterDischargeDecadeAverage,
     EstimationsWaterLevelDailyAverage,
     EstimationsWaterLevelDecadeAverage,
+    HydrologicalRound,
 )
 from .choices import (
     HydrologicalMeasurementType,
@@ -113,7 +114,7 @@ class HydroMetricsAPIController:
             | PaginatedResponseSchema[TimestampGroupedHydroMetricSchema]
         },
     )
-    @paginate(PageNumberPaginationExtra, page_size=300)
+    @paginate(PageNumberPaginationExtra, page_size=100, max_page_size=101)
     def get_hydro_metrics(
         self,
         organization_uuid: str,
@@ -139,7 +140,11 @@ class HydroMetricsAPIController:
             annotations = {}
             for metric in filter_dict.get("metric_name__in"):
                 annotations[metric] = Max(
-                    Case(When(metric_name=metric, then="avg_value"), default=Value(None), output_field=DecimalField())
+                    Case(
+                        When(metric_name=metric, then=HydrologicalRound("avg_value")),
+                        default=Value(None),
+                        output_field=DecimalField(),
+                    )
                 )
             qs = qs.values("timestamp_local").annotate(**annotations).order_by(qm.order)
 
