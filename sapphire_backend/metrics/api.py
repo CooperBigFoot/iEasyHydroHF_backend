@@ -114,7 +114,7 @@ class HydroMetricsAPIController:
             | PaginatedResponseSchema[TimestampGroupedHydroMetricSchema]
         },
     )
-    @paginate(PageNumberPaginationExtra, page_size=100, max_page_size=102)
+    @paginate(PageNumberPaginationExtra, page_size=100, max_page_size=101)
     def get_hydro_metrics(
         self,
         organization_uuid: str,
