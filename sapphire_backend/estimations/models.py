@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Func
 from django.utils.translation import gettext_lazy as _
 
 from sapphire_backend.metrics.managers import HydrologicalNormQuerySet
@@ -141,3 +142,7 @@ class HydrologicalNormVirtual(NormModelMixin, models.Model):
     class Meta:
         managed = False
         db_table = "estimations_hydrologicalnorm_virtual"
+
+
+class HydrologicalRound(Func):
+    function = "hydrological_round"

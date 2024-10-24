@@ -9,12 +9,13 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.db.models import Avg, Count, Max, Min, Sum
+from django.db.models import Avg, Case, Count, DecimalField, Max, Min, Sum, Value, When
 from django.http import FileResponse
 from django.templatetags.static import static
 from ninja import File, Query
 from ninja.files import UploadedFile
 from ninja_extra import api_controller, route
+from ninja_extra.pagination import PageNumberPaginationExtra, PaginatedResponseSchema, paginate
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
@@ -32,6 +33,7 @@ from ..estimations.models import (
     EstimationsWaterDischargeDecadeAverage,
     EstimationsWaterLevelDailyAverage,
     EstimationsWaterLevelDecadeAverage,
+    HydrologicalRound,
 )
 from .choices import (
     HydrologicalMeasurementType,
@@ -64,6 +66,7 @@ from .schema import (
     OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
     TimeBucketQueryParams,
+    TimestampGroupedHydroMetricSchema,
 )
 from .timeseries.query import TimeseriesQueryManager
 from .utils.bulk_data import (
@@ -94,7 +97,53 @@ agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": S
     "metrics/{organization_uuid}/hydro", tags=["Hydro Metrics"], auth=JWTAuth(), permissions=regular_permissions
 )
 class HydroMetricsAPIController:
-    @route.get("", response={200: list[HydrologicalMetricOutputSchema]})
+    @staticmethod
+    def _validate_datetime_range(filter_dict):
+        start = filter_dict.get("timestamp_local__gte") or filter_dict.get("timestamp_local__gt")
+        end = filter_dict.get("timestamp_local__lt") or filter_dict.get("timestamp_local__lte")
+
+        date_range = end - start
+
+        if date_range.days > 30:
+            raise ValueError("Date range cannot be more than 30 days")
+
+    @route.get("grouped", response={200: PaginatedResponseSchema[TimestampGroupedHydroMetricSchema]})
+    @paginate(PageNumberPaginationExtra, page_size=100, max_page_size=101)
+    def get_grouped_hydro_metrics(
+        self,
+        organization_uuid: str,
+        order: Query[OrderQueryParamSchema],
+        filters: Query[HydroMetricFilterSchema] = None,
+    ):
+        filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
+
+        self._validate_datetime_range(filter_dict)
+
+        order_param, order_direction = order.order_param, order.order_direction
+        qm = TimeseriesQueryManager(
+            model=HydrologicalMetric,
+            order_param=order_param,
+            order_direction=order_direction,
+            filter_dict=filter_dict,
+        )
+        qs = qm.execute_query()
+
+        annotations = {}
+        for metric in filter_dict.get("metric_name__in"):
+            annotations[metric] = Max(
+                Case(
+                    When(metric_name=metric, then=HydrologicalRound("avg_value")),
+                    default=Value(None),
+                    output_field=DecimalField(),
+                )
+            )
+        qs = qs.values("timestamp_local").annotate(**annotations).order_by(qm.order)
+
+        return qs
+
+    @route.get("", response={200: PaginatedResponseSchema[HydrologicalMetricOutputSchema]})
+    @paginate(PageNumberPaginationExtra, page_size=100, max_page_size=101)
     def get_hydro_metrics(
         self,
         organization_uuid: str,
@@ -103,13 +152,19 @@ class HydroMetricsAPIController:
     ):
         filter_dict = filters.dict(exclude_none=True)
         filter_dict["station__site__organization"] = organization_uuid
+
+        self._validate_datetime_range(filter_dict)
+
         order_param, order_direction = order.order_param, order.order_direction
-        return TimeseriesQueryManager(
+        qm = TimeseriesQueryManager(
             model=HydrologicalMetric,
             order_param=order_param,
             order_direction=order_direction,
             filter_dict=filter_dict,
-        ).execute_query()
+        )
+        qs = qm.execute_query()
+
+        return qs
 
     @route.get("metric-count", response={200: list[MetricCountSchema] | MetricTotalCountSchema})
     def get_hydro_metric_count(
