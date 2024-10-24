@@ -107,20 +107,13 @@ class HydroMetricsAPIController:
         if date_range.days > 30:
             raise ValueError("Date range cannot be more than 30 days")
 
-    @route.get(
-        "",
-        response={
-            200: PaginatedResponseSchema[HydrologicalMetricOutputSchema]
-            | PaginatedResponseSchema[TimestampGroupedHydroMetricSchema]
-        },
-    )
+    @route.get("grouped", response={200: PaginatedResponseSchema[TimestampGroupedHydroMetricSchema]})
     @paginate(PageNumberPaginationExtra, page_size=100, max_page_size=101)
-    def get_hydro_metrics(
+    def get_grouped_hydro_metrics(
         self,
         organization_uuid: str,
         order: Query[OrderQueryParamSchema],
         filters: Query[HydroMetricFilterSchema] = None,
-        group: bool = False,
     ):
         filter_dict = filters.dict(exclude_none=True)
         filter_dict["station__site__organization"] = organization_uuid
@@ -136,17 +129,40 @@ class HydroMetricsAPIController:
         )
         qs = qm.execute_query()
 
-        if group:
-            annotations = {}
-            for metric in filter_dict.get("metric_name__in"):
-                annotations[metric] = Max(
-                    Case(
-                        When(metric_name=metric, then=HydrologicalRound("avg_value")),
-                        default=Value(None),
-                        output_field=DecimalField(),
-                    )
+        annotations = {}
+        for metric in filter_dict.get("metric_name__in"):
+            annotations[metric] = Max(
+                Case(
+                    When(metric_name=metric, then=HydrologicalRound("avg_value")),
+                    default=Value(None),
+                    output_field=DecimalField(),
                 )
-            qs = qs.values("timestamp_local").annotate(**annotations).order_by(qm.order)
+            )
+        qs = qs.values("timestamp_local").annotate(**annotations).order_by(qm.order)
+
+        return qs
+
+    @route.get("", response={200: PaginatedResponseSchema[HydrologicalMetricOutputSchema]})
+    @paginate(PageNumberPaginationExtra, page_size=100, max_page_size=101)
+    def get_hydro_metrics(
+        self,
+        organization_uuid: str,
+        order: Query[OrderQueryParamSchema],
+        filters: Query[HydroMetricFilterSchema] = None,
+    ):
+        filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
+
+        self._validate_datetime_range(filter_dict)
+
+        order_param, order_direction = order.order_param, order.order_direction
+        qm = TimeseriesQueryManager(
+            model=HydrologicalMetric,
+            order_param=order_param,
+            order_direction=order_direction,
+            filter_dict=filter_dict,
+        )
+        qs = qm.execute_query()
 
         return qs
 
