@@ -69,8 +69,8 @@ class IEasyHydroDataManager(DefaultDataManager):
     def get_metrics_data(
         cls, data_type: str, station_ids: list[int], start_date: datetime, end_date: datetime, **kwargs
     ) -> dict[int, Any]:
-        start_date_str = start_date.strftime("%Y-%m-%d")
-        end_date_str = end_date.strftime("%Y-%m-%d")
+        start_date_str = start_date.strftime("%Y-%m-%dT%H%M")
+        end_date_str = end_date.strftime("%Y-%m-%dT%H%M")
 
         cache_key = f"{data_type}_{','.join(map(str, station_ids))}_{start_date_str}_{end_date_str}"
         if cache_key in cls.data_cache:
@@ -164,7 +164,9 @@ class IEasyHydroDataManager(DefaultDataManager):
 
         norm_type = organization.discharge_norm_type
 
-        cache_key = f"discharge_norm_{','.join(map(str, station_uuids))}_{target_date.strftime('%Y-%m-%d')}"
+        cache_key = (
+            f"discharge_norm_{norm_type}_{','.join(map(str, station_uuids))}_{target_date.strftime('%Y-%m-%dT%H%M')}"
+        )
         if cache_key in cls.data_cache:
             return cls.data_cache[cache_key].get(station_id)
 
