@@ -167,7 +167,6 @@ class IEasyHydroDataManager(DefaultDataManager):
         cache_key = (
             f"discharge_norm_{norm_type}_{','.join(map(str, station_uuids))}_{target_date.strftime('%Y-%m-%dT%H%M')}"
         )
-        print(cache_key)
         if cache_key in cls.data_cache:
             return cls.data_cache[cache_key].get(station_id)
 
