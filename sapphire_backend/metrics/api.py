@@ -33,6 +33,7 @@ from ..estimations.models import (
     EstimationsWaterDischargeDecadeAverage,
     EstimationsWaterLevelDailyAverage,
     EstimationsWaterLevelDecadeAverage,
+    HydrologicalNormVirtual,
     HydrologicalRound,
 )
 from .choices import (
@@ -333,8 +334,13 @@ class HydrologicalNormsAPIController:
             return 404, {"detail": "Could not retrieve the file", "code": "file_not_found"}
 
     @route.get("{station_uuid}", response=list[HydrologicalNormOutputSchema], permissions=regular_permissions)
-    def get_station_discharge_norm(self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema]):
-        return HydrologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value)
+    def get_station_discharge_norm(
+        self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema], virtual: bool = False
+    ):
+        if virtual:
+            return HydrologicalNormVirtual.objects.filter(station=station_uuid, norm_type=norm_type.norm_type.value)
+        else:
+            return HydrologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value)
 
     @route.post("{station_uuid}", response={201: list[HydrologicalNormOutputSchema]}, permissions=regular_permissions)
     def upload_discharge_norm(

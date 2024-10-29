@@ -17,7 +17,7 @@ from ..stations.models import HydrologicalStation
 from .models import (
     DischargeModel,
     EstimationsWaterDischargeDailyAverage,
-    EstimationsWaterDischargeDailyVirtual,
+    EstimationsWaterDischargeDailyAverageVirtual,
     EstimationsWaterLevelDailyAverage,
 )
 from .schema import (
@@ -169,7 +169,7 @@ class EstimationsAPIController:
         filters: Query[EstimationsFilterSchema],
         limit: int | None = 365,
     ):
-        queryset = self._get_averages_queryset(EstimationsWaterDischargeDailyVirtual, filters, order, limit)
+        queryset = self._get_averages_queryset(EstimationsWaterDischargeDailyAverageVirtual, filters, order, limit)
         return queryset
 
     @route.get(
