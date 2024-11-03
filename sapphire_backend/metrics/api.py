@@ -19,7 +19,7 @@ from ninja_extra.pagination import PageNumberPaginationExtra, PaginatedResponseS
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
+from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
@@ -30,7 +30,10 @@ from sapphire_backend.utils.rounding import custom_ceil, hydrological_round
 from ..estimations.models import (
     EstimationsWaterDischargeDaily,
     EstimationsWaterDischargeDailyAverage,
+    EstimationsWaterDischargeDailyAverageVirtual,
+    EstimationsWaterDischargeDailyVirtual,
     EstimationsWaterDischargeDecadeAverage,
+    EstimationsWaterDischargeDecadeAverageVirtual,
     EstimationsWaterLevelDailyAverage,
     EstimationsWaterLevelDecadeAverage,
     HydrologicalNormVirtual,
@@ -61,8 +64,9 @@ from .schema import (
     MetricCountSchema,
     MetricTotalCountSchema,
     OperationalJournalDailyDataSchema,
-    OperationalJournalDecadalDataStationType,
+    OperationalJournalDailyVirtualDataSchema,
     OperationalJournalDecadalHydroDataSchema,
+    OperationalJournalDecadalHydroVirtualDataSchema,
     OperationalJournalDecadalMeteoDataSchema,
     OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
@@ -79,6 +83,7 @@ from .utils.bulk_data import (
 from .utils.helpers import (
     HydrologicalYearResolver,
     OperationalJournalDataTransformer,
+    OperationalJournalVirtualDataTransformer,
     create_norm_dataframe,
     hydro_station_uuids_belong_to_organization_uuid,
     meteo_station_uuids_belong_to_organization_uuid,
@@ -540,6 +545,33 @@ class OperationalJournalAPIController:
 
         return prepared_data
 
+    @route.get("daily-data-virtual", response={200: list[OperationalJournalDailyVirtualDataSchema]})
+    def get_daily_data_virtual(self, station_uuid: str, year: int, month: int):
+        virtual_station = VirtualStation.objects.get(uuid=station_uuid)
+        first_day_current_month = dt(year, month, 1)
+        first_day_next_month = first_day_current_month + relativedelta(months=1)
+        dt_start = SmartDatetime(first_day_current_month, virtual_station).day_beginning_local.isoformat()
+        dt_end = SmartDatetime(first_day_next_month, virtual_station).day_beginning_local.isoformat()
+
+        operational_journal_data = []
+
+        daily_discharge_data = EstimationsWaterDischargeDailyVirtual.objects.filter(
+            timestamp_local__range=(dt_start, dt_end), station=virtual_station
+        ).order_by("timestamp_local")
+
+        operational_journal_data.extend(daily_discharge_data.values("timestamp_local", "avg_value", "metric_name"))
+
+        daily_average_discharge_data = EstimationsWaterDischargeDailyAverageVirtual.objects.filter(
+            timestamp_local__range=(dt_start, dt_end), station=virtual_station
+        ).order_by("timestamp_local")
+
+        operational_journal_data.extend(
+            daily_average_discharge_data.values("timestamp_local", "avg_value", "metric_name")
+        )
+        prepared_data = OperationalJournalVirtualDataTransformer(operational_journal_data).get_daily_data()
+
+        return prepared_data
+
     @route.get("discharge-data", response=list[OperationalJournalDischargeDataSchema])
     def get_discharge_data(self, station_uuid: str, year: int, month: int):
         station = HydrologicalStation.objects.get(uuid=station_uuid)
@@ -572,62 +604,91 @@ class OperationalJournalAPIController:
         return prepared_data
 
     @route.get(
-        "decadal-data/{station_type}",
-        response=list[OperationalJournalDecadalHydroDataSchema | OperationalJournalDecadalMeteoDataSchema],
+        "decadal-data-virtual",
+        response=list[OperationalJournalDecadalHydroVirtualDataSchema],
     )
-    def get_decadal_data(
-        self, station_uuid: str, year: int, month: int, station_type: OperationalJournalDecadalDataStationType
-    ):
-        if station_type.station_type == "hydro":
-            station = HydrologicalStation.objects.get(uuid=station_uuid)
-        else:
-            station = MeteorologicalStation.objects.get(uuid=station_uuid)
+    def get_virtual_decadal_data(self, station_uuid: str, year: int, month: int):
+        station = VirtualStation.objects.get(uuid=station_uuid)
+        first_day_current_month = dt(year, month, 1)
+        first_day_next_month = first_day_current_month + relativedelta(months=1)
+
+        view_data = EstimationsWaterDischargeDecadeAverageVirtual.objects.filter(
+            timestamp_local__range=(first_day_current_month, first_day_next_month),
+            station=station,
+        ).order_by("timestamp_local")
+        decadal_data = [
+            {
+                "timestamp_local": d.timestamp_local.replace(tzinfo=ZoneInfo("UTC")),
+                "avg_value": d.avg_value,
+                "metric_name": d.metric_name,
+            }
+            for d in view_data
+        ]
+        prepared_data = OperationalJournalVirtualDataTransformer(decadal_data).get_hydro_decadal_data()
+
+        return prepared_data
+
+    @route.get(
+        "decadal-data-hydro",
+        response=list[OperationalJournalDecadalHydroDataSchema],
+    )
+    def get_hydro_decadal_data(self, station_uuid: str, year: int, month: int):
+        station = HydrologicalStation.objects.get(uuid=station_uuid)
+        first_day_current_month = dt(year, month, 1)
+        first_day_next_month = first_day_current_month + relativedelta(months=1)
+
+        decadal_data = []
+
+        cls_estimations_views = [EstimationsWaterLevelDecadeAverage, EstimationsWaterDischargeDecadeAverage]
+
+        for cls in cls_estimations_views:
+            view_data = cls.objects.filter(
+                timestamp_local__range=(first_day_current_month, first_day_next_month),
+                station=station,
+            ).order_by("timestamp_local")
+
+            decadal_data.extend(
+                {
+                    "timestamp_local": d.timestamp_local.replace(tzinfo=ZoneInfo("UTC")),
+                    "avg_value": d.avg_value,
+                    "metric_name": d.metric_name,
+                }
+                for d in view_data
+            )
+
+        prepared_data = OperationalJournalDataTransformer(decadal_data).get_hydro_decadal_data()
+
+        return prepared_data
+
+    @route.get(
+        "decadal-data-meteo",
+        response=list[OperationalJournalDecadalMeteoDataSchema],
+    )
+    def get_meteo_decadal_data(self, station_uuid: str, year: int, month: int):
+        station = MeteorologicalStation.objects.get(uuid=station_uuid)
         first_day_current_month = dt(year, month, 1)
         dt_start = SmartDatetime(first_day_current_month, station).day_beginning_local.isoformat()
         first_day_next_month = first_day_current_month + relativedelta(months=1)
         dt_end = SmartDatetime(first_day_next_month, station).day_beginning_local.isoformat()
 
-        decadal_data = []
+        meteo_data = TimeseriesQueryManager(
+            model=MeteorologicalMetric,
+            order_param="timestamp_local",
+            order_direction="ASC",
+            filter_dict={
+                "timestamp_local__gte": dt_start,
+                "timestamp_local__lt": dt_end,
+                "station": station.id,
+                "metric_name__in": [
+                    MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
+                    MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE,
+                ],
+            },
+        ).execute_query()
 
-        if station_type.station_type == "hydro":
-            cls_estimations_views = [EstimationsWaterLevelDecadeAverage, EstimationsWaterDischargeDecadeAverage]
-
-            for cls in cls_estimations_views:
-                view_data = cls.objects.filter(
-                    timestamp_local__range=(first_day_current_month, first_day_next_month),
-                    station=station,
-                ).order_by("timestamp_local")
-
-                decadal_data.extend(
-                    {
-                        "timestamp_local": d.timestamp_local.replace(tzinfo=ZoneInfo("UTC")),
-                        "avg_value": d.avg_value,
-                        "metric_name": d.metric_name,
-                    }
-                    for d in view_data
-                )
-        else:
-            meteo_data = TimeseriesQueryManager(
-                model=MeteorologicalMetric,
-                order_param="timestamp_local",
-                order_direction="ASC",
-                filter_dict={
-                    "timestamp_local__gte": dt_start,
-                    "timestamp_local__lt": dt_end,
-                    "station": station.id,
-                    "metric_name__in": [
-                        MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
-                        MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE,
-                    ],
-                },
-            ).execute_query()
-
-            decadal_data.extend(meteo_data.values("timestamp_local", "value", "metric_name"))
-
-        if station_type.station_type == "hydro":
-            prepared_data = OperationalJournalDataTransformer(decadal_data).get_hydro_decadal_data()
-        else:
-            prepared_data = OperationalJournalDataTransformer(decadal_data).get_meteo_decadal_data()
+        prepared_data = OperationalJournalDataTransformer(
+            meteo_data.values("timestamp_local", "value", "metric_name")
+        ).get_meteo_decadal_data()
 
         return prepared_data
 
