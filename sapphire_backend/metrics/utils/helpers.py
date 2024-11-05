@@ -467,7 +467,7 @@ class OperationalJournalVirtualDataTransformer(OperationalJournalDataTransformer
                 day_dict["water_discharge_evening"] = "--"
 
             day_dict["water_discharge_average"] = self._get_metric_value(
-                daily_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY
+                daily_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE
             )
 
             day_dict["date"] = date.strftime("%Y-%m-%d")
