@@ -103,10 +103,11 @@ class PentadDecadeHelper:
 
 
 class OperationalJournalDataTransformer:
-    def __init__(self, data: list[dict[str, float | None]]):
+    def __init__(self, data: list[dict[str, float | None]], target_month: int):
         self.original_data = data
         self.df = self._convert_data_to_dataframe()
         self.is_empty = self.df.empty
+        self.requested_month = target_month
 
     def _convert_data_to_dataframe(self):
         df = pd.DataFrame(self.original_data)
@@ -243,16 +244,20 @@ class OperationalJournalDataTransformer:
             return results
 
         previous_month_last_day = df["date"].min()
-        previous_month_last_day_data = df[df["date"] == previous_month_last_day]
-
-        # get morning water_level to be able to calculate the trend on the first day of the given month
         previous_day_water_level = None
-        if not previous_month_last_day_data.empty:
-            morning_data = self._get_morning_data(previous_month_last_day_data)
-            previous_day_water_level = self._get_metric_value(morning_data, HydrologicalMetricName.WATER_LEVEL_DAILY)
 
-        # exclude the last day of the previous month from the dataframe
-        df = df[df["date"] != previous_month_last_day]
+        if previous_month_last_day.month != self.requested_month:
+            previous_month_last_day_data = df[df["date"] == previous_month_last_day]
+
+            # get morning water_level to be able to calculate the trend on the first day of the given month
+            if not previous_month_last_day_data.empty:
+                morning_data = self._get_morning_data(previous_month_last_day_data)
+                previous_day_water_level = self._get_metric_value(
+                    morning_data, HydrologicalMetricName.WATER_LEVEL_DAILY
+                )
+
+            # exclude the last day of the previous month from the dataframe
+            df = df[df["date"] != previous_month_last_day]
 
         # iterate over the existing dates
         for date in df["date"].unique():

@@ -541,7 +541,7 @@ class OperationalJournalAPIController:
                 for d in estimation_data
             )
 
-        prepared_data = OperationalJournalDataTransformer(operational_journal_data).get_daily_data()
+        prepared_data = OperationalJournalDataTransformer(operational_journal_data, month).get_daily_data()
 
         return prepared_data
 
@@ -568,7 +568,7 @@ class OperationalJournalAPIController:
         operational_journal_data.extend(
             daily_average_discharge_data.values("timestamp_local", "avg_value", "metric_name")
         )
-        prepared_data = OperationalJournalVirtualDataTransformer(operational_journal_data).get_daily_data()
+        prepared_data = OperationalJournalVirtualDataTransformer(operational_journal_data, month).get_daily_data()
 
         return prepared_data
 
@@ -598,7 +598,7 @@ class OperationalJournalAPIController:
         ).execute_query()
 
         prepared_data = OperationalJournalDataTransformer(
-            discharge_data.values("timestamp_local", "avg_value", "metric_name")
+            discharge_data.values("timestamp_local", "avg_value", "metric_name"), month
         ).get_discharge_data()
 
         return prepared_data
@@ -624,7 +624,7 @@ class OperationalJournalAPIController:
             }
             for d in view_data
         ]
-        prepared_data = OperationalJournalVirtualDataTransformer(decadal_data).get_hydro_decadal_data()
+        prepared_data = OperationalJournalVirtualDataTransformer(decadal_data, month).get_hydro_decadal_data()
 
         return prepared_data
 
@@ -656,7 +656,7 @@ class OperationalJournalAPIController:
                 for d in view_data
             )
 
-        prepared_data = OperationalJournalDataTransformer(decadal_data).get_hydro_decadal_data()
+        prepared_data = OperationalJournalDataTransformer(decadal_data, month).get_hydro_decadal_data()
 
         return prepared_data
 
@@ -687,7 +687,7 @@ class OperationalJournalAPIController:
         ).execute_query()
 
         prepared_data = OperationalJournalDataTransformer(
-            meteo_data.values("timestamp_local", "value", "metric_name")
+            meteo_data.values("timestamp_local", "value", "metric_name"), month
         ).get_meteo_decadal_data()
 
         return prepared_data
