@@ -163,11 +163,31 @@ class Migration(migrations.Migration):
                                EXTRACT(YEAR FROM timestamp_local) AS year,
                                EXTRACT(MONTH FROM timestamp_local) AS month,
                                pentad,
-                               hydrological_round(AVG(avg_value)) AS avg_value,
-                               MIN(timestamp_local) AS representative_timestamp
+                               hydrological_round(AVG(avg_value)) AS avg_value
                         FROM data_ranges
                         GROUP BY station_id, year, month, pentad
-                    )
+                    ),
+                    representative_days AS (
+                            SELECT
+                                station_id,
+                                year,
+                                month,
+                                pentad,
+                                avg_value,
+                                -- Set the representative day manually
+                                TO_TIMESTAMP(
+                                    year || '-' || month || '-' ||
+                                    CASE
+                                        WHEN pentad = 'first_pentad' THEN 3
+                                        WHEN pentad = 'second_pentad' THEN 8
+                                        WHEN pentad = 'third_pentad' THEN 13
+                                        WHEN pentad = 'fourth_pentad' THEN 18
+                                        WHEN pentad = 'fifth_pentad' THEN 23
+                                        ELSE 28
+                                    END || ' 12:00:00', 'YYYY-MM-DD HH24:MI:SS'
+                                ) AS representative_timestamp
+                            FROM pentad_averages
+                        )
                     SELECT representative_timestamp AS timestamp_local,
                            CAST(NULL AS NUMERIC) AS min_value,
                            avg_value,
@@ -178,7 +198,7 @@ class Migration(migrations.Migration):
                            '' AS sensor_identifier,
                            '' AS sensor_type,
                            station_id
-                    FROM pentad_averages
+                    FROM representative_days
                 """
             )],
             reverse_sql=[("DROP VIEW IF EXISTS estimations_water_discharge_fiveday_average CASCADE;")],
@@ -204,10 +224,27 @@ class Migration(migrations.Migration):
                                    EXTRACT(YEAR FROM timestamp_local) AS year,
                                    EXTRACT(MONTH FROM timestamp_local) AS month,
                                    decade,
-                                   hydrological_round(AVG(avg_value)) AS avg_value,
-                                   MIN(timestamp_local) AS representative_timestamp
+                                   hydrological_round(AVG(avg_value)) AS avg_value
                             FROM data_ranges
                             GROUP BY station_id, year, month, decade
+                        ),
+                        representative_days AS (
+                            SELECT
+                                station_id,
+                                year,
+                                month,
+                                decade,
+                                avg_value,
+                                -- Set the representative day manually
+                                TO_TIMESTAMP(
+                                    year || '-' || month || '-' ||
+                                    CASE
+                                        WHEN decade = 'first_decade' THEN '05'
+                                        WHEN decade = 'second_decade' THEN '15'
+                                        ELSE '25'
+                                    END || ' 12:00:00', 'YYYY-MM-DD HH24:MI:SS'
+                                ) AS representative_timestamp
+                            FROM decade_averages
                         )
                         SELECT representative_timestamp AS timestamp_local,
                                CAST(NULL AS NUMERIC) AS min_value,
@@ -219,10 +256,10 @@ class Migration(migrations.Migration):
                                '' AS sensor_identifier,
                                '' AS sensor_type,
                                station_id
-                        FROM decade_averages;
+                        FROM representative_days;
                 """
             )],
-            reverse_sql=[("DROP VIEW IF EXISTS estimations_water_level_decade_average CASCADE;")],
+            reverse_sql=[("DROP VIEW IF EXISTS estimations_water_discharge_daily_average CASCADE;")],
         ),
 
         migrations.RunSQL(
@@ -245,11 +282,28 @@ class Migration(migrations.Migration):
                            EXTRACT(YEAR FROM timestamp_local) AS year,
                            EXTRACT(MONTH FROM timestamp_local) AS month,
                            decade,
-                           CEIL(AVG(avg_value)) AS avg_value,
-                           MIN(timestamp_local) AS representative_timestamp
+                           CEIL(AVG(avg_value)) AS avg_value
                     FROM data_ranges
                     GROUP BY station_id, year, month, decade
-                )
+                ),
+                representative_days AS (
+                            SELECT
+                                station_id,
+                                year,
+                                month,
+                                decade,
+                                avg_value,
+                                -- Set the representative day manually
+                                TO_TIMESTAMP(
+                                    year || '-' || month || '-' ||
+                                    CASE
+                                        WHEN decade = 'first_decade' THEN '05'
+                                        WHEN decade = 'second_decade' THEN '15'
+                                        ELSE '25'
+                                    END || ' 12:00:00', 'YYYY-MM-DD HH24:MI:SS'
+                                ) AS representative_timestamp
+                            FROM decade_averages
+                        )
                 SELECT representative_timestamp AS timestamp_local,
                        CAST(NULL AS NUMERIC) AS min_value,
                        avg_value,
@@ -260,7 +314,7 @@ class Migration(migrations.Migration):
                        '' AS sensor_identifier,
                        '' AS sensor_type,
                        station_id
-                FROM decade_averages;
+                FROM representative_days;
                 """
             )],
             reverse_sql=[("DROP VIEW IF EXISTS estimations_water_level_decade_average CASCADE;")],
