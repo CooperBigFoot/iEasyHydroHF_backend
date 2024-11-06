@@ -30,7 +30,13 @@ class Migration(migrations.Migration):
                 GROUP BY
                     wdd.timestamp_local,
                     vsa.virtual_station_id,
-                    wdd.metric_name;
+                    wdd.metric_name
+                HAVING
+                    COUNT(DISTINCT vsa.hydro_station_id) = (
+                        SELECT COUNT(*)
+                        FROM stations_virtualstationassociation
+                        WHERE virtual_station_id = vsa.virtual_station_id
+                    );
               """
             )],
             reverse_sql=[("drop view if exists estimations_water_discharge_daily_virtual;")],
@@ -54,7 +60,13 @@ class Migration(migrations.Migration):
                          wdda.station_id = vsa.hydro_station_id
                 GROUP BY wdda.timestamp_local,
                          vsa.virtual_station_id,
-                         wdda.metric_name;
+                         wdda.metric_name
+                HAVING
+                    COUNT(DISTINCT vsa.hydro_station_id) = (
+                        SELECT COUNT(*)
+                        FROM stations_virtualstationassociation
+                        WHERE virtual_station_id = vsa.virtual_station_id
+                    );
               """
             )],
             reverse_sql=[("drop view if exists estimations_water_discharge_daily_average_virtual;")],
@@ -78,7 +90,13 @@ class Migration(migrations.Migration):
                          wdfa.station_id = vsa.hydro_station_id
                 GROUP BY wdfa.timestamp_local,
                          vsa.virtual_station_id,
-                         wdfa.metric_name;
+                         wdfa.metric_name
+                HAVING
+                    COUNT(DISTINCT vsa.hydro_station_id) = (
+                        SELECT COUNT(*)
+                        FROM stations_virtualstationassociation
+                        WHERE virtual_station_id = vsa.virtual_station_id
+                    )
 
               """
             )],
@@ -103,7 +121,13 @@ class Migration(migrations.Migration):
                          wddca.station_id = vsa.hydro_station_id
                 GROUP BY wddca.timestamp_local,
                          vsa.virtual_station_id,
-                         wddca.metric_name;
+                         wddca.metric_name
+                HAVING
+                    COUNT(DISTINCT vsa.hydro_station_id) = (
+                        SELECT COUNT(*)
+                        FROM stations_virtualstationassociation
+                        WHERE virtual_station_id = vsa.virtual_station_id
+                    )
                 """
             )],
             reverse_sql=[("drop view if exists estimations_water_discharge_decade_average_virtual;")],

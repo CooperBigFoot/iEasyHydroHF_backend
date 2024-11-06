@@ -48,7 +48,6 @@ class UsersAPIController:
     def update_user(self, request, user_uuid: str, user_data: UserUpdateSchema):
         user = User.objects.get(uuid=user_uuid, is_deleted=False)
 
-        print(user_data)
         for attr, value in user_data.dict(exclude_unset=True).items():
             if attr == "user_role" and not can_update_role(request.user, value):
                 return 403, {

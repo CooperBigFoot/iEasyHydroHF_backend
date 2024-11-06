@@ -67,6 +67,7 @@ class Migration(migrations.Migration):
                 GROUP BY
                     time_bucket('1 day', hm.timestamp_local),
                     hm.station_id
+                HAVING COUNT(hm.avg_value) > 1
                 WITH NO DATA;
               """
             )],
@@ -143,41 +144,61 @@ class Migration(migrations.Migration):
             sql=[(
                 """
                 CREATE OR REPLACE VIEW estimations_water_discharge_fiveday_average AS
-                WITH data_ranges AS
-                 (SELECT wdda.timestamp_local AS timestamp_local,
-                         wdda.station_id,
-                         CASE
-                             WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 1 AND 5 THEN 'first_pentad'
-                             WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 6 AND 10 THEN 'second_pentad'
-                             WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 11 AND 15 THEN 'third_pentad'
-                             WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 16 AND 20 THEN 'fourth_pentad'
-                             WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 21 AND 25 THEN 'fifth_pentad'
-                             WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 26 AND EXTRACT(DAY FROM
-                                                                                                (DATE_TRUNC('month', wdda.timestamp_local) +
-                                                                                                 INTERVAL '1 month' -
-                                                                                                 INTERVAL '1 day'))
-                                 THEN 'sixth_pentad'
-                             END AS pentad,
-                         wdda.avg_value
-                  FROM public.estimations_water_discharge_daily_average wdda),
-             pentad_averages AS (SELECT timestamp_local,
-                                        station_id,
-                                        AVG(avg_value) OVER (
-                                            PARTITION BY station_id, EXTRACT(YEAR FROM timestamp_local), EXTRACT(MONTH FROM timestamp_local), pentad
-                                            ) AS avg_value
-                                 FROM data_ranges)
-                SELECT timestamp_local,
-                       CAST(NULL AS NUMERIC) AS min_value,
-                       hydrological_round(avg_value) as avg_value,
-                       CAST(NULL AS NUMERIC) AS max_value,
-                       'm^3/s'               AS unit,
-                       'E'                   AS value_type,
-                       'WDFA'               AS metric_name,
-                       ''                    AS sensor_identifier,
-                       ''                    AS sensor_type,
-                       station_id
-                FROM pentad_averages
-                WHERE EXTRACT(DAY FROM timestamp_local) IN (3, 8, 13, 18, 23, 28);
+                WITH data_ranges AS (
+                        SELECT wdda.timestamp_local,
+                               wdda.station_id,
+                               CASE
+                                   WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 1 AND 5 THEN 'first_pentad'
+                                   WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 6 AND 10 THEN 'second_pentad'
+                                   WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 11 AND 15 THEN 'third_pentad'
+                                   WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 16 AND 20 THEN 'fourth_pentad'
+                                   WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 21 AND 25 THEN 'fifth_pentad'
+                                   ELSE 'sixth_pentad'
+                               END AS pentad,
+                               wdda.avg_value
+                        FROM public.estimations_water_discharge_daily_average wdda
+                    ),
+                    pentad_averages AS (
+                        SELECT station_id,
+                               EXTRACT(YEAR FROM timestamp_local) AS year,
+                               EXTRACT(MONTH FROM timestamp_local) AS month,
+                               pentad,
+                               hydrological_round(AVG(avg_value)) AS avg_value
+                        FROM data_ranges
+                        GROUP BY station_id, year, month, pentad
+                    ),
+                    representative_days AS (
+                            SELECT
+                                station_id,
+                                year,
+                                month,
+                                pentad,
+                                avg_value,
+                                -- Set the representative day manually
+                                TO_TIMESTAMP(
+                                    year || '-' || month || '-' ||
+                                    CASE
+                                        WHEN pentad = 'first_pentad' THEN 3
+                                        WHEN pentad = 'second_pentad' THEN 8
+                                        WHEN pentad = 'third_pentad' THEN 13
+                                        WHEN pentad = 'fourth_pentad' THEN 18
+                                        WHEN pentad = 'fifth_pentad' THEN 23
+                                        ELSE 28
+                                    END || ' 12:00:00', 'YYYY-MM-DD HH24:MI:SS'
+                                ) AS representative_timestamp
+                            FROM pentad_averages
+                        )
+                    SELECT representative_timestamp AS timestamp_local,
+                           CAST(NULL AS NUMERIC) AS min_value,
+                           avg_value,
+                           CAST(NULL AS NUMERIC) AS max_value,
+                           'm^3/s' AS unit,
+                           'E' AS value_type,
+                           'WDFA' AS metric_name,
+                           '' AS sensor_identifier,
+                           '' AS sensor_type,
+                           station_id
+                    FROM representative_days
                 """
             )],
             reverse_sql=[("DROP VIEW IF EXISTS estimations_water_discharge_fiveday_average CASCADE;")],
@@ -187,77 +208,113 @@ class Migration(migrations.Migration):
             sql=[(
                 """
                 CREATE OR REPLACE VIEW estimations_water_discharge_decade_average AS
-                WITH data_ranges AS (
-                    SELECT wdda.timestamp_local AS timestamp_local,
-                           wdda.station_id,
-                           CASE
-                               WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 1 AND 10 THEN 'first_decade'
-                               WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 11 AND 20 THEN 'second_decade'
-                               WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 21 AND EXTRACT(DAY FROM (DATE_TRUNC('month', wdda.timestamp_local) + INTERVAL '1 month' - INTERVAL '1 day')) THEN 'third_decade'
-                           END AS decade,
-                           wdda.avg_value
-                    FROM public.estimations_water_discharge_daily_average wdda
-                ),
-                decade_averages AS (
-                    SELECT timestamp_local,
-                           station_id,
-                           AVG(avg_value) OVER (
-                               PARTITION BY station_id, EXTRACT(YEAR FROM timestamp_local), EXTRACT(MONTH FROM timestamp_local), decade
-                           ) AS avg_value
-                    FROM data_ranges
-                )
-                SELECT timestamp_local,
-                       CAST(NULL AS NUMERIC) as min_value,
-                       hydrological_round(avg_value) as avg_value,
-                       CAST(NULL AS NUMERIC) AS max_value,
-                       'm^3/s' AS unit,
-                       'E' AS value_type,
-                       'WDDCA' AS metric_name,
-                       '' AS sensor_identifier,
-                       '' AS sensor_type,
-                       station_id
-                FROM decade_averages
-                WHERE EXTRACT(DAY FROM timestamp_local) IN (5, 15, 25);
+                        WITH data_ranges AS (
+                            SELECT wdda.timestamp_local,
+                                   wdda.station_id,
+                                   CASE
+                                       WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 1 AND 10 THEN 'first_decade'
+                                       WHEN EXTRACT(DAY FROM wdda.timestamp_local) BETWEEN 11 AND 20 THEN 'second_decade'
+                                       ELSE 'third_decade'
+                                   END AS decade,
+                                   wdda.avg_value
+                            FROM public.estimations_water_discharge_daily_average wdda
+                        ),
+                        decade_averages AS (
+                            SELECT station_id,
+                                   EXTRACT(YEAR FROM timestamp_local) AS year,
+                                   EXTRACT(MONTH FROM timestamp_local) AS month,
+                                   decade,
+                                   hydrological_round(AVG(avg_value)) AS avg_value
+                            FROM data_ranges
+                            GROUP BY station_id, year, month, decade
+                        ),
+                        representative_days AS (
+                            SELECT
+                                station_id,
+                                year,
+                                month,
+                                decade,
+                                avg_value,
+                                -- Set the representative day manually
+                                TO_TIMESTAMP(
+                                    year || '-' || month || '-' ||
+                                    CASE
+                                        WHEN decade = 'first_decade' THEN '05'
+                                        WHEN decade = 'second_decade' THEN '15'
+                                        ELSE '25'
+                                    END || ' 12:00:00', 'YYYY-MM-DD HH24:MI:SS'
+                                ) AS representative_timestamp
+                            FROM decade_averages
+                        )
+                        SELECT representative_timestamp AS timestamp_local,
+                               CAST(NULL AS NUMERIC) AS min_value,
+                               avg_value,
+                               CAST(NULL AS NUMERIC) AS max_value,
+                               'm^3/s' AS unit,
+                               'E' AS value_type,
+                               'WDDCA' AS metric_name,
+                               '' AS sensor_identifier,
+                               '' AS sensor_type,
+                               station_id
+                        FROM representative_days;
                 """
             )],
-            reverse_sql=[("DROP VIEW IF EXISTS estimations_water_level_decade_average CASCADE;")],
+            reverse_sql=[("DROP VIEW IF EXISTS estimations_water_discharge_daily_average CASCADE;")],
         ),
 
         migrations.RunSQL(
             sql=[(
                 """
                 CREATE OR REPLACE VIEW estimations_water_level_decade_average AS
-                WITH data_ranges AS (SELECT wlda.timestamp_local AS timestamp_local,
-                                            wlda.station_id,
-                                            CASE
-                                                WHEN EXTRACT(DAY FROM wlda.timestamp_local) BETWEEN 1 AND 10 THEN 'first_decade'
-                                                WHEN EXTRACT(DAY FROM wlda.timestamp_local) BETWEEN 11 AND 20 THEN 'second_decade'
-                                                WHEN EXTRACT(DAY FROM wlda.timestamp_local) BETWEEN 21 AND EXTRACT(DAY FROM
-                                                                                                                   (DATE_TRUNC('month', wlda.timestamp_local) +
-                                                                                                                    INTERVAL '1 month' -
-                                                                                                                    INTERVAL '1 day'))
-                                                    THEN 'third_decade'
-                                                END              AS decade,
-                                            wlda.avg_value
-                                     FROM public.estimations_water_level_daily_average wlda),
-                     decade_averages AS (SELECT timestamp_local,
-                                                station_id,
-                                                CEIL(AVG(avg_value) OVER (
-                                                    PARTITION BY station_id, EXTRACT(YEAR FROM timestamp_local), EXTRACT(MONTH FROM timestamp_local), decade
-                                                    )) AS avg_value
-                                         FROM data_ranges)
-                SELECT timestamp_local,
-                       CAST(NULL AS NUMERIC) as min_value,
-                       ceil(avg_value) as avg_value,
+                WITH data_ranges AS (
+                    SELECT wlda.timestamp_local,
+                           wlda.station_id,
+                           CASE
+                               WHEN EXTRACT(DAY FROM wlda.timestamp_local) BETWEEN 1 AND 10 THEN 'first_decade'
+                               WHEN EXTRACT(DAY FROM wlda.timestamp_local) BETWEEN 11 AND 20 THEN 'second_decade'
+                               ELSE 'third_decade'
+                           END AS decade,
+                           wlda.avg_value
+                    FROM public.estimations_water_level_daily_average wlda
+                ),
+                decade_averages AS (
+                    SELECT station_id,
+                           EXTRACT(YEAR FROM timestamp_local) AS year,
+                           EXTRACT(MONTH FROM timestamp_local) AS month,
+                           decade,
+                           CEIL(AVG(avg_value)) AS avg_value
+                    FROM data_ranges
+                    GROUP BY station_id, year, month, decade
+                ),
+                representative_days AS (
+                            SELECT
+                                station_id,
+                                year,
+                                month,
+                                decade,
+                                avg_value,
+                                -- Set the representative day manually
+                                TO_TIMESTAMP(
+                                    year || '-' || month || '-' ||
+                                    CASE
+                                        WHEN decade = 'first_decade' THEN '05'
+                                        WHEN decade = 'second_decade' THEN '15'
+                                        ELSE '25'
+                                    END || ' 12:00:00', 'YYYY-MM-DD HH24:MI:SS'
+                                ) AS representative_timestamp
+                            FROM decade_averages
+                        )
+                SELECT representative_timestamp AS timestamp_local,
+                       CAST(NULL AS NUMERIC) AS min_value,
+                       avg_value,
                        CAST(NULL AS NUMERIC) AS max_value,
-                       'cm'                  as unit,
-                       'E'                   as value_type,
-                       'WLDCA'               as metric_name,
-                       ''                    as sensor_identifier,
-                       ''                    as sensor_type,
+                       'cm' AS unit,
+                       'E' AS value_type,
+                       'WLDCA' AS metric_name,
+                       '' AS sensor_identifier,
+                       '' AS sensor_type,
                        station_id
-                FROM decade_averages
-                WHERE EXTRACT(DAY FROM timestamp_local) IN (5, 15, 25);
+                FROM representative_days;
                 """
             )],
             reverse_sql=[("DROP VIEW IF EXISTS estimations_water_level_decade_average CASCADE;")],

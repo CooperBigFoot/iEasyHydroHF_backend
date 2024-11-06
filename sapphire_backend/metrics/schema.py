@@ -77,16 +77,19 @@ class MeasuredDischargeMeasurementSchema(Schema):
     f: float | None
 
 
-class OperationalJournalDailyDataSchema(Schema):
+class OperationalJournalDailyVirtualDataSchema(Schema):
     id: str
     date: str
-    water_level_morning: int | str
     water_discharge_morning: float | str
+    water_discharge_evening: float | str
+    water_discharge_average: float | str
+
+
+class OperationalJournalDailyDataSchema(OperationalJournalDailyVirtualDataSchema):
+    water_level_morning: int | str
     trend: int | str | None = "--"
     water_level_evening: int | str
-    water_discharge_evening: float | str
     water_level_average: int | str
-    water_discharge_average: float | str
     ice_phenomena: str | None = "--"
     daily_precipitation: str | None = "--"
     water_temperature: float | str
@@ -106,9 +109,12 @@ class OperationalJournalDecadalBaseSchema(Schema):
     decade: int | str
 
 
-class OperationalJournalDecadalHydroDataSchema(OperationalJournalDecadalBaseSchema):
-    water_level: int | str
+class OperationalJournalDecadalHydroVirtualDataSchema(OperationalJournalDecadalBaseSchema):
     water_discharge: float | str
+
+
+class OperationalJournalDecadalHydroDataSchema(OperationalJournalDecadalHydroVirtualDataSchema):
+    water_level: int | str
 
 
 class OperationalJournalDecadalMeteoDataSchema(OperationalJournalDecadalBaseSchema):

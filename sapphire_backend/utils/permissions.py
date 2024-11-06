@@ -5,7 +5,7 @@ from ninja_extra.controllers import ControllerBase
 
 from sapphire_backend.estimations.models import DischargeModel
 from sapphire_backend.organizations.models import Organization
-from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation
+from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
 
 User = get_user_model()
 
@@ -31,11 +31,13 @@ def get_station_from_kwargs(kwargs):
         station = (
             HydrologicalStation.objects.filter(id=station_id).first()
             or MeteorologicalStation.objects.filter(id=station_id).first()
+            or VirtualStation.objects.filter(id=station_id).first()
         )
     elif (station_uuid := kwargs.get("station_uuid")) is not None:
         station = (
             HydrologicalStation.objects.filter(uuid=station_uuid).first()
             or MeteorologicalStation.objects.filter(uuid=station_uuid).first()
+            or VirtualStation.objects.filter(uuid=station_uuid).first()
         )
     return station
 
@@ -48,7 +50,7 @@ def get_organization_from_kwargs(kwargs):
         organization_obj = Organization.objects.filter(uuid=organization_uuid).first()
     else:
         if (station := get_station_from_kwargs(kwargs)) is not None:
-            organization_obj = station.site.organization
+            organization_obj = station.site.organization if hasattr(station, "site") else station.organization
         elif (user := get_user_from_kwargs(kwargs)) is not None:
             organization_obj = user.organization
     return organization_obj
