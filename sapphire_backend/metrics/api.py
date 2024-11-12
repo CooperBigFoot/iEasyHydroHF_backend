@@ -148,6 +148,32 @@ class HydroMetricsAPIController:
 
         return qs
 
+    @route.get("hf-chart", response={200: list[TimestampGroupedHydroMetricSchema]})
+    def get_hf_chart_data(self, organization_uuid: str, filters: Query[HydroMetricFilterSchema] = None):
+        filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
+
+        qm = TimeseriesQueryManager(
+            model=HydrologicalMetric,
+            order_param="timestamp_local",
+            order_direction="ASC",
+            filter_dict=filter_dict,
+        )
+        qs = qm.execute_query()
+
+        annotations = {}
+        for metric in filter_dict.get("metric_name__in"):
+            annotations[metric] = Max(
+                Case(
+                    When(metric_name=metric, then=HydrologicalRound("avg_value")),
+                    default=Value(None),
+                    output_field=DecimalField(),
+                )
+            )
+        qs = qs.values("timestamp_local").annotate(**annotations).order_by(qm.order)
+
+        return qs
+
     @route.get("", response={200: PaginatedResponseSchema[HydrologicalMetricOutputSchema]})
     @paginate(PageNumberPaginationExtra, page_size=100, max_page_size=101)
     def get_hydro_metrics(
