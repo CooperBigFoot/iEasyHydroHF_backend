@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Literal
 
-from ninja import FilterSchema, ModelSchema, Schema
+from ninja import Field, FilterSchema, ModelSchema, Schema
 
 from .choices import (
     HydrologicalMeasurementType,
@@ -68,6 +68,11 @@ class TimestampGroupedHydroMetricSchema(Schema):
     ATO: float | None = None
     WTO: float | None = None
     PD: float | None = None
+
+
+class HFChartSchema(Schema):
+    x: datetime = Field(..., alias="timestamp_local")
+    y: float = Field(..., alias="WLD")
 
 
 class MeasuredDischargeMeasurementSchema(Schema):
