@@ -51,6 +51,7 @@ from .choices import (
 from .models import HydrologicalMetric, HydrologicalNorm, MeteorologicalMetric, MeteorologicalNorm
 from .schema import (
     BulkDataDownloadInputSchema,
+    HFChartSchema,
     HydrologicalMetricOutputSchema,
     HydrologicalNormOutputSchema,
     HydrologicalNormTypeFiltersSchema,
@@ -148,7 +149,7 @@ class HydroMetricsAPIController:
 
         return qs
 
-    @route.get("hf-chart", response={200: list[TimestampGroupedHydroMetricSchema]})
+    @route.get("hf-chart", response={200: list[HFChartSchema]})
     def get_hf_chart_data(self, organization_uuid: str, filters: Query[HydroMetricFilterSchema] = None):
         filter_dict = filters.dict(exclude_none=True)
         filter_dict["station__site__organization"] = organization_uuid
