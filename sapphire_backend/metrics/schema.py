@@ -202,3 +202,21 @@ class BulkDataDownloadInputSchema(Schema):
     hydro_station_auto_uuids: list[str] = None
     meteo_station_uuids: list[str] = None
     virtual_station_uuids: list[str] = None
+
+
+class MetricViewTypeSchema(Schema):
+    view_type: Literal["raw", "grouped", "daily"]
+
+
+class MetricDisplayTypeSchema(Schema):
+    display_type: Literal["grid", "chart"]
+
+
+class MetricDailyAggregationTypeSchema(Schema):
+    metric_type: Literal[
+        "water_level_daily",
+        "water_discharge_daily",
+        "water_discharge_daily_virtual",
+        "water_temperature_daily",
+        "air_temperature_daily",
+    ]
