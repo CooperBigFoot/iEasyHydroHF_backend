@@ -330,7 +330,7 @@ class Migration(migrations.Migration):
                     MAX(hm.avg_value) as max_value,
                     '°C' as unit,
                     'E' as value_type,
-                    'WTO' as metric_name,
+                    'WTDA' as metric_name,
                     '' as sensor_identifier,
                     '' as sensor_type,
                     hm.station_id
@@ -357,7 +357,7 @@ class Migration(migrations.Migration):
                     MAX(hm.avg_value) as max_value,
                     '°C' as unit,
                     'E' as value_type,
-                    'ATO' as metric_name,
+                    'ATDA' as metric_name,
                     '' as sensor_identifier,
                     '' as sensor_type,
                     hm.station_id

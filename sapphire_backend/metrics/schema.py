@@ -59,20 +59,27 @@ class HydrologicalMetricOutputSchema(Schema):
     value_type: str
     sensor_identifier: str
     station_id: int
-    value_code: int | None
+    value_code: int | None = None
 
 
 class TimestampGroupedHydroMetricSchema(Schema):
     timestamp_local: datetime
     WLD: float | None = None
+    WLDA: float | None = None
     ATO: float | None = None
+    ATDA: float | None = None
+    WTDA: float | None = None
     WTO: float | None = None
     PD: float | None = None
 
 
 class HFChartSchema(Schema):
     x: datetime = Field(..., alias="timestamp_local")
-    y: float = Field(..., alias="WLD")
+    y: float
+
+    @staticmethod
+    def resolve_y(obj):
+        return obj.get("WLD") or obj.get("WLDA")
 
 
 class MeasuredDischargeMeasurementSchema(Schema):
@@ -204,19 +211,20 @@ class BulkDataDownloadInputSchema(Schema):
     virtual_station_uuids: list[str] = None
 
 
+class ViewType(str, Enum):
+    MEASUREMENTS = "measurements"  # Raw measurements from HydrologicalMetric
+    DAILY = "daily"  # Daily averages from estimation models
+
+
+class DisplayType(str, Enum):
+    INDIVIDUAL = "individual"  # Each metric as separate records
+    GROUPED = "grouped"  # Metrics grouped by timestamp
+    CHART = "chart"
+
+
 class MetricViewTypeSchema(Schema):
-    view_type: Literal["raw", "grouped", "daily"]
+    view_type: ViewType
 
 
 class MetricDisplayTypeSchema(Schema):
-    display_type: Literal["grid", "chart"]
-
-
-class MetricDailyAggregationTypeSchema(Schema):
-    metric_type: Literal[
-        "water_level_daily",
-        "water_discharge_daily",
-        "water_discharge_daily_virtual",
-        "water_temperature_daily",
-        "air_temperature_daily",
-    ]
+    display_type: DisplayType

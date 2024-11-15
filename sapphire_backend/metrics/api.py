@@ -3,19 +3,19 @@ import math
 import os
 from collections import defaultdict
 from datetime import datetime as dt
-from typing import Any, Union
+from typing import Any
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.db.models import Avg, Case, Count, DecimalField, Max, Min, Model, Sum, Value, When
+from django.db.models import Avg, Case, Count, DecimalField, Max, Min, QuerySet, Sum, Value, When
 from django.http import FileResponse
 from django.templatetags.static import static
 from ninja import File, Query
 from ninja.files import UploadedFile
 from ninja_extra import api_controller, route
-from ninja_extra.pagination import PageNumberPaginationExtra, PaginatedResponseSchema, paginate
+from ninja_extra.pagination import PageNumberPaginationExtra, paginate
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
@@ -53,6 +53,7 @@ from .choices import (
 from .models import HydrologicalMetric, HydrologicalNorm, MeteorologicalMetric, MeteorologicalNorm
 from .schema import (
     BulkDataDownloadInputSchema,
+    DisplayType,
     HFChartSchema,
     HydrologicalMetricOutputSchema,
     HydrologicalNormOutputSchema,
@@ -65,7 +66,6 @@ from .schema import (
     MeteorologicalNormOutputSchema,
     MeteorologicalNormTypeFiltersSchema,
     MetricCountSchema,
-    MetricDailyAggregationTypeSchema,
     MetricDisplayTypeSchema,
     MetricTotalCountSchema,
     MetricViewTypeSchema,
@@ -78,6 +78,7 @@ from .schema import (
     OrderQueryParamSchema,
     TimeBucketQueryParams,
     TimestampGroupedHydroMetricSchema,
+    ViewType,
 )
 from .timeseries.query import TimeseriesQueryManager
 from .utils.bulk_data import (
@@ -109,57 +110,6 @@ agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": S
     "metrics/{organization_uuid}/hydro", tags=["Hydro Metrics"], auth=JWTAuth(), permissions=regular_permissions
 )
 class HydroMetricsAPIController:
-    ESTIMATION_MODELS = {
-        "water_level_daily": EstimationsWaterLevelDailyAverage,
-        "water_discharge_daily": EstimationsWaterDischargeDaily,
-        "water_temperature_daily": EstimationsWaterTemperatureDaily,
-        "air_temperature_daily": EstimationsAirTemperatureDaily,
-    }
-
-    def _get_queryset(
-        self,
-        view_type: str,
-        filter_dict: dict,
-        order_param: str,
-        order_direction: str,
-        metric_type: str | None = None,
-        limit: int | None = None,
-    ):
-        """Get queryset using simple Django ORM queries."""
-        order_by = f"{'-' if order_direction == 'DESC' else ''}{order_param}"
-
-        if view_type == "daily":
-            if not metric_type or metric_type not in self.ESTIMATION_MODELS:
-                raise ValueError(f"Invalid or missing metric_type for daily view: {metric_type}")
-
-            model = self.ESTIMATION_MODELS[metric_type]
-            qs = model.objects.filter(**filter_dict).order_by(order_by)
-            return qs[:limit] if limit else qs
-
-        # For raw/grouped metrics
-        return HydrologicalMetric.objects.filter(**filter_dict).order_by(order_by)
-
-    def _get_model(self, view_type: str, metric_type: str | None = None) -> type[Model]:
-        """Get the appropriate model based on view type and metric type."""
-        if view_type == "daily":
-            if not metric_type or metric_type not in self.ESTIMATION_MODELS:
-                raise ValueError(f"Invalid or missing metric_type for daily aggregation view: {metric_type}")
-            return self.ESTIMATION_MODELS[metric_type]
-        return HydrologicalMetric
-
-    def _prepare_metric_annotations(self, filter_dict: dict) -> dict:
-        """Prepare annotations for metric grouping."""
-        annotations = {}
-        for metric in filter_dict.get("metric_name__in", []):
-            annotations[metric] = Max(
-                Case(
-                    When(metric_name=metric, then=HydrologicalRound("avg_value")),
-                    default=Value(None),
-                    output_field=DecimalField(),
-                )
-            )
-        return annotations
-
     @staticmethod
     def _validate_datetime_range(filter_dict):
         start = filter_dict.get("timestamp_local__gte") or filter_dict.get("timestamp_local__gt")
@@ -170,66 +120,110 @@ class HydroMetricsAPIController:
         if date_range.days > 30:
             raise ValueError("Date range cannot be more than 30 days")
 
-    @route.get(
-        "{view_type}/{display_type}",
-        response={
-            200: Union[
-                PaginatedResponseSchema[TimestampGroupedHydroMetricSchema],
-                PaginatedResponseSchema[HydrologicalMetricOutputSchema],
-                list[HFChartSchema],
-            ],
-            400: Message,
-        },
-    )
+    def _get_queryset(
+        self,
+        view_type: str,
+        filter_dict: dict,
+        order_param: str,
+        order_direction: str,
+    ) -> QuerySet:
+        """Get the appropriate queryset based on view type and display type."""
+
+        # For chart views, only return water level data
+        if view_type == "daily":
+            model_mapping = {
+                HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: EstimationsWaterLevelDailyAverage,
+                HydrologicalMetricName.WATER_DISCHARGE_DAILY: EstimationsWaterDischargeDaily,
+                HydrologicalMetricName.WATER_TEMPERATURE_DAILY_AVERAGE: EstimationsWaterTemperatureDaily,
+                HydrologicalMetricName.AIR_TEMPERATURE_DAILY_AVERAGE: EstimationsAirTemperatureDaily,
+            }
+
+            metric_names = filter_dict.get("metric_name__in", [])
+            if not metric_names:
+                raise ValueError("metric_name__in is required for daily view")
+
+            queries = [
+                model_mapping[metric].objects.filter(**filter_dict)
+                for metric in metric_names
+                if metric in model_mapping
+            ]
+
+            if not queries:
+                raise ValueError("No valid metrics requested for daily view")
+
+            qs = queries[0].union(*queries[1:]) if len(queries) > 1 else queries[0]
+            return qs.order_by(f"{'-' if order_direction.lower() == 'desc' else ''}{order_param}")
+
+        # For raw/grouped views
+        return HydrologicalMetric.objects.filter(**filter_dict).order_by(
+            f"{'-' if order_direction.lower() == 'desc' else ''}{order_param}"
+        )
+
+    def _prepare_annotations(self, filter_dict: dict) -> dict:
+        """Prepare annotations for grouped views."""
+        return {
+            metric: Max(
+                Case(
+                    When(metric_name=metric, then=HydrologicalRound("avg_value")),
+                    default=Value(None),
+                    output_field=DecimalField(),
+                )
+            )
+            for metric in filter_dict.get("metric_name__in", [])
+        }
+
+    @route.get("{view_type}/{display_type}")
     @paginate(PageNumberPaginationExtra, page_size=100, max_page_size=101)
     def get_hydro_metrics(
         self,
         organization_uuid: str,
-        view_type: Query[MetricViewTypeSchema],
-        display_type: Query[MetricDisplayTypeSchema],
+        view_type: MetricViewTypeSchema,
+        display_type: MetricDisplayTypeSchema,
         order: Query[OrderQueryParamSchema],
         filters: Query[HydroMetricFilterSchema] = None,
-        metric_type: Query[MetricDailyAggregationTypeSchema] = None,
-        limit: int | None = 365,
     ):
-        """
-        Unified endpoint for retrieving hydrological metrics and estimations.
+        filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
 
-        Args:
-            organization_uuid: Organization UUID
-            view_type: Type of view (raw/grouped/daily)
-            display_type: Display format (grid/chart)
-            order: Ordering parameters
-            filters: Metric filters
-            metric_type: Type of daily metric (required for daily view)
-            limit: Optional limit for daily views (max 365)
-        """
-        try:
-            filter_dict = filters.dict(exclude_none=True)
-            filter_dict["station__site__organization"] = organization_uuid
+        order_direction = "ASC" if display_type.display_type == DisplayType.CHART else order.order_direction
+        order_param = "timestamp_local" if display_type.display_type == DisplayType.CHART else order.order_param
 
-            qs = self._get_queryset(
-                view_type=view_type.view_type,
-                metric_type=metric_type.metric_type if metric_type else None,
-                filter_dict=filter_dict,
-                order_param=order.order_param,
-                order_direction=order.order_direction,
-                limit=limit if view_type.view_type == "daily" else None,
-            )
+        qs = self._get_queryset(
+            view_type=view_type.view_type,
+            filter_dict=filter_dict,
+            order_param=order_param,
+            order_direction=order_direction,
+        )
 
-            # For grouped views, apply annotations
-            if view_type.view_type == "grouped":
+        if display_type.display_type == DisplayType.CHART:
+            self.paginator = None
+            if view_type.view_type == ViewType.DAILY:
+                # Get data from each model separately and combine results
+                results = defaultdict(dict)
+                for record in qs:
+                    results[record.timestamp_local][record.metric_name] = record.avg_value
+                return [HFChartSchema(timestamp_local=ts, **values) for ts, values in results.items()]
+            else:
+                # For measurements, we can use annotations
                 annotations = self._prepare_annotations(filter_dict)
-                qs = qs.values("timestamp_local").annotate(**annotations)
-
-            # Remove pagination for chart display
-            if display_type.display_type == "chart":
-                self.paginator = None
-
-            return qs
-
-        except ValueError as e:
-            return 400, {"detail": str(e), "code": "validation_error"}
+                return [
+                    HFChartSchema(
+                        timestamp_local=record["timestamp_local"],
+                        **{k: v for k, v in record.items() if k != "timestamp_local"},
+                    )
+                    for record in qs.values("timestamp_local").annotate(**annotations)
+                ]
+        elif display_type.display_type == DisplayType.GROUPED:
+            return [
+                TimestampGroupedHydroMetricSchema(
+                    timestamp_local=record["timestamp_local"],
+                    **{k: v for k, v in record.items() if k != "timestamp_local"},
+                )
+                for record in qs.values("timestamp_local").annotate(**self._prepare_annotations(filter_dict))
+            ]
+        else:  # raw or daily
+            print(qs.values()[:3])
+            return [HydrologicalMetricOutputSchema(**record) for record in qs.values()]
 
     @route.get("metric-count", response={200: list[MetricCountSchema] | MetricTotalCountSchema})
     def get_hydro_metric_count(
