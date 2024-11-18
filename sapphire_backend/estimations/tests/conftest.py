@@ -1,20 +1,16 @@
-import random
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
 from pytest_factoryboy import register
 
 from sapphire_backend.estimations.tests.factories import DischargeModelFactory
-from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, MetricUnit, NormType
-from sapphire_backend.metrics.tests.factories import HydrologicalMetricFactory, HydrologicalNormFactory
-from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.metrics.choices import NormType
+from sapphire_backend.metrics.tests.factories import HydrologicalNormFactory
 from sapphire_backend.stations.tests.factories import (
     VirtualStationAssociationFactory,
     VirtualStationFactory,
 )
-from sapphire_backend.utils.datetime_helper import DateRange, SmartDatetime
-from sapphire_backend.utils.db_helper import refresh_continuous_aggregate
 from sapphire_backend.utils.rounding import hydrological_round
 
 register(VirtualStationFactory)
@@ -108,40 +104,3 @@ def monthly_discharge_norm_manual_second_hydro_station_kyrgyz(db, manual_second_
         norm_type=NormType.MONTHLY,
         ordinal_number=1,
     )
-
-
-def generate_water_level_daily_metrics(start_date: date, end_date: date, station: HydrologicalStation):
-    metrics = []
-    for current_date in DateRange(start_date, end_date, timedelta(days=1)):
-        smart_dt = SmartDatetime(current_date, station=station, tz_included=False)
-        wl_morning = HydrologicalMetricFactory(
-            timestamp=smart_dt.morning_tz,
-            station=station,
-            avg_value=random.randint(50, 250),
-            value_type=HydrologicalMeasurementType.MANUAL,
-            metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
-            unit=MetricUnit.WATER_LEVEL,
-        )
-        wl_evening = HydrologicalMetricFactory(
-            timestamp=smart_dt.evening_tz,
-            station=station,
-            avg_value=int(wl_morning.avg_value) + random.randint(-30, 30),
-            value_type=HydrologicalMeasurementType.MANUAL,
-            metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
-            unit=MetricUnit.WATER_LEVEL,
-        )
-        metrics.append((wl_morning, wl_evening))
-    refresh_continuous_aggregate()
-    return metrics
-
-
-@pytest.fixture
-def water_level_metrics_daily_generator(request, manual_hydro_station_kyrgyz):
-    start_date, end_date = request.param
-    return generate_water_level_daily_metrics(start_date, end_date, manual_hydro_station_kyrgyz)
-
-
-@pytest.fixture
-def water_level_metrics_daily_generator_second_station(request, manual_second_hydro_station_kyrgyz):
-    start_date, end_date = request.param
-    return generate_water_level_daily_metrics(start_date, end_date, manual_second_hydro_station_kyrgyz)

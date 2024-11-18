@@ -219,7 +219,6 @@ class ViewType(str, Enum):
 class DisplayType(str, Enum):
     INDIVIDUAL = "individual"  # Each metric as separate records
     GROUPED = "grouped"  # Metrics grouped by timestamp
-    CHART = "chart"
 
 
 class MetricViewTypeSchema(Schema):
