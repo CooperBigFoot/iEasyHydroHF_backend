@@ -17,6 +17,8 @@ from sapphire_backend.utils.permissions import (
 
 from .models import HydrologicalStation, MeteorologicalStation, Remark, Site, VirtualStation, VirtualStationAssociation
 from .schema import (
+    ChartSettingsOutputSchema,
+    ChartSettingsUpdateSchema,
     HydrologicalStationFilterSchema,
     HydrologicalStationStatsSchema,
     HydroStationForecastStatusInputSchema,
@@ -143,6 +145,26 @@ class HydroStationsAPIController:
     def delete_remark(self, request: HttpRequest, organization_uuid: str, remark_uuid: str):
         Remark.objects.filter(uuid=remark_uuid).delete()
         return 200, {"detail": _("Remark deleted successfully"), "code": "success"}
+
+    @route.get("{station_uuid}/chart-settings", response={200: ChartSettingsOutputSchema})
+    def get_chart_settings(self, request: HttpRequest, organization_uuid: str, station_uuid: str):
+        """Get chart settings for a station. Creates default settings if none exist."""
+        station = HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
+        return station.get_chart_settings
+
+    @route.put("{station_uuid}/chart-settings", response={200: ChartSettingsOutputSchema})
+    def update_chart_settings(
+        self, request: HttpRequest, organization_uuid: str, station_uuid: str, settings_data: ChartSettingsUpdateSchema
+    ):
+        """Update chart settings for a station."""
+        station = HydrologicalStation.objects.get(uuid=station_uuid, is_deleted=False)
+        settings = station.get_chart_settings
+
+        for attr, value in settings_data.dict(exclude_unset=True).items():
+            setattr(settings, attr, value)
+
+        settings.save()
+        return settings
 
 
 @api_controller(

@@ -84,6 +84,15 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, BulletinOrderMixin, mo
     def timezone(self):
         return get_timezone_from_site(self.site)
 
+    @property
+    def get_chart_settings(self):
+        """
+        Ensures chart settings exist for the station and returns them.
+        Creates default settings if none exist.
+        """
+        settings, _ = StationChartSettings.objects.get_or_create(station=self)
+        return settings
+
 
 class MeteorologicalStation(UUIDMixin, models.Model):
     name = models.CharField(verbose_name=_("Station name"), blank=False, max_length=150)
@@ -209,3 +218,63 @@ class VirtualStationAssociation(CreateLastModifiedDateMixin, models.Model):
 
     def __str__(self):
         return f"{self.virtual_station.name} - {self.hydro_station.name}"
+
+
+class StationChartSettings(UUIDMixin, models.Model):
+    station = models.OneToOneField(
+        "stations.HydrologicalStation",
+        verbose_name=_("Station"),
+        to_field="uuid",
+        on_delete=models.CASCADE,
+        related_name="chart_settings",
+    )
+
+    # Water level bounds (shared between charts)
+    water_level_min = models.FloatField(
+        verbose_name=_("Water level minimum"),
+        blank=True,
+        null=True,
+        help_text=_("Lower bound of water level axis in all charts"),
+    )
+    water_level_max = models.FloatField(
+        verbose_name=_("Water level maximum"),
+        blank=True,
+        null=True,
+        help_text=_("Upper bound of water level axis in all charts"),
+    )
+
+    # Rating curve (H/Q) bounds
+    discharge_min = models.FloatField(
+        verbose_name=_("Discharge minimum"),
+        blank=True,
+        null=True,
+        help_text=_("Lower bound of discharge axis in rating curve charts"),
+    )
+    discharge_max = models.FloatField(
+        verbose_name=_("Discharge maximum"),
+        blank=True,
+        null=True,
+        help_text=_("Upper bound of discharge axis in rating curve charts"),
+    )
+
+    # Cross section (H/F) bounds
+    cross_section_min = models.FloatField(
+        verbose_name=_("Cross section area minimum"),
+        blank=True,
+        null=True,
+        help_text=_("Lower bound of cross section area axis in cross section charts"),
+    )
+    cross_section_max = models.FloatField(
+        verbose_name=_("Cross section area maximum"),
+        blank=True,
+        null=True,
+        help_text=_("Upper bound of cross section area axis in cross section charts"),
+    )
+
+    class Meta:
+        verbose_name = _("Station chart settings")
+        verbose_name_plural = _("Station chart settings")
+        indexes = [models.Index("uuid", name="station_chart_stngs_uuid_idx")]
+
+    def __str__(self):
+        return f"Chart settings for {self.station.name}"

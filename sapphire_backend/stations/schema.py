@@ -34,6 +34,23 @@ class NestedStationSchema(Schema):
         return str(obj.uuid)
 
 
+class ChartSettingsBaseSchema(Schema):
+    water_level_min: float | None = None
+    water_level_max: float | None = None
+    discharge_min: float | None = None
+    discharge_max: float | None = None
+    cross_section_min: float | None = None
+    cross_section_max: float | None = None
+
+
+class ChartSettingsUpdateSchema(ChartSettingsBaseSchema):
+    pass
+
+
+class ChartSettingsOutputSchema(UUIDSchemaMixin, ChartSettingsBaseSchema):
+    pass
+
+
 class RelatedStationsSchema(Schema):
     related_hydro_stations: list[NestedStationSchema]
     related_meteo_stations: list[NestedStationSchema]
@@ -125,6 +142,7 @@ class HydroStationOutputDetailSchema(
     id: int
     remarks: list[RemarkOutputSchema] = None
     is_assigned: bool = False
+    chart_settings: ChartSettingsOutputSchema = Field(..., alias="get_chart_settings")
 
     @staticmethod
     def resolve_is_assigned(obj, context):
