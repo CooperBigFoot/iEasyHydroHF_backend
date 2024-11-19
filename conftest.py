@@ -1,4 +1,5 @@
-from datetime import datetime
+import random
+from datetime import date, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -30,6 +31,8 @@ from sapphire_backend.stations.tests.factories import (
 from sapphire_backend.telegrams.tests.factories import TelegramReceivedFactory
 from sapphire_backend.users.conftest import get_api_client_for_user
 from sapphire_backend.users.tests.factories import UserAssignedStationFactory, UserFactory
+from sapphire_backend.utils.datetime_helper import DateRange, SmartDatetime
+from sapphire_backend.utils.db_helper import refresh_continuous_aggregate
 
 register(HydrologicalMetricFactory)
 register(MeteorologicalMetricFactory)
@@ -642,3 +645,40 @@ def temperature_meteo_station_uzbek(db, manual_meteo_station_uzbek):
         metric_name=MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
         unit=MetricUnit.TEMPERATURE,
     )
+
+
+def generate_water_level_daily_metrics(start_date: date, end_date: date, station: HydrologicalStation):
+    metrics = []
+    for current_date in DateRange(start_date, end_date, timedelta(days=1)):
+        smart_dt = SmartDatetime(current_date, station=station, tz_included=False)
+        wl_morning = HydrologicalMetricFactory(
+            timestamp=smart_dt.morning_tz,
+            station=station,
+            avg_value=random.randint(50, 250),
+            value_type=HydrologicalMeasurementType.MANUAL,
+            metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+            unit=MetricUnit.WATER_LEVEL,
+        )
+        wl_evening = HydrologicalMetricFactory(
+            timestamp=smart_dt.evening_tz,
+            station=station,
+            avg_value=int(wl_morning.avg_value) + random.randint(-30, 30),
+            value_type=HydrologicalMeasurementType.MANUAL,
+            metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+            unit=MetricUnit.WATER_LEVEL,
+        )
+        metrics.append((wl_morning, wl_evening))
+    refresh_continuous_aggregate()
+    return metrics
+
+
+@pytest.fixture
+def water_level_metrics_daily_generator(request, manual_hydro_station_kyrgyz):
+    start_date, end_date = request.param
+    return generate_water_level_daily_metrics(start_date, end_date, manual_hydro_station_kyrgyz)
+
+
+@pytest.fixture
+def water_level_metrics_daily_generator_second_station(request, manual_second_hydro_station_kyrgyz):
+    start_date, end_date = request.param
+    return generate_water_level_daily_metrics(start_date, end_date, manual_second_hydro_station_kyrgyz)

@@ -319,4 +319,57 @@ class Migration(migrations.Migration):
             )],
             reverse_sql=[("DROP VIEW IF EXISTS estimations_water_level_decade_average CASCADE;")],
         ),
+        migrations.RunSQL(
+            sql=[(
+                """
+                CREATE OR REPLACE VIEW estimations_water_temperature_daily AS
+                SELECT
+                    time_bucket('1 day', hm.timestamp_local) at time zone 'UTC' + '12 hours' as timestamp_local,
+                    MIN(hm.avg_value) as min_value,
+                    AVG(hm.avg_value) AS avg_value,
+                    MAX(hm.avg_value) as max_value,
+                    '°C' as unit,
+                    'E' as value_type,
+                    'WTDA' as metric_name,
+                    '' as sensor_identifier,
+                    '' as sensor_type,
+                    hm.station_id
+                FROM
+                    public.metrics_hydrologicalmetric hm
+                WHERE
+                    hm.metric_name = 'WTO'
+                GROUP BY
+                    time_bucket('1 day', hm.timestamp_local),
+                    hm.station_id;
+                """
+            )],
+            reverse_sql=[("DROP VIEW IF EXISTS estimations_water_temperature_daily CASCADE;")],
+        ),
+
+        migrations.RunSQL(
+            sql=[(
+                """
+                CREATE OR REPLACE VIEW estimations_air_temperature_daily AS
+                SELECT
+                    time_bucket('1 day', hm.timestamp_local) at time zone 'UTC' + '12 hours' as timestamp_local,
+                    MIN(hm.avg_value) as min_value,
+                    AVG(hm.avg_value) AS avg_value,
+                    MAX(hm.avg_value) as max_value,
+                    '°C' as unit,
+                    'E' as value_type,
+                    'ATDA' as metric_name,
+                    '' as sensor_identifier,
+                    '' as sensor_type,
+                    hm.station_id
+                FROM
+                    public.metrics_hydrologicalmetric hm
+                WHERE
+                    hm.metric_name = 'ATO'
+                GROUP BY
+                    time_bucket('1 day', hm.timestamp_local),
+                    hm.station_id;
+                """
+            )],
+            reverse_sql=[("DROP VIEW IF EXISTS estimations_air_temperature_daily CASCADE;")],
+        ),
     ]

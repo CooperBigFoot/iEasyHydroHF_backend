@@ -130,6 +130,26 @@ class EstimationsWaterDischargeDecadeAverageVirtual(BaseHydroMetricMixin, models
         db_table = "estimations_water_discharge_decade_average_virtual"
 
 
+class EstimationsWaterTemperatureDaily(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_temperature_daily"
+
+
+class EstimationsAirTemperatureDaily(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_air_temperature_daily"
+
+
 class HydrologicalNormVirtual(NormModelMixin, models.Model):
     station = models.ForeignKey(
         "stations.VirtualStation",

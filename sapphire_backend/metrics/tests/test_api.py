@@ -8,87 +8,49 @@ from unittest.mock import patch
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
+from sapphire_backend.estimations.models import EstimationsWaterDischargeDailyAverage
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, NormType
 from sapphire_backend.metrics.exceptions import FileTooBigException
 from sapphire_backend.metrics.models import HydrologicalNorm
+from sapphire_backend.utils.rounding import custom_round
 
 
 class TestHydroMetricsAPI:
     endpoint = "/api/v1/metrics/{}/hydro"
+    start_date = dt.date(2020, 2, 1)
+    end_date = dt.date(2020, 2, 15)
 
-    def test_get_hydro_metrics_for_anonymous_user(self, api_client, organization):
-        response = api_client.get(self.endpoint.format(organization.uuid))
-
-        assert response.status_code == 401
-
-    def test_get_hydro_metrics_for_other_organization_user(
-        self, authenticated_regular_user_other_organization_api_client, organization
-    ):
-        response = authenticated_regular_user_other_organization_api_client.get(
-            self.endpoint.format(organization.uuid)
-        )
-
-        assert response.status_code == 403
-
-    def test_get_hydro_metrics_for_regular_user(
+    @pytest.mark.parametrize(
+        "client_fixture, expected_status_code",
+        [
+            ("api_client", 401),  # anonymous user
+            ("authenticated_regular_user_other_organization_api_client", 403),  # other org user
+            ("authenticated_regular_user_api_client", 200),  # regular user
+            ("authenticated_superadmin_user_api_client", 200),  # superadmin
+        ],
+    )
+    def test_get_hydro_metrics_permissions(
         self,
-        authenticated_regular_user_other_organization_api_client,
-        backup_organization,
-        water_discharge,
-        water_level_manual_other,
-        water_level_automatic,
-        water_level_manual_other_organization,
-        water_level_manual,
+        client_fixture,
+        expected_status_code,
+        organization,
+        request,
     ):
-        response = authenticated_regular_user_other_organization_api_client.get(
-            self.endpoint.format(backup_organization.uuid),
+        client = request.getfixturevalue(client_fixture)
+        response = client.get(
+            f"{self.endpoint.format(organization.uuid)}/measurements/individual",
             {
-                "timestamp_local__gte": water_level_manual_other_organization.timestamp_local
-                - dt.timedelta(minutes=1),
-                "timestamp_local__lt": water_level_manual_other_organization.timestamp_local + dt.timedelta(minutes=1),
+                "timestamp_local__gte": "2020-01-01T00:00:00Z",
+                "timestamp_local__lte": "2020-01-15T00:00:00Z",
             },
         )
-
-        assert response.status_code == 200
-
-        response_json = response.json()
-        assert len(response_json["results"]) == 1
-        assert response_json["count"] == 1
-        assert response_json["next"] is None
-        assert response_json["previous"] is None
-
-    def test_get_hydro_metrics_for_super_admin_from_other_organization(
-        self,
-        authenticated_superadmin_user_api_client,
-        backup_organization,
-        water_discharge,
-        water_level_manual_other,
-        water_level_manual_other_organization,
-        water_level_manual,
-        water_level_automatic,
-    ):
-        response = authenticated_superadmin_user_api_client.get(
-            self.endpoint.format(backup_organization.uuid),
-            {
-                "timestamp_local__gte": water_level_manual_other_organization.timestamp_local
-                - dt.timedelta(minutes=1),
-                "timestamp_local__lt": water_level_manual_other_organization.timestamp_local + dt.timedelta(minutes=1),
-            },
-        )
-
-        assert response.status_code == 200
-
-        response_json = response.json()
-        assert len(response_json["results"]) == 1
-        assert response_json["count"] == 1
-        assert response_json["next"] is None
-        assert response_json["previous"] is None
+        assert response.status_code == expected_status_code
 
     def test_get_hydro_metrics_with_invalid_filter(
         self, authenticated_regular_user_api_client, water_level_manual, organization
     ):
         response = authenticated_regular_user_api_client.get(
-            self.endpoint.format(organization.uuid),
+            f"{self.endpoint.format(organization.uuid)}/measurements/individual",  # Add /measurements/individual
             {
                 "filter": "invalid",
                 "timestamp_local__gte": water_level_manual.timestamp_local - dt.timedelta(minutes=1),
@@ -115,7 +77,7 @@ class TestHydroMetricsAPI:
         water_level_manual_other_organization,
     ):
         response = authenticated_regular_user_api_client.get(
-            self.endpoint.format(organization.uuid),
+            f"{self.endpoint.format(organization.uuid)}/measurements/individual",  # Add /measurements/individual
             {
                 "timestamp_local__gte": water_level_manual.timestamp_local - dt.timedelta(minutes=1),
                 "timestamp_local__lt": water_level_manual.timestamp_local + dt.timedelta(minutes=1),
@@ -142,6 +104,190 @@ class TestHydroMetricsAPI:
         assert response_json["count"] == 1
         assert response_json["next"] is None
         assert response_json["previous"] is None
+
+    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.parametrize("water_level_metrics_daily_generator", [(start_date, end_date)], indirect=True)
+    @pytest.mark.parametrize(
+        "view_type, display_type, metric_names, expected_status, expected_keys",
+        [
+            # Daily view tests
+            (
+                "daily",
+                "individual",
+                ["WLDA"],
+                200,
+                ["timestamp_local", "avg_value", "metric_name"],
+            ),
+            (
+                "daily",
+                "grouped",
+                ["WLDA"],
+                200,
+                ["timestamp_local", "WLDA"],
+            ),
+            # Measurements view tests
+            (
+                "measurements",
+                "individual",
+                ["WLD"],
+                200,
+                ["timestamp_local", "avg_value", "metric_name"],
+            ),
+            (
+                "measurements",
+                "grouped",
+                ["WLD"],
+                200,
+                ["timestamp_local", "WLD"],
+            ),
+            # Error cases
+            (
+                "daily",
+                "individual",
+                [],  # Missing required metric_names
+                422,
+                None,
+            ),
+        ],
+    )
+    def test_get_hydro_metrics_view_types(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        water_level_metrics_daily_generator,
+        view_type,
+        display_type,
+        metric_names,
+        expected_status,
+        expected_keys,
+    ):
+        response = regular_user_kyrgyz_api_client.get(
+            f"{self.endpoint.format(organization_kyrgyz.uuid)}/{view_type}/{display_type}",
+            {
+                "station_id": manual_hydro_station_kyrgyz.id,
+                "timestamp_local__gte": f"{self.start_date.isoformat()}T00:00:00Z",
+                "timestamp_local__lte": f"{self.end_date.isoformat()}T23:59:59Z",
+                "metric_name__in": metric_names,
+                "order_param": "timestamp_local",
+                "order_direction": "ASC",
+            },
+        )
+
+        assert response.status_code == expected_status
+
+        if expected_status == 200:
+            data = response.json()
+            results = data["results"]  # Always paginated for table views
+            if len(results) > 0:
+                for key in expected_keys:
+                    assert key in results[0]
+
+    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.parametrize("water_level_metrics_daily_generator", [(start_date, end_date)], indirect=True)
+    @pytest.mark.parametrize(
+        "view_type, metric_names, expected_status, expected_keys",
+        [
+            (
+                "daily",
+                ["WLDA"],
+                200,
+                ["x", "y"],  # Chart format uses x/y keys
+            ),
+            (
+                "measurements",
+                ["WLD"],
+                200,
+                ["x", "y"],
+            ),
+        ],
+    )
+    def test_get_hydro_metrics_chart(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        water_level_metrics_daily_generator,
+        view_type,
+        metric_names,
+        expected_status,
+        expected_keys,
+    ):
+        response = regular_user_kyrgyz_api_client.get(
+            f"{self.endpoint.format(organization_kyrgyz.uuid)}/{view_type}/chart",
+            {
+                "station_id": manual_hydro_station_kyrgyz.id,
+                "timestamp_local__gte": f"{self.start_date.isoformat()}T00:00:00Z",
+                "timestamp_local__lte": f"{self.end_date.isoformat()}T23:59:59Z",
+                "metric_name__in": metric_names,
+            },
+        )
+
+        assert response.status_code == expected_status
+
+        if expected_status == 200:
+            data = response.json()  # Direct response, no pagination
+            if len(data) > 0:
+                for key in expected_keys:
+                    assert key in data[0]
+
+    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.parametrize(
+        "view_type, start_date, end_date, expected_status",
+        [
+            # Raw measurements - 30 days limit
+            (
+                "measurements",
+                dt.datetime(2020, 1, 1, tzinfo=dt.UTC),
+                dt.datetime(2020, 1, 30, tzinfo=dt.UTC),  # 29 days - should pass
+                200,
+            ),
+            (
+                "measurements",
+                dt.datetime(2020, 1, 1, tzinfo=dt.UTC),
+                dt.datetime(2020, 2, 1, tzinfo=dt.UTC),  # 31 days - should fail
+                422,
+            ),
+            # Daily data - 365 days limit
+            (
+                "daily",
+                dt.datetime(2020, 1, 1, tzinfo=dt.UTC),
+                dt.datetime(2020, 12, 31, tzinfo=dt.UTC),  # 364 days - should pass
+                200,
+            ),
+            (
+                "daily",
+                dt.datetime(2020, 1, 1, tzinfo=dt.UTC),
+                dt.datetime(2021, 1, 2, tzinfo=dt.UTC),  # 366 days - should fail
+                422,
+            ),
+        ],
+    )
+    def test_get_hydro_metrics_date_range_validation(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        view_type,
+        start_date,
+        end_date,
+        expected_status,
+    ):
+        """Test date range validation for different view types"""
+        response = regular_user_kyrgyz_api_client.get(
+            f"{self.endpoint.format(organization_kyrgyz.uuid)}/{view_type}/individual",
+            {
+                "station_id": manual_hydro_station_kyrgyz.id,
+                "timestamp_local__gte": start_date.isoformat(),
+                "timestamp_local__lte": end_date.isoformat(),
+                "metric_name__in": ["WLDA"] if view_type == "daily" else ["WLD"],
+                "order_param": "timestamp_local",
+                "order_direction": "ASC",
+                "station": manual_hydro_station_kyrgyz.id,
+            },
+        )
+
+        assert response.status_code == expected_status
 
     def test_get_hydro_metric_count(
         self,
@@ -256,6 +402,42 @@ class TestHydroMetricsAPI:
         ]
 
         assert response.json() == EXPECTED_RESPONSE
+
+    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.parametrize("water_level_metrics_daily_generator", [(start_date, end_date)], indirect=True)
+    def test_get_discharge_daily_average(
+        self,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        regular_user_kyrgyz_api_client,
+        water_level_metrics_daily_generator,
+        discharge_model_manual_hydro_station_kyrgyz,
+    ):
+        response = regular_user_kyrgyz_api_client.get(
+            f"{self.endpoint.format(organization_kyrgyz.uuid)}/daily/individual",
+            {
+                "station_id": manual_hydro_station_kyrgyz.id,
+                "timestamp_local__gte": "2020-02-01T12:00:00Z",
+                "timestamp_local__lte": "2020-02-29T23:59:59.999Z",
+                "metric_name__in": ["WDDA"],  # Water Discharge Daily Average
+                "order_direction": "ASC",
+            },
+        )
+
+        assert response.status_code == 200
+        wdda_res_returned = response.json()["results"]  # Note: now wrapped in pagination
+
+        wdda_queryset = EstimationsWaterDischargeDailyAverage.objects.filter(
+            station_id=manual_hydro_station_kyrgyz.id,
+            timestamp_local__date__range=(self.start_date, self.end_date),
+        ).order_by("timestamp_local")
+
+        wdda_res_expected = wdda_queryset.values("timestamp_local", "avg_value")
+
+        assert len(wdda_res_returned) == len(wdda_res_expected)
+        for entry_returned, entry_expected in zip(wdda_res_returned, wdda_res_expected):
+            assert entry_returned["timestamp_local"] == entry_expected["timestamp_local"].isoformat()
+            assert custom_round(entry_returned["avg_value"], 6) == custom_round(entry_expected["avg_value"], 6)
 
 
 class TestDischargeNormsAPI:

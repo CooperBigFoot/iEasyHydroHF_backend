@@ -16,9 +16,7 @@ from sapphire_backend.utils.permissions import (
 from ..stations.models import HydrologicalStation
 from .models import (
     DischargeModel,
-    EstimationsWaterDischargeDailyAverage,
     EstimationsWaterDischargeDailyAverageVirtual,
-    EstimationsWaterLevelDailyAverage,
 )
 from .schema import (
     DischargeModelBaseSchema,
@@ -145,20 +143,6 @@ class EstimationsAPIController:
         return queryset
 
     @route.get(
-        "discharge-daily-average",
-        response={200: list[EstimationsDailyAverageOutputSchema], 400: Message},
-    )
-    def get_water_discharge_daily_average(
-        self,
-        organization_uuid: str,
-        order: Query[OrderQueryParamSchema],
-        filters: Query[EstimationsFilterSchema],
-        limit: int | None = 365,
-    ):
-        queryset = self._get_averages_queryset(EstimationsWaterDischargeDailyAverage, filters, order, limit)
-        return queryset
-
-    @route.get(
         "discharge-daily-average-virtual",
         response={200: list[EstimationsDailyAverageOutputSchema], 400: Message},
     )
@@ -170,18 +154,4 @@ class EstimationsAPIController:
         limit: int | None = 365,
     ):
         queryset = self._get_averages_queryset(EstimationsWaterDischargeDailyAverageVirtual, filters, order, limit)
-        return queryset
-
-    @route.get(
-        "water-level-daily-average",
-        response={200: list[EstimationsDailyAverageOutputSchema], 400: Message},
-    )
-    def get_water_level_daily_average(
-        self,
-        organization_uuid: str,
-        order: Query[OrderQueryParamSchema],
-        filters: Query[EstimationsFilterSchema],
-        limit: int | None = 365,
-    ):
-        queryset = self._get_averages_queryset(EstimationsWaterLevelDailyAverage, filters, order, limit)
         return queryset
