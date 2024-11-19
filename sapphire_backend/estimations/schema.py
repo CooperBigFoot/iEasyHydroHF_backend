@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from ninja import FilterSchema, Schema
+from ninja import Field, FilterSchema, Schema
 
 
 class DischargeModelBaseSchema(Schema):
@@ -76,5 +76,5 @@ class EstimationsFilterSchema(FilterSchema):
 
 
 class EstimationsDailyAverageOutputSchema(Schema):
-    timestamp_local: datetime
-    avg_value: float
+    x: datetime = Field(..., alias="timestamp_local")
+    y: float = Field(..., alias="avg_value")

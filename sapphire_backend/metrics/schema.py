@@ -79,7 +79,7 @@ class HFChartSchema(Schema):
 
     @staticmethod
     def resolve_y(obj):
-        return obj.get("WLD") or obj.get("WLDA")
+        return obj.get("WLD") or obj.get("WLDA") or obj.get("WDDA")
 
 
 class MeasuredDischargeMeasurementSchema(Schema):

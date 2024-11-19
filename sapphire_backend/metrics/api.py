@@ -149,6 +149,7 @@ class HydroMetricsAPIController:
             if not metric_names:
                 raise ValidationError("metric_name__in is required for daily view")
 
+            print(f"Filter dict: \n {filter_dict}")
             queries = [
                 model_mapping[metric].objects.filter(**filter_dict)
                 for metric in metric_names
