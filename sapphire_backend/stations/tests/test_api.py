@@ -1,3 +1,5 @@
+import pytest
+
 from ..models import VirtualStation, VirtualStationAssociation
 
 
@@ -1027,3 +1029,146 @@ class TestVirtualForecastStatusAPI:
                 "station_type": "V",
             },
         ]
+
+
+class TestHydroStationChartSettingsAPI:
+    endpoint = "/api/v1/stations/{}/hydrological/{}/chart-settings"
+
+    @pytest.mark.parametrize(
+        "client, expected_status_code",
+        [
+            ("unauthenticated_api_client", 401),
+            ("regular_user_uzbek_api_client", 403),
+            ("organization_admin_uzbek_api_client", 403),
+            ("regular_user_kyrgyz_api_client", 200),
+            ("organization_admin_kyrgyz_api_client", 200),
+            ("superadmin_kyrgyz_api_client", 200),
+            ("superadmin_uzbek_api_client", 200),
+        ],
+    )
+    def test_get_chart_settings_permissions(
+        self,
+        client,
+        expected_status_code,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        request,
+    ):
+        client = request.getfixturevalue(client)
+        print(vars(client))
+        response = client.get(
+            self.endpoint.format(manual_hydro_station_kyrgyz.site.organization.uuid, manual_hydro_station_kyrgyz.uuid)
+        )
+        assert response.status_code == expected_status_code
+
+    @pytest.mark.parametrize(
+        "client, expected_status_code",
+        [
+            ("unauthenticated_api_client", 401),
+            ("regular_user_uzbek_api_client", 403),
+            ("organization_admin_uzbek_api_client", 403),
+            ("regular_user_kyrgyz_api_client", 200),
+            ("organization_admin_kyrgyz_api_client", 200),
+            ("superadmin_kyrgyz_api_client", 200),
+            ("superadmin_uzbek_api_client", 200),
+        ],
+    )
+    def test_update_chart_settings_permissions(
+        self,
+        client,
+        expected_status_code,
+        manual_hydro_station_kyrgyz,
+        request,
+    ):
+        client = request.getfixturevalue(client)
+        data = {
+            "water_level_min": 0.0,
+            "water_level_max": 10.0,
+        }
+
+        response = client.put(
+            self.endpoint.format(manual_hydro_station_kyrgyz.site.organization.uuid, manual_hydro_station_kyrgyz.uuid),
+            data=data,
+            content_type="application/json",
+        )
+        assert response.status_code == expected_status_code
+
+    @pytest.mark.parametrize(
+        "client",
+        [
+            "regular_user_kyrgyz_api_client",
+            "organization_admin_kyrgyz_api_client",
+            "superadmin_kyrgyz_api_client",
+            "superadmin_uzbek_api_client",
+        ],
+    )
+    def test_get_chart_settings_response(
+        self,
+        client,
+        manual_hydro_station_kyrgyz,
+        request,
+    ):
+        client = request.getfixturevalue(client)
+        response = client.get(
+            self.endpoint.format(manual_hydro_station_kyrgyz.site.organization.uuid, manual_hydro_station_kyrgyz.uuid)
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "uuid" in data
+        assert all(
+            key in data
+            for key in [
+                "water_level_min",
+                "water_level_max",
+                "discharge_min",
+                "discharge_max",
+                "cross_section_min",
+                "cross_section_max",
+            ]
+        )
+
+    @pytest.mark.parametrize(
+        "client",
+        [
+            "regular_user_kyrgyz_api_client",
+            "organization_admin_kyrgyz_api_client",
+            "superadmin_kyrgyz_api_client",
+            "superadmin_uzbek_api_client",
+        ],
+    )
+    def test_update_chart_settings_response(
+        self,
+        client,
+        manual_hydro_station_kyrgyz,
+        request,
+    ):
+        client = request.getfixturevalue(client)
+        data = {
+            "water_level_min": 0.0,
+            "water_level_max": 10.0,
+            "discharge_min": 0.0,
+            "discharge_max": 100.0,
+            "cross_section_min": 0.0,
+            "cross_section_max": 50.0,
+        }
+
+        response = client.put(
+            self.endpoint.format(manual_hydro_station_kyrgyz.site.organization.uuid, manual_hydro_station_kyrgyz.uuid),
+            data=data,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+        response_data = response.json()
+        assert all(response_data[key] == data[key] for key in data.keys())
+
+    def test_get_chart_settings_non_existing_station(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+    ):
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_kyrgyz.uuid, "11111111-aaaa-bbbb-cccc-222222222222")
+        )
+        assert response.status_code == 404

@@ -1,3 +1,4 @@
+import math
 from datetime import datetime
 
 from django.db.models import F
@@ -19,12 +20,14 @@ from .models import (
     EstimationsWaterDischargeDailyAverageVirtual,
 )
 from .schema import (
+    DischargeCalculationSchema,
     DischargeModelBaseSchema,
     DischargeModelCreateInputDeltaSchema,
     DischargeModelCreateInputPointsSchema,
     DischargeModelDeleteOutputSchema,
     EstimationsDailyAverageOutputSchema,
     EstimationsFilterSchema,
+    HQTableRowSchema,
     OrderQueryParamSchema,
 )
 from .utils import least_squares_fit
@@ -107,20 +110,50 @@ class DischargeModelsAPIController:
         response = DischargeModelDeleteOutputSchema(name=name)
         return 200, response
 
-    @route.get("discharge-models/{discharge_model_uuid}/hq-table", response={200: list[list[float]]})
+    @route.get("discharge-models/{discharge_model_uuid}/hq-table", response={200: list[HQTableRowSchema]})
     def get_hq_table_values(self, request: HttpRequest, discharge_model_uuid: str):
         model = DischargeModel.objects.get(uuid=discharge_model_uuid)
-        values = []
+        station = model.station
 
-        for i in range(10):
-            row = []
-            for j in range(10):
-                number = i * 10 + j
-                value = model.estimate_discharge(number)
-                row.append(value)
-            values.append(row)
+        # Get or create chart settings
+        chart_settings = station.get_chart_settings
+
+        # Get bounds from settings
+        min_level = chart_settings.water_level_min
+        max_level = chart_settings.water_level_max
+
+        # Use defaults if no settings
+        if min_level is None:
+            min_level = 0  # Default to 0
+        if max_level is None:
+            max_level = 100  # Default to show 0-99 range
+
+        # Round bounds to nearest tens
+        start_row = math.floor(min_level / 10)  # 900 -> 90
+        end_row = math.ceil(max_level / 10)
+
+        # Generate table
+        values = []
+        for row in range(start_row, end_row + 1):
+            row_values = []
+            for col in range(10):
+                water_level = (row * 10) + col
+                value = model.estimate_discharge(water_level)
+                row_values.append(value)
+            values.append(
+                {
+                    "id": row,  # This will be 90, 91, 92, etc.
+                    "values": row_values,
+                }
+            )
 
         return values
+
+    @route.get("discharge-models/{discharge_model_uuid}/calculate", response=DischargeCalculationSchema)
+    def calculate_discharge(self, request: HttpRequest, discharge_model_uuid: str, water_level: float):
+        model = DischargeModel.objects.get(uuid=discharge_model_uuid)
+        discharge = model.estimate_discharge(water_level)
+        return {"discharge": discharge, "water_level": water_level}
 
 
 @api_controller(
