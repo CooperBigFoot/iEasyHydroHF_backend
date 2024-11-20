@@ -1,6 +1,14 @@
 from django.contrib import admin
 
-from .models import HydrologicalStation, MeteorologicalStation, Remark, Site, VirtualStation, VirtualStationAssociation
+from .models import (
+    HydrologicalStation,
+    MeteorologicalStation,
+    Remark,
+    Site,
+    StationChartSettings,
+    VirtualStation,
+    VirtualStationAssociation,
+)
 
 
 class HydroStationInline(admin.TabularInline):
@@ -13,6 +21,10 @@ class MeteoStationInline(admin.TabularInline):
 
 class VirtualStationAssociationInline(admin.TabularInline):
     model = VirtualStationAssociation
+
+
+class StationChartSettingsInline(admin.TabularInline):
+    model = StationChartSettings
 
 
 @admin.register(Site)
@@ -32,7 +44,7 @@ class HydrologicalStationAdmin(admin.ModelAdmin):
     list_display = ["name", "secondary_name", "station_code", "station_type", "bulletin_order", "site", "uuid"]
     list_filter = ["site__basin", "site__region", "site__organization", "station_type", "is_deleted"]
     readonly_fields = ["uuid"]
-    inlines = [RemarkInline, VirtualStationAssociationInline]
+    inlines = [RemarkInline, VirtualStationAssociationInline, StationChartSettingsInline]
 
 
 @admin.register(MeteorologicalStation)
@@ -57,3 +69,18 @@ class VirtualStationAdmin(admin.ModelAdmin):
     readonly_fields = ["uuid"]
     exclude = ["hydro_stations"]
     inlines = [VirtualStationAssociationInline]
+
+
+@admin.register(StationChartSettings)
+class StationChartSettingsAdmin(admin.ModelAdmin):
+    list_display = [
+        "station",
+        "water_level_min",
+        "water_level_max",
+        "discharge_min",
+        "discharge_max",
+        "cross_section_min",
+        "cross_section_max",
+    ]
+    list_filter = ["station__site__organization"]
+    readonly_fields = ["uuid"]

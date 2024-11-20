@@ -180,6 +180,64 @@ class HydroMetricsAPIController:
             for metric in filter_dict.get("metric_name__in", [])
         }
 
+    @route.get("time-bucket", response={200: list[dict[str, Any]], 400: Message})
+    def time_bucket(
+        self,
+        organization_uuid: str,
+        time_bucket: Query[TimeBucketQueryParams],
+        order: Query[OrderQueryParamSchema],
+        filters: Query[HydroMetricFilterSchema],
+    ):
+        filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
+        time_bucket_dict = time_bucket.dict()
+        time_bucket_dict["agg_func"] = time_bucket_dict["agg_func"].value
+        order_param, order_direction = order.order_param, order.order_direction
+        query_manager = TimeseriesQueryManager(
+            model=HydrologicalMetric,
+            filter_dict=filter_dict,
+            order_param=order_param,
+            order_direction=order_direction,
+        )
+
+        try:
+            return query_manager.time_bucket(**time_bucket_dict)
+        except ValueError as e:
+            return 400, {"detail": str(e), "code": "time_bucket_error"}
+
+    @route.get("{station_uuid}/measured-discharge", response={200: list[MeasuredDischargeMeasurementSchema]})
+    def get_measured_discharge_points(self, organization_uuid: str, station_uuid: str, year: int):
+        station = HydrologicalStation.objects.select_related("site__organization").get(uuid=station_uuid)
+        organization = station.site.organization
+        year_resolver = HydrologicalYearResolver(organization, year)
+        filter_dict = {
+            "station": station.id,
+            "timestamp_local__gte": year_resolver.get_start_date(),
+            "timestamp_local__lt": year_resolver.get_end_date(),
+            "metric_name__in": [
+                HydrologicalMetricName.WATER_LEVEL_DECADAL,
+                HydrologicalMetricName.WATER_DISCHARGE_DAILY,
+                HydrologicalMetricName.RIVER_CROSS_SECTION_AREA,
+            ],
+            "value_type": HydrologicalMeasurementType.MANUAL,
+        }
+        measurements = TimeseriesQueryManager(model=HydrologicalMetric, filter_dict=filter_dict).execute_query()
+
+        grouped_data = defaultdict(dict)
+
+        for entry in measurements:
+            grouped_data[entry.timestamp_local][entry.metric_name] = entry.avg_value
+        ret = [
+            {
+                "date": str(date),
+                "h": custom_ceil(values.get("WLDC")),
+                "q": hydrological_round(values.get("WDD")),
+                "f": hydrological_round(values.get("RCSA")),
+            }
+            for date, values in grouped_data.items()
+        ]
+        return ret
+
     @route.get("{view_type}/chart")
     def get_hydro_metrics_chart(
         self,
@@ -255,64 +313,6 @@ class HydroMetricsAPIController:
             return {"total": manager.get_total()}
         else:
             return manager.get_metric_distribution()
-
-    @route.get("time-bucket", response={200: list[dict[str, Any]], 400: Message})
-    def time_bucket(
-        self,
-        organization_uuid: str,
-        time_bucket: Query[TimeBucketQueryParams],
-        order: Query[OrderQueryParamSchema],
-        filters: Query[HydroMetricFilterSchema],
-    ):
-        filter_dict = filters.dict(exclude_none=True)
-        filter_dict["station__site__organization"] = organization_uuid
-        time_bucket_dict = time_bucket.dict()
-        time_bucket_dict["agg_func"] = time_bucket_dict["agg_func"].value
-        order_param, order_direction = order.order_param, order.order_direction
-        query_manager = TimeseriesQueryManager(
-            model=HydrologicalMetric,
-            filter_dict=filter_dict,
-            order_param=order_param,
-            order_direction=order_direction,
-        )
-
-        try:
-            return query_manager.time_bucket(**time_bucket_dict)
-        except ValueError as e:
-            return 400, {"detail": str(e), "code": "time_bucket_error"}
-
-    @route.get("{station_uuid}/measured-discharge", response={200: list[MeasuredDischargeMeasurementSchema]})
-    def get_measured_discharge_points(self, organization_uuid: str, station_uuid: str, year: int):
-        station = HydrologicalStation.objects.select_related("site__organization").get(uuid=station_uuid)
-        organization = station.site.organization
-        year_resolver = HydrologicalYearResolver(organization, year)
-        filter_dict = {
-            "station": station.id,
-            "timestamp_local__gte": year_resolver.get_start_date(),
-            "timestamp_local__lt": year_resolver.get_end_date(),
-            "metric_name__in": [
-                HydrologicalMetricName.WATER_LEVEL_DECADAL,
-                HydrologicalMetricName.WATER_DISCHARGE_DAILY,
-                HydrologicalMetricName.RIVER_CROSS_SECTION_AREA,
-            ],
-            "value_type": HydrologicalMeasurementType.MANUAL,
-        }
-        measurements = TimeseriesQueryManager(model=HydrologicalMetric, filter_dict=filter_dict).execute_query()
-
-        grouped_data = defaultdict(dict)
-
-        for entry in measurements:
-            grouped_data[entry.timestamp_local][entry.metric_name] = entry.avg_value
-        ret = [
-            {
-                "date": str(date),
-                "h": custom_ceil(values.get("WLDC")),
-                "q": hydrological_round(values.get("WDD")),
-                "f": hydrological_round(values.get("RCSA")),
-            }
-            for date, values in grouped_data.items()
-        ]
-        return ret
 
 
 @api_controller(

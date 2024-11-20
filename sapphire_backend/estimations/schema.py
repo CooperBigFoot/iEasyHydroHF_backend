@@ -78,3 +78,13 @@ class EstimationsFilterSchema(FilterSchema):
 class EstimationsDailyAverageOutputSchema(Schema):
     x: datetime = Field(..., alias="timestamp_local")
     y: float = Field(..., alias="avg_value")
+
+
+class HQTableRowSchema(Schema):
+    id: int
+    values: list[float]
+
+
+class DischargeCalculationSchema(Schema):
+    discharge: float
+    water_level: float
