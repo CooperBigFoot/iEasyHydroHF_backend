@@ -227,3 +227,19 @@ class MetricViewTypeSchema(Schema):
 
 class MetricDisplayTypeSchema(Schema):
     display_type: DisplayType
+
+
+class DetailedDailyHydroMetricSchema(Schema):
+    date: datetime
+    daily_average_water_level: float | None
+    morning_water_level: float | None
+    morning_water_level_timestamp: datetime | None
+    evening_water_level: float | None
+    evening_water_level_timestamp: datetime | None
+    manual_daily_average_water_level: float | None
+    min_water_level: float | None
+    min_water_level_timestamp: datetime | None
+    max_water_level: float | None
+    max_water_level_timestamp: datetime | None
+    daily_average_air_temperature: float | None
+    daily_average_water_temperature: float | None

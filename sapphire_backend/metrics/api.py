@@ -54,6 +54,7 @@ from .choices import (
 from .models import HydrologicalMetric, HydrologicalNorm, MeteorologicalMetric, MeteorologicalNorm
 from .schema import (
     BulkDataDownloadInputSchema,
+    DetailedDailyHydroMetricSchema,
     DisplayType,
     HFChartSchema,
     HydrologicalMetricOutputSchema,
@@ -300,6 +301,64 @@ class HydroMetricsAPIController:
             ]
         else:  # raw or daily
             return [HydrologicalMetricOutputSchema(**record) for record in qs.values()]
+
+    @route.get("detailed-daily", response={200: list[DetailedDailyHydroMetricSchema]})
+    def get_detailed_daily_hydro_metrics(
+        self,
+        organization_uuid: str,
+        filters: Query[HydroMetricFilterSchema],
+    ):
+        """Get detailed daily hydro metrics including specific time measurements."""
+        filter_dict = filters.dict(exclude_none=True)
+        filter_dict["station__site__organization"] = organization_uuid
+
+        # Get water level data
+        water_level_manager = TimeseriesQueryManager(
+            model=HydrologicalMetric,
+            filter_dict={
+                **filter_dict,
+                "metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY,
+            },
+        )
+        water_level_data = water_level_manager.get_detailed_daily_metrics()
+
+        # Get temperature data if requested
+        requested_metrics = filter_dict.get("metric_name__in", [])
+        temp_data = {}
+
+        if HydrologicalMetricName.AIR_TEMPERATURE_DAILY_AVERAGE in requested_metrics:
+            air_temp_data = EstimationsAirTemperatureDaily.objects.filter(
+                station_id=filter_dict["station"],
+                timestamp_local__range=(
+                    filter_dict.get("timestamp_local__gte"),
+                    filter_dict.get("timestamp_local__lt"),
+                ),
+            ).values("timestamp_local", "avg_value")
+            temp_data["air_temp"] = {d["timestamp_local"].date(): d["avg_value"] for d in air_temp_data}
+
+        if HydrologicalMetricName.WATER_TEMPERATURE_DAILY_AVERAGE in requested_metrics:
+            water_temp_data = EstimationsWaterTemperatureDaily.objects.filter(
+                station_id=filter_dict["station"],
+                timestamp_local__range=(
+                    filter_dict.get("timestamp_local__gte"),
+                    filter_dict.get("timestamp_local__lt"),
+                ),
+            ).values("timestamp_local", "avg_value")
+            temp_data["water_temp"] = {d["timestamp_local"].date(): d["avg_value"] for d in water_temp_data}
+
+        # Combine all data
+        results = []
+        for day_data in water_level_data:
+            date = day_data["date"].date()
+            results.append(
+                DetailedDailyHydroMetricSchema(
+                    **day_data,
+                    daily_average_air_temperature=temp_data.get("air_temp", {}).get(date),
+                    daily_average_water_temperature=temp_data.get("water_temp", {}).get(date),
+                )
+            )
+
+        return results
 
     @route.get("metric-count", response={200: list[MetricCountSchema] | MetricTotalCountSchema})
     def get_hydro_metric_count(
