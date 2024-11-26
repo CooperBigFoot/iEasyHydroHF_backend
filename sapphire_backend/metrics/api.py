@@ -352,11 +352,11 @@ class HydroMetricsAPIController:
             results.append(
                 DetailedDailyHydroMetricSchema(
                     **day_data,
+                    id=day_data["date"],
                     daily_average_air_temperature=temp_data.get("air_temp", {}).get(date),
                     daily_average_water_temperature=temp_data.get("water_temp", {}).get(date),
                 )
             )
-
         return results
 
     @route.get("metric-count", response={200: list[MetricCountSchema] | MetricTotalCountSchema})

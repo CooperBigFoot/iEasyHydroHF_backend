@@ -231,6 +231,7 @@ class MetricDisplayTypeSchema(Schema):
 
 class DetailedDailyHydroMetricSchema(Schema):
     date: datetime
+    id: datetime
     daily_average_water_level: float | None
     morning_water_level: float | None
     morning_water_level_timestamp: datetime | None

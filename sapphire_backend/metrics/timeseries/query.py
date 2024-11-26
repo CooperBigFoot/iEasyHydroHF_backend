@@ -222,9 +222,9 @@ class TimeseriesQueryManager:
             WITH morning_evening AS (
                 SELECT
                     time_bucket('1 day', timestamp_local) as day,
-                    first(avg_value, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_water_level,
+                    first(ceil(avg_value), abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_water_level,
                     first(timestamp_local, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_water_level_timestamp,
-                    first(avg_value, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '20 hours'))) as evening_water_level,
+                    first(ceil(avg_value), abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '20 hours'))) as evening_water_level,
                     first(timestamp_local, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '20 hours'))) as evening_water_level_timestamp
                 FROM {db_table}
                 {join_string}
@@ -234,8 +234,8 @@ class TimeseriesQueryManager:
             daily_extremes AS (
                 SELECT
                     time_bucket('1 day', timestamp_local) AS day,
-                    MIN(avg_value) as min_water_level,
-                    MAX(avg_value) as max_water_level,
+                    ceil(MIN(avg_value)) as min_water_level,
+                    ceil(MAX(avg_value)) as max_water_level,
                     first(timestamp_local, avg_value) as min_water_level_timestamp,
                     last(timestamp_local, avg_value) as max_water_level_timestamp
                 FROM {db_table}
@@ -246,7 +246,7 @@ class TimeseriesQueryManager:
             SELECT
                 wlda.timestamp_local as date,
                 wlda.avg_value as daily_average_water_level,
-                (me.morning_water_level + me.evening_water_level) / 2.0 as manual_daily_average_water_level,
+                ceil((me.morning_water_level + me.evening_water_level) / 2.0) as manual_daily_average_water_level,
                 me.morning_water_level,
                 me.morning_water_level_timestamp,
                 me.evening_water_level,
