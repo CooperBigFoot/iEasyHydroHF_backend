@@ -311,17 +311,6 @@ class HydroMetricsAPIController:
         """Get detailed daily hydro metrics including specific time measurements."""
         filter_dict = filters.dict(exclude_none=True)
         filter_dict["station__site__organization"] = organization_uuid
-
-        # Get water level data
-        water_level_manager = TimeseriesQueryManager(
-            model=HydrologicalMetric,
-            filter_dict={
-                **filter_dict,
-                "metric_name": HydrologicalMetricName.WATER_LEVEL_DAILY,
-            },
-        )
-        water_level_data = water_level_manager.get_detailed_daily_metrics()
-
         # Get temperature data if requested
         requested_metrics = filter_dict.get("metric_name__in", [])
         temp_data = {}
@@ -345,6 +334,16 @@ class HydroMetricsAPIController:
                 ),
             ).values("timestamp_local", "avg_value")
             temp_data["water_temp"] = {d["timestamp_local"].date(): d["avg_value"] for d in water_temp_data}
+
+        # Get water level data
+        water_level_manager = TimeseriesQueryManager(
+            model=HydrologicalMetric,
+            filter_dict={
+                **filter_dict,
+            },
+        )
+
+        water_level_data = water_level_manager.get_detailed_daily_metrics()
 
         # Combine all data
         results = []

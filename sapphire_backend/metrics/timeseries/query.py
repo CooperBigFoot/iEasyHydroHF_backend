@@ -201,58 +201,71 @@ class TimeseriesQueryManager:
         return results
 
     def get_detailed_daily_metrics(self):
+        """Get detailed daily metrics including 8AM/8PM values and min/max."""
         db_table = self.model._meta.db_table
         join_string = self._construct_organization_sql_join_string()
         where_string, params = self._construct_sql_filter_string()
         where_clause = f"WHERE {where_string}" if where_string else ""
 
-        query = f"""
-        WITH morning_evening AS (
-            SELECT
-                time_bucket('1 day', timestamp_local) as day,
-                first(avg_value ORDER BY abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_value,
-                first(timestamp_local ORDER BY abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_timestamp,
-                first(avg_value ORDER BY abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '20 hours'))) as evening_value,
-                first(timestamp_local ORDER BY abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '20 hours'))) as evening_timestamp
-            FROM {db_table}
-            {join_string}
-            {where_clause}
-            GROUP BY time_bucket('1 day', timestamp_local)
-        ),
-        daily_extremes AS (
-            SELECT
-                time_bucket('1 day', timestamp_local) AS day,
-                MIN(avg_value) as min_value,
-                MAX(avg_value) as max_value,
-                first(timestamp_local ORDER BY avg_value ASC) as min_timestamp,
-                first(timestamp_local ORDER BY avg_value DESC) as max_timestamp
-            FROM {db_table}
-            {join_string}
-            {where_clause}
-            GROUP BY time_bucket('1 day', timestamp_local)
+        # Duplicate params for both CTEs and add station_id and date range for final WHERE
+        all_params = (
+            params
+            + params
+            + [
+                self.filter_dict["station"],
+                self.filter_dict["timestamp_local__gte"],  # This is the actual datetime value
+                self.filter_dict["timestamp_local__lt"],  # This is the actual datetime value
+            ]
         )
-        SELECT
-            wlda.timestamp_local as date,
-            wlda.avg_value as daily_average_water_level,
-            (me.morning_value + me.evening_value) / 2.0 as manual_daily_average_water_level,
-            me.morning_value,
-            me.morning_timestamp,
-            me.evening_value,
-            me.evening_timestamp,
-            de.min_value,
-            de.min_timestamp,
-            de.max_value,
-            de.max_timestamp
-        FROM estimations_water_level_daily_average wlda
-        LEFT JOIN morning_evening me ON wlda.timestamp_local = me.day
-        LEFT JOIN daily_extremes de ON wlda.timestamp_local = de.day
-        WHERE wlda.station_id = %s
-        ORDER BY wlda.timestamp_local {self.order_direction}
-        """
 
+        query = f"""
+            WITH morning_evening AS (
+                SELECT
+                    time_bucket('1 day', timestamp_local) as day,
+                    first(avg_value, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_water_level,
+                    first(timestamp_local, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_water_level_timestamp,
+                    first(avg_value, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '20 hours'))) as evening_water_level,
+                    first(timestamp_local, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '20 hours'))) as evening_water_level_timestamp
+                FROM {db_table}
+                {join_string}
+                {where_clause}
+                GROUP BY time_bucket('1 day', timestamp_local)
+            ),
+            daily_extremes AS (
+                SELECT
+                    time_bucket('1 day', timestamp_local) AS day,
+                    MIN(avg_value) as min_water_level,
+                    MAX(avg_value) as max_water_level,
+                    first(timestamp_local, avg_value) as min_water_level_timestamp,
+                    last(timestamp_local, avg_value) as max_water_level_timestamp
+                FROM {db_table}
+                {join_string}
+                {where_clause}
+                GROUP BY time_bucket('1 day', timestamp_local)
+            )
+            SELECT
+                wlda.timestamp_local as date,
+                wlda.avg_value as daily_average_water_level,
+                (me.morning_water_level + me.evening_water_level) / 2.0 as manual_daily_average_water_level,
+                me.morning_water_level,
+                me.morning_water_level_timestamp,
+                me.evening_water_level,
+                me.evening_water_level_timestamp,
+                de.min_water_level,
+                de.min_water_level_timestamp,
+                de.max_water_level,
+                de.max_water_level_timestamp
+            FROM estimations_water_level_daily_average wlda
+            LEFT JOIN morning_evening me ON time_bucket('1 day', wlda.timestamp_local) = me.day
+            LEFT JOIN daily_extremes de ON time_bucket('1 day', wlda.timestamp_local) = de.day
+            WHERE wlda.station_id = %s
+            AND wlda.timestamp_local >= %s
+            AND wlda.timestamp_local < %s
+            ORDER BY wlda.timestamp_local {self.order_direction}
+        """
         try:
             with connection.cursor() as cursor:
-                cursor.execute(query, params)
+                cursor.execute(query, all_params)
                 columns = [col[0] for col in cursor.description]
                 rows = cursor.fetchall()
         except (DataError, ProgrammingError) as e:
