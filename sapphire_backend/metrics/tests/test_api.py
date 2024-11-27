@@ -289,6 +289,157 @@ class TestHydroMetricsAPI:
 
         assert response.status_code == expected_status
 
+    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.parametrize("water_level_metrics_daily_generator", [(start_date, end_date)], indirect=True)
+    def test_get_detailed_daily_hydro_metrics(
+        self,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        regular_user_kyrgyz_api_client,
+        water_level_metrics_daily_generator,
+    ):
+        """Test getting detailed daily hydro metrics with all fields."""
+        response = regular_user_kyrgyz_api_client.get(
+            f"{self.endpoint.format(organization_kyrgyz.uuid)}/detailed-daily",
+            {
+                "station": manual_hydro_station_kyrgyz.id,
+                "timestamp_local__gte": "2020-02-01T00:00:00Z",
+                "timestamp_local__lt": "2020-02-15T00:00:00Z",
+                "metric_name__in": ["WLD", "ATDA", "WTDA"],  # Water Level Daily + Air/Water Temperature
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) > 0
+
+        # Check first entry has all required fields
+        first_entry = data[0]
+        expected_fields = {
+            "id",
+            "date",
+            "daily_average_water_level",
+            "manual_daily_average_water_level",
+            "morning_water_level",
+            "morning_water_level_timestamp",
+            "evening_water_level",
+            "evening_water_level_timestamp",
+            "min_water_level",
+            "min_water_level_timestamp",
+            "max_water_level",
+            "max_water_level_timestamp",
+            "daily_average_air_temperature",
+            "daily_average_water_temperature",
+        }
+        assert set(first_entry.keys()) == expected_fields
+
+    @pytest.mark.parametrize(
+        "client_fixture, expected_status_code",
+        [
+            ("api_client", 401),  # anonymous user
+            ("authenticated_regular_user_other_organization_api_client", 403),  # other org user
+            ("authenticated_regular_user_api_client", 200),  # regular user
+            ("authenticated_superadmin_user_api_client", 200),  # superadmin
+        ],
+    )
+    def test_get_detailed_daily_hydro_metrics_permissions(
+        self,
+        client_fixture,
+        expected_status_code,
+        organization,
+        manual_hydro_station,
+        request,
+    ):
+        """Test permissions for detailed daily hydro metrics endpoint."""
+        client = request.getfixturevalue(client_fixture)
+        response = client.get(
+            f"{self.endpoint.format(organization.uuid)}/detailed-daily",
+            {
+                "station": manual_hydro_station.id,
+                "timestamp_local__gte": "2020-02-01T00:00:00Z",
+                "timestamp_local__lt": "2020-02-15T00:00:00Z",
+                "metric_name__in": ["WLD"],
+            },
+        )
+        assert response.status_code == expected_status_code
+
+    def test_get_detailed_daily_hydro_metrics_missing_params(
+        self,
+        authenticated_regular_user_api_client,
+        organization,
+        manual_hydro_station,
+    ):
+        """Test validation of required query parameters."""
+        # Missing station
+        response = authenticated_regular_user_api_client.get(
+            f"{self.endpoint.format(organization.uuid)}/detailed-daily",
+            {
+                "timestamp_local__gte": "2020-02-01T00:00:00Z",
+                "timestamp_local__lt": "2020-02-15T00:00:00Z",
+                "metric_name__in": ["WLD"],
+            },
+        )
+        assert response.status_code == 422
+        assert response.json()["detail"] == "Some data is invalid or missing"
+
+        # Missing WLD metric
+        response = authenticated_regular_user_api_client.get(
+            f"{self.endpoint.format(organization.uuid)}/detailed-daily",
+            {
+                "station": manual_hydro_station.id,
+                "timestamp_local__gte": "2020-02-01T00:00:00Z",
+                "timestamp_local__lt": "2020-02-15T00:00:00Z",
+                "metric_name__in": ["ATDA"],  # Only air temperature, no water level
+            },
+        )
+        assert response.status_code == 422
+        assert response.json()["detail"] == "Some data is invalid or missing"
+
+        # Missing date range
+        response = authenticated_regular_user_api_client.get(
+            f"{self.endpoint.format(organization.uuid)}/detailed-daily",
+            {
+                "station": manual_hydro_station.id,
+                "metric_name__in": ["WLD"],
+            },
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.parametrize("water_level_metrics_daily_generator", [(start_date, end_date)], indirect=True)
+    def test_get_detailed_daily_hydro_metrics_data_validation(
+        self,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        regular_user_kyrgyz_api_client,
+        water_level_metrics_daily_generator,
+    ):
+        """Test data validation and processing."""
+        # Test with invalid date range (too long)
+        response = regular_user_kyrgyz_api_client.get(
+            f"{self.endpoint.format(organization_kyrgyz.uuid)}/detailed-daily",
+            {
+                "station": manual_hydro_station_kyrgyz.id,
+                "timestamp_local__gte": "2019-01-01T00:00:00Z",
+                "timestamp_local__lt": "2021-01-01T00:00:00Z",  # More than 365 days
+                "metric_name__in": ["WLD"],
+            },
+        )
+        assert response.status_code == 422
+        assert "Some data is invalid or missing" in response.json()["detail"]
+
+        # Test with invalid metric names
+        response = regular_user_kyrgyz_api_client.get(
+            f"{self.endpoint.format(organization_kyrgyz.uuid)}/detailed-daily",
+            {
+                "station": manual_hydro_station_kyrgyz.id,
+                "timestamp_local__gte": "2020-02-01T00:00:00Z",
+                "timestamp_local__lt": "2020-02-15T00:00:00Z",
+                "metric_name__in": ["INVALID"],
+            },
+        )
+        assert response.status_code == 422
+
     def test_get_hydro_metric_count(
         self,
         authenticated_regular_user_api_client,

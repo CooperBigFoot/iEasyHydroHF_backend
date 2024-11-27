@@ -54,6 +54,7 @@ from .choices import (
 from .models import HydrologicalMetric, HydrologicalNorm, MeteorologicalMetric, MeteorologicalNorm
 from .schema import (
     BulkDataDownloadInputSchema,
+    DetailedDailyHydroMetricFilterSchema,
     DetailedDailyHydroMetricSchema,
     DisplayType,
     HFChartSchema,
@@ -306,10 +307,11 @@ class HydroMetricsAPIController:
     def get_detailed_daily_hydro_metrics(
         self,
         organization_uuid: str,
-        filters: Query[HydroMetricFilterSchema],
+        filters: Query[DetailedDailyHydroMetricFilterSchema],
     ):
         """Get detailed daily hydro metrics including specific time measurements."""
         filter_dict = filters.dict(exclude_none=True)
+
         filter_dict["station__site__organization"] = organization_uuid
         # Get temperature data if requested
         requested_metrics = filter_dict.get("metric_name__in", [])
