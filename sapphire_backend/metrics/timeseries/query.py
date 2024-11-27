@@ -199,3 +199,78 @@ class TimeseriesQueryManager:
 
         results = [{"bucket": row[0], "value": row[1]} for row in rows]
         return results
+
+    def get_detailed_daily_metrics(self):
+        """Get detailed daily metrics including 8AM/8PM values and min/max."""
+        db_table = self.model._meta.db_table
+        join_string = self._construct_organization_sql_join_string()
+        where_string, params = self._construct_sql_filter_string()
+        where_clause = f"WHERE {where_string}" if where_string else ""
+
+        # Duplicate params for both CTEs and add station_id and date range for final WHERE
+        all_params = (
+            params
+            + params
+            + [
+                self.filter_dict["station"],
+                self.filter_dict["timestamp_local__gte"],  # This is the actual datetime value
+                self.filter_dict["timestamp_local__lt"],  # This is the actual datetime value
+            ]
+        )
+
+        query = f"""
+            WITH morning_evening AS (
+                SELECT
+                    time_bucket('1 day', timestamp_local) as day,
+                    first(ceil(avg_value), abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_water_level,
+                    first(timestamp_local, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_water_level_timestamp,
+                    first(ceil(avg_value), abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '20 hours'))) as evening_water_level,
+                    first(timestamp_local, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '20 hours'))) as evening_water_level_timestamp
+                FROM {db_table}
+                {join_string}
+                {where_clause}
+                GROUP BY time_bucket('1 day', timestamp_local)
+            ),
+            daily_extremes AS (
+                SELECT
+                    time_bucket('1 day', timestamp_local) AS day,
+                    ceil(MIN(avg_value)) as min_water_level,
+                    ceil(MAX(avg_value)) as max_water_level,
+                    first(timestamp_local, avg_value) as min_water_level_timestamp,
+                    last(timestamp_local, avg_value) as max_water_level_timestamp
+                FROM {db_table}
+                {join_string}
+                {where_clause}
+                GROUP BY time_bucket('1 day', timestamp_local)
+            )
+            SELECT
+                wlda.timestamp_local as date,
+                wlda.avg_value as daily_average_water_level,
+                ceil((me.morning_water_level + me.evening_water_level) / 2.0) as manual_daily_average_water_level,
+                me.morning_water_level,
+                me.morning_water_level_timestamp,
+                me.evening_water_level,
+                me.evening_water_level_timestamp,
+                de.min_water_level,
+                de.min_water_level_timestamp,
+                de.max_water_level,
+                de.max_water_level_timestamp
+            FROM estimations_water_level_daily_average wlda
+            LEFT JOIN morning_evening me ON time_bucket('1 day', wlda.timestamp_local) = me.day
+            LEFT JOIN daily_extremes de ON time_bucket('1 day', wlda.timestamp_local) = de.day
+            WHERE wlda.station_id = %s
+            AND wlda.timestamp_local >= %s
+            AND wlda.timestamp_local < %s
+            ORDER BY wlda.timestamp_local {self.order_direction}
+        """
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, all_params)
+                columns = [col[0] for col in cursor.description]
+                rows = cursor.fetchall()
+        except (DataError, ProgrammingError) as e:
+            raise ValueError(f"Query execution failed: {str(e)}")
+        finally:
+            connection.close()
+
+        return [dict(zip(columns, row)) for row in rows]

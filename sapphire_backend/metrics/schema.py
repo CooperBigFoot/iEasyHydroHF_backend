@@ -3,6 +3,8 @@ from enum import Enum
 from typing import Literal
 
 from ninja import Field, FilterSchema, ModelSchema, Schema
+from ninja.errors import ValidationError
+from pydantic import field_validator
 
 from .choices import (
     HydrologicalMeasurementType,
@@ -227,3 +229,43 @@ class MetricViewTypeSchema(Schema):
 
 class MetricDisplayTypeSchema(Schema):
     display_type: DisplayType
+
+
+class DetailedDailyHydroMetricSchema(Schema):
+    date: datetime
+    id: datetime
+    daily_average_water_level: float | None
+    morning_water_level: float | None
+    morning_water_level_timestamp: datetime | None
+    evening_water_level: float | None
+    evening_water_level_timestamp: datetime | None
+    manual_daily_average_water_level: float | None
+    min_water_level: float | None
+    min_water_level_timestamp: datetime | None
+    max_water_level: float | None
+    max_water_level_timestamp: datetime | None
+    daily_average_air_temperature: float | None
+    daily_average_water_temperature: float | None
+
+
+class DetailedDailyHydroMetricFilterSchema(Schema):
+    station: int
+    metric_name__in: list[HydrologicalMetricName]
+    timestamp_local__gte: datetime
+    timestamp_local__lt: datetime
+
+    @field_validator("metric_name__in")
+    @classmethod
+    def validate_wld_metric_present(cls, v):
+        if not v or HydrologicalMetricName.WATER_LEVEL_DAILY not in v:
+            raise ValidationError("WATER_LEVEL_DAILY (WLD) metric is required")
+        return v
+
+    @field_validator("timestamp_local__lt")
+    @classmethod
+    def validate_date_range(cls, v, info):
+        if "timestamp_local__gte" in info.data:
+            date_range = v - info.data["timestamp_local__gte"]
+            if date_range.days > 365:
+                raise ValidationError("Date range cannot be more than 365 days")
+        return v
