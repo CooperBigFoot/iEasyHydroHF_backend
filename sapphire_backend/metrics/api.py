@@ -10,6 +10,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.models import Avg, Case, Count, DecimalField, Max, Min, QuerySet, Sum, Value, When
+from django.db.models.functions import Ceil
 from django.http import FileResponse
 from django.templatetags.static import static
 from ninja import File, Query
@@ -40,7 +41,6 @@ from ..estimations.models import (
     EstimationsWaterLevelDecadeAverage,
     EstimationsWaterTemperatureDaily,
     HydrologicalNormVirtual,
-    HydrologicalRound,
 )
 from .choices import (
     HydrologicalMeasurementType,
@@ -174,7 +174,7 @@ class HydroMetricsAPIController:
         return {
             metric: Max(
                 Case(
-                    When(metric_name=metric, then=HydrologicalRound("avg_value")),
+                    When(metric_name=metric, then=Ceil("avg_value")),
                     default=Value(None),
                     output_field=DecimalField(),
                 )

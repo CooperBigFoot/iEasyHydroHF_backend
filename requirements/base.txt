@@ -29,3 +29,6 @@ whitenoise==6.7.0  # https://github.com/evansd/whitenoise
 
 # reporting
 git+https://github.com/hydrosolutions/ieasyreports.git@main
+
+# lindas
+SPARQLWrapper==2.0.0  # https://github.com/RDFLib/sparqlwrapper
