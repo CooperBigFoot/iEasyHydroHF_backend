@@ -1,6 +1,6 @@
 # Cron job to run the ingestion command every 20 minutes
 */20 * * * * root . /etc/environment; /usr/local/bin/python /app/manage.py ingest >> /app/cron-ingestion.log 2>&1
 
-# Cron job to run the ingestion simulation command every 5 minutes
-*/5 * * * * root . /etc/environment; /usr/local/bin/python /app/manage.py simulate_ingest --src_id 104 --dest_id 106 --metrics WLD WDD ATO WTO PD --offset_value 0.1 >> /app/cron-simulate.log 2>&1
-*/5 * * * * root . /etc/environment; /usr/local/bin/python /app/manage.py simulate_ingest --src_id 102 --dest_id 105 --metrics WLD WDD ATO WTO PD --offset_value 0.05 >> /app/cron-simulate.log 2>&1
+# Cron job to run the lindas ingestion command every 22 minutes
+*/22 * * * * root . /etc/environment; /usr/local/bin/python /app/manage.py query_lindas >> /app/cron-lindas.log 2>&1
+*/22 * * * * root . /etc/environment; /usr/local/bin/python /app/manage.py query_lindas >> /app/cron-lindas.log 2>&1
