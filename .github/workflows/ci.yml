@@ -10,12 +10,12 @@ env:
 
 on:
   pull_request:
-    branches: [ 'main' ]
-    paths-ignore: [ 'docs/**' ]
+    branches: ["main"]
+    paths-ignore: ["docs/**"]
 
   push:
-    branches: [ 'main', 'deployment_pipeline' ]
-    paths-ignore: [ 'docs/**' ]
+    branches: ["main", "deployment_pipeline"]
+    paths-ignore: ["docs/**"]
 
 concurrency:
   group: ${{ github.head_ref || github.run_id }}
@@ -31,7 +31,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       # Consider using pre-commit.ci for open source project
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.1
@@ -103,6 +103,7 @@ jobs:
           echo 'INGESTION_FTP_HOST=${{ secrets.INGESTION_FTP_HOST }}' >> deployment/.backend.env
           echo 'INGESTION_FTP_PORT=${{ secrets.INGESTION_FTP_PORT }}' >> deployment/.backend.env
           echo 'INGESTION_FTP_USER=${{ secrets.INGESTION_FTP_USER }}' >> deployment/.backend.env
+          echo 'SPARQL_ENDPOINT=${{ secrets.SPARQL_ENDPOINT }}' >> deployment/.backend.env
           echo 'INGESTION_FTP_PASSWORD=${{ secrets.INGESTION_FTP_PASSWORD }}' >> deployment/.backend.env
           echo 'IEASYREPORTS_DATA_MANAGER_CLASS=${{ secrets.IEASYREPORTS_DATA_MANAGER_CLASS }}' >> deployment/.backend.env
           echo 'IEASYREPORTS_TEMPLATE_GENERATOR_CLASS=${{ secrets.IEASYREPORTS_TEMPLATE_GENERATOR_CLASS }}' >> deployment/.backend.env
