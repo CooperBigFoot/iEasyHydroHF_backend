@@ -157,3 +157,55 @@ class TestLindasSparqlHydroScraper:
         # Verify metrics were saved
         metrics = HydrologicalMetric.objects.filter(station=manual_hydro_station_kyrgyz)
         assert metrics.count() == 2  # Should have water level and temperature
+
+    @pytest.mark.django_db
+    @patch.object(LindasSparqlHydroScraper, "fetch_data")
+    def test_save_duplicate_metrics(self, mock_fetch, mock_sparql_response, manual_hydro_station_kyrgyz):
+        """Test saving metrics when they already exist in the database."""
+        mock_fetch.return_value = mock_sparql_response
+        scraper = LindasSparqlHydroScraper()
+        timestamp = "2024-03-19T10:00:00+01:00"
+
+        site_data = {
+            "station": manual_hydro_station_kyrgyz.station_code,
+            "timestamp": timestamp,
+            "water_level": 123.45,
+            "water_temperature": 15.6,
+        }
+
+        # Save metrics first time
+        scraper._save_metrics(manual_hydro_station_kyrgyz, site_data)
+
+        # Modify the values and try to save again
+        site_data_updated = {
+            "station": manual_hydro_station_kyrgyz.station_code,
+            "timestamp": timestamp,  # Same timestamp
+            "water_level": 130.0,  # Different value
+            "water_temperature": 16.0,  # Different value
+        }
+
+        scraper._save_metrics(manual_hydro_station_kyrgyz, site_data_updated)
+
+        # Verify that metrics were updated
+        water_level = HydrologicalMetric.objects.filter(
+            station=manual_hydro_station_kyrgyz,
+            metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+            timestamp_local=scraper._convert_timestamp(timestamp),
+        ).first()
+        assert water_level is not None
+        assert water_level.avg_value == Decimal("130.0")  # Should have the updated value
+
+        water_temp = HydrologicalMetric.objects.filter(
+            station=manual_hydro_station_kyrgyz,
+            metric_name=HydrologicalMetricName.WATER_TEMPERATURE,
+            timestamp_local=scraper._convert_timestamp(timestamp),
+        ).first()
+        assert water_temp is not None
+        assert water_temp.avg_value == Decimal("16.0")  # Should have the updated value
+
+        # Verify we still only have 2 records (no duplicates)
+        metrics_count = HydrologicalMetric.objects.filter(
+            station=manual_hydro_station_kyrgyz,
+            timestamp_local=scraper._convert_timestamp(timestamp),
+        ).count()
+        assert metrics_count == 2  # One for water level, one for temperature
