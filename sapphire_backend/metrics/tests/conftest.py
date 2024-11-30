@@ -180,3 +180,30 @@ def mock_datetime():
         mock.now.return_value = dt.datetime(2024, 10, 8, tzinfo=ZoneInfo("UTC"))
         mock.side_effect = lambda *args, **kw: dt.datetime(*args, **kw)
         yield mock
+
+
+@pytest.fixture
+def mock_sparql_response():
+    """Mock SPARQL response with test data."""
+    return {
+        "results": {
+            "bindings": [
+                {
+                    "predicate": {"value": "https://environment.ld.admin.ch/foen/hydro/dimension/station"},
+                    "object": {"value": "https://environment.ld.admin.ch/foen/hydro/station/2099"},
+                },
+                {
+                    "predicate": {"value": "https://environment.ld.admin.ch/foen/hydro/dimension/measurementTime"},
+                    "object": {"value": "2024-03-19T10:00:00+01:00"},
+                },
+                {
+                    "predicate": {"value": "https://environment.ld.admin.ch/foen/hydro/dimension/waterLevel"},
+                    "object": {"value": "123.45"},
+                },
+                {
+                    "predicate": {"value": "https://environment.ld.admin.ch/foen/hydro/dimension/waterTemperature"},
+                    "object": {"value": "15.6"},
+                },
+            ]
+        }
+    }
