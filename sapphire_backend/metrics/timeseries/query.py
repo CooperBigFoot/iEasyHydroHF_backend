@@ -222,7 +222,7 @@ class TimeseriesQueryManager:
             WITH morning_evening AS (
                 SELECT
                     time_bucket('1 day', timestamp_local) as day,
-                    first(ROUND(avg_value, 1)), abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_water_level,
+                    first(ROUND(avg_value, 1), abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_water_level,
                     first(timestamp_local, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '8 hours'))) as morning_water_level_timestamp,
                     first(ROUND(avg_value, 1), abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '20 hours'))) as evening_water_level,
                     first(timestamp_local, abs(EXTRACT(EPOCH FROM timestamp_local - time_bucket('1 day', timestamp_local) - interval '20 hours'))) as evening_water_level_timestamp
