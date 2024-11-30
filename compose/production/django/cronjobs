@@ -3,4 +3,3 @@
 
 # Cron job to run the lindas ingestion command every 22 minutes
 */22 * * * * root . /etc/environment; /usr/local/bin/python /app/manage.py query_lindas >> /app/cron-lindas.log 2>&1
-*/22 * * * * root . /etc/environment; /usr/local/bin/python /app/manage.py query_lindas >> /app/cron-lindas.log 2>&1
