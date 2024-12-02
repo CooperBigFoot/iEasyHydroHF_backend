@@ -5,11 +5,13 @@ import time
 from datetime import datetime
 from urllib.parse import urljoin
 
+from django.utils import timezone
 from SPARQLWrapper import JSON, SPARQLWrapper
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, MetricUnit
 from sapphire_backend.metrics.models import HydrologicalMetric
+from sapphire_backend.organizations.models import Organization
 from sapphire_backend.stations.models import HydrologicalStation
 
 
@@ -117,14 +119,15 @@ class LindasSparqlHydroScraper:
     """Initialize the LINDAS SPARQL scraper.
 
     Args:
-        site_codes: List of site codes to scrape
-        parameters: List of parameters to query for each site
+        organization_name: Name of the organization to scrape stations for
+        force_all_stations: If True, scrapes all stations regardless of time
+        site_codes: Optional list of specific site codes to scrape
+        parameters: Optional list of parameters to query
 
     Raises:
-        SystemExit: If SPARQL_ENDPOINT environment variable is not set
+        ValueError: If SPARQL_ENDPOINT environment variable is not set
     """
 
-    DEFAULT_SITE_CODES = ["2099", "2176", "2432", "2634"]
     DEFAULT_PARAMETERS = [
         "station",
         "measurementTime",
@@ -134,16 +137,27 @@ class LindasSparqlHydroScraper:
     NUMERIC_FIELDS = ["waterLevel", "waterTemperature"]
     MAX_RETRIES = 3
     INITIAL_RETRY_DELAY = 2
+    MANUAL_STATION_HOURS = {8, 20}
 
-    def __init__(self, site_codes: list[str] | None = None, parameters: list[str] | None = None):
+    def __init__(
+        self,
+        organization_name: str = "Hydrosolutions GmbH",
+        force_all_stations: bool = False,
+        site_codes: list[str] | None = None,
+        parameters: list[str] | None = None,
+    ):
         self.logger = self._setup_logging()
         self.endpoint_url = os.getenv("SPARQL_ENDPOINT")
         if not self.endpoint_url:
             self.logger.error("SPARQL_ENDPOINT environment variable is not set")
             raise ValueError("SPARQL_ENDPOINT environment variable is not set")
-        self.query_builder = LindasSparqlQueryBuilder()
-        self.site_codes = site_codes or self.DEFAULT_SITE_CODES
+
+        self.organization_name = organization_name
+        self.force_all_stations = force_all_stations
+        self.site_codes = site_codes
         self.parameters = parameters or self.DEFAULT_PARAMETERS
+
+        self.query_builder = LindasSparqlQueryBuilder()
         self.sparql = self._setup_sparql_client()
 
     def _setup_logging(self) -> logging.Logger:
@@ -224,16 +238,51 @@ class LindasSparqlHydroScraper:
         results = self.fetch_data()
         return self.process_data(results, site_code) if results else None
 
-    def _get_station(self, station_code: str) -> HydrologicalStation | None:
-        """Get HydrologicalStation instance for the given station code."""
+    def _get_organization_timezone(self, organization_name: str) -> str:
+        """Get the timezone for the organization."""
         try:
-            return HydrologicalStation.objects.get(
-                station_code=f"0{station_code}",  # the codes we're working with are prefixed with 0
-                is_deleted=False,
+            organization = Organization.objects.get(name=organization_name)
+            return str(organization.timezone)
+        except Organization.DoesNotExist:
+            self.logger.warning(f"Organization {organization_name} not found")
+            return "UTC"
+
+    def _get_stations_to_process(self) -> list[HydrologicalStation]:
+        """Get list of stations to process based on current time and station type."""
+        from django.db.models import Q
+
+        # If specific site codes are provided, use those
+        if self.site_codes:
+            return list(
+                HydrologicalStation.objects.filter(
+                    station_code__in=[f"0{code}" for code in self.site_codes], is_deleted=False
+                )
             )
-        except HydrologicalStation.DoesNotExist:
-            self.logger.warning(f"No station found for site code {station_code}")
-            return None
+
+        # Otherwise, get stations for the organization
+        stations = HydrologicalStation.objects.filter(
+            site__organization__name=self.organization_name, is_deleted=False
+        )
+
+        if self.force_all_stations:
+            return list(stations)
+
+        # Get current hour in organization's timezone
+        org_timezone = self._get_organization_timezone(self.organization_name)
+        current_time = timezone.now().astimezone(ZoneInfo(org_timezone))
+        current_hour = current_time.hour
+
+        self.logger.info(f"Current time in {org_timezone}: {current_time}")
+
+        # Build query based on time
+        query = Q(station_type=HydrologicalStation.StationType.AUTOMATIC)
+        if current_hour in self.MANUAL_STATION_HOURS:
+            query |= Q(station_type=HydrologicalStation.StationType.MANUAL)
+            self.logger.info("Including manual stations in current run")
+        else:
+            self.logger.info("Skipping manual stations for current run")
+
+        return list(stations.filter(query))
 
     def _convert_timestamp(self, timestamp_str: str) -> datetime:
         """Convert LINDAS timestamp to UTC-based local time."""
@@ -301,14 +350,20 @@ class LindasSparqlHydroScraper:
         """Execute the main scraping process."""
         self.logger.info("Starting data collection...")
 
-        for site_code in self.site_codes:
+        stations = self._get_stations_to_process()
+        if not stations:
+            self.logger.warning("No stations found to process")
+            return
+
+        self.logger.info(f"Processing {len(stations)} stations")
+
+        for station in stations:
             try:
+                # Remove leading '0' from station code for LINDAS
+                site_code = station.station_code.lstrip("0")
+
                 site_data = self._process_site(site_code)
                 if not site_data:
-                    continue
-
-                station = self._get_station(site_data["station"])
-                if not station:
                     continue
 
                 self._save_metrics(station, site_data)

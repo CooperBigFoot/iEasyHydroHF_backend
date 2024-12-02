@@ -91,6 +91,16 @@ def backup_organization(db, organization_factory=OrganizationFactory):
     )
 
 
+@pytest.fixture
+def hydrosolutions_organization(db, organization_factory=OrganizationFactory):
+    return organization_factory.create(
+        name="Hydrosolutions GmbH",
+        language=Organization.Language.ENGLISH,
+        year_type=Organization.YearType.HYDROLOGICAL,
+        timezone=ZoneInfo("Europe/Zurich"),
+    )
+
+
 # basins
 @pytest.fixture
 def basin(db, organization):
@@ -375,6 +385,26 @@ def automatic_hydro_station_backup(db, site_one):
         station_type=HydrologicalStation.StationType.AUTOMATIC,
         station_code="98765",
         name="Automatic Hydrological Station Backup",
+    )
+
+
+@pytest.fixture
+def hydrosolutions_station_automatic(db, hydrosolutions_organization):
+    return HydrologicalStationFactory(
+        name="Auto Station",
+        station_code="02099",
+        station_type=HydrologicalStation.StationType.AUTOMATIC,
+        site__organization=hydrosolutions_organization,
+    )
+
+
+@pytest.fixture
+def hydrosolutions_station_manual(db, hydrosolutions_organization):
+    return HydrologicalStationFactory(
+        name="Manual Station",
+        station_code="02176",
+        station_type=HydrologicalStation.StationType.MANUAL,
+        site__organization=hydrosolutions_organization,
     )
 
 

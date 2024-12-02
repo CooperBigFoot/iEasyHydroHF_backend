@@ -1,6 +1,3 @@
-import logging
-from typing import Any
-
 from django.core.management.base import BaseCommand, CommandError
 
 from sapphire_backend.metrics.utils.lindas import LindasSparqlHydroScraper
@@ -17,7 +14,7 @@ class Command(BaseCommand):
             "--site-codes",
             nargs="+",
             type=str,
-            help="List of site codes to scrape (e.g., 2044 2112)",
+            help="List of specific site codes to scrape (e.g., 2044 2112). If not provided, scrapes all organization stations.",
         )
         parser.add_argument(
             "--parameters",
@@ -25,12 +22,24 @@ class Command(BaseCommand):
             type=str,
             help="List of parameters to query (e.g., waterLevel waterTemperature)",
         )
+        parser.add_argument(
+            "--organization",
+            type=str,
+            default="Hydrosolutions GmbH",
+            help="Organization name to scrape stations for",
+        )
+        parser.add_argument(
+            "--force-all",
+            action="store_true",
+            help="Force processing of all stations regardless of time",
+        )
 
-    def handle(self, *args: Any, **options: Any) -> None:
+    def handle(self, *args, **options):
         """Execute the command."""
         try:
-            # Initialize scraper with provided arguments or defaults
             scraper = LindasSparqlHydroScraper(
+                organization_name=options["organization"],
+                force_all_stations=options["force_all"],
                 site_codes=options.get("site_codes"),
                 parameters=options.get("parameters"),
             )
@@ -42,5 +51,5 @@ class Command(BaseCommand):
         except ValueError as e:
             raise CommandError(f"Configuration error: {str(e)}")
         except Exception as e:
-            logging.exception("Error during LINDAS scraping")
+            self.stdout.write(self.style.ERROR(f"Scraping failed: {str(e)}"))
             raise CommandError(f"Scraping failed: {str(e)}")
