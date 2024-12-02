@@ -116,6 +116,25 @@ class TestLindasSparqlHydroScraper:
             assert (hydrosolutions_station_manual in stations) == should_include_manual
 
     @pytest.mark.django_db
+    def test_get_stations_nonexistent_codes(self, hydrosolutions_organization):
+        """Test that no stations are returned when providing nonexistent station codes."""
+        scraper = LindasSparqlHydroScraper(
+            organization_name=hydrosolutions_organization.name,
+            site_codes=["9999", "8888"],  # Nonexistent codes
+        )
+        stations = scraper._get_stations_to_process()
+
+        assert len(stations) == 0
+
+    @pytest.mark.django_db
+    def test_get_stations_nonexistent_organization(self):
+        """Test that no stations are returned when providing a nonexistent organization."""
+        scraper = LindasSparqlHydroScraper(organization_name="Nonexistent Organization")
+        stations = scraper._get_stations_to_process()
+
+        assert len(stations) == 0
+
+    @pytest.mark.django_db
     def test_get_stations_to_process_force_all(
         self, hydrosolutions_organization, hydrosolutions_station_automatic, hydrosolutions_station_manual
     ):
