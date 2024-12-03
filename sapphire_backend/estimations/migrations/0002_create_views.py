@@ -52,7 +52,10 @@ class Migration(migrations.Migration):
                 SELECT
                     time_bucket('1 day',  hm.timestamp_local) at time zone 'UTC' + '12 hours' as timestamp_local,
                                     CAST(NULL AS NUMERIC) as min_value,
-                                    CEIL(AVG(hm.avg_value)) AS avg_value,
+                                    CASE 
+                                        WHEN hm.value_type = 'A' THEN ROUND(AVG(hm.avg_value), 1)
+                                        ELSE CEIL(AVG(hm.avg_value))
+                                    END AS avg_value,
                                     CAST(NULL AS NUMERIC) as max_value,
                                     'cm' as unit,
                                     'E' as value_type,
@@ -66,7 +69,8 @@ class Migration(migrations.Migration):
                      hm.metric_name = 'WLD'
                 GROUP BY
                     time_bucket('1 day', hm.timestamp_local),
-                    hm.station_id
+                    hm.station_id,
+                    hm.value_type
                 HAVING COUNT(hm.avg_value) > 1
                 WITH NO DATA;
               """
@@ -269,6 +273,7 @@ class Migration(migrations.Migration):
                 WITH data_ranges AS (
                     SELECT wlda.timestamp_local,
                            wlda.station_id,
+                           wlda.value_type,
                            CASE
                                WHEN EXTRACT(DAY FROM wlda.timestamp_local) BETWEEN 1 AND 10 THEN 'first_decade'
                                WHEN EXTRACT(DAY FROM wlda.timestamp_local) BETWEEN 11 AND 20 THEN 'second_decade'
@@ -282,9 +287,12 @@ class Migration(migrations.Migration):
                            EXTRACT(YEAR FROM timestamp_local) AS year,
                            EXTRACT(MONTH FROM timestamp_local) AS month,
                            decade,
-                           CEIL(AVG(avg_value)) AS avg_value
+                           CASE 
+                               WHEN value_type = 'A' THEN ROUND(AVG(avg_value), 1)
+                               ELSE CEIL(AVG(avg_value))
+                           END AS avg_value
                     FROM data_ranges
-                    GROUP BY station_id, year, month, decade
+                    GROUP BY station_id, year, month, decade, value_type
                 ),
                 representative_days AS (
                             SELECT
