@@ -30,7 +30,9 @@ from .mixins import BaseHydroMetricMixin, MinMaxValueMixin, NormModelMixin, Sens
 
 
 def resolve_timestamp_local_tz_pair(
-    timestamp_local: datetime, timestamp: datetime, station: [HydrologicalStation | MeteorologicalStation]
+    timestamp_local: datetime | None,
+    timestamp: datetime | None,
+    station: [HydrologicalStation | MeteorologicalStation],
 ) -> (datetime, datetime):
     if timestamp_local is None and timestamp is not None:
         timestamp_local = SmartDatetime(timestamp, station, tz_included=True).local

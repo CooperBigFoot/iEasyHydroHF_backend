@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from urllib.parse import urljoin
 
+from django.db.models import Q
 from django.utils import timezone
 from SPARQLWrapper import JSON, SPARQLWrapper
 from zoneinfo import ZoneInfo
@@ -249,8 +250,6 @@ class LindasSparqlHydroScraper:
 
     def _get_stations_to_process(self) -> list[HydrologicalStation]:
         """Get list of stations to process based on current time and station type."""
-        from django.db.models import Q
-
         # If specific site codes are provided, use those
         if self.site_codes:
             return list(
@@ -277,8 +276,44 @@ class LindasSparqlHydroScraper:
         # Build query based on time
         query = Q(station_type=HydrologicalStation.StationType.AUTOMATIC)
         if current_hour in self.MANUAL_STATION_HOURS:
-            query |= Q(station_type=HydrologicalStation.StationType.MANUAL)
-            self.logger.info("Including manual stations in current run")
+            # Get stations with measurements using raw SQL
+            stations_with_measurements = HydrologicalStation.objects.raw(
+                """
+                SELECT DISTINCT s.*
+                FROM stations_hydrologicalstation s
+                INNER JOIN metrics_hydrologicalmetric m ON s.id = m.station_id
+                WHERE DATE(m.timestamp_local) = %s
+                AND EXTRACT(HOUR FROM m.timestamp_local) = %s
+                AND m.metric_name = %s
+                AND s.station_type = %s
+            """,
+                [
+                    current_time.date(),
+                    current_hour,
+                    HydrologicalMetricName.WATER_LEVEL_DAILY,
+                    HydrologicalStation.StationType.MANUAL,
+                ],
+            )
+
+            # Convert to list of IDs since we need to use this in a subsequent query
+            stations_with_measurements_ids = [s.id for s in stations_with_measurements]
+
+            self.logger.info(
+                f"Found {len(stations_with_measurements_ids)} existing measurements for manual stations on {current_time.date()} at {current_hour}:00"
+            )
+
+            # Get manual stations without measurements
+            manual_stations_without_measurements = HydrologicalStation.objects.filter(
+                station_type=HydrologicalStation.StationType.MANUAL,
+                site__organization__name=self.organization_name,
+                is_deleted=False,
+            ).exclude(id__in=stations_with_measurements_ids)
+
+            if manual_stations_without_measurements.exists():
+                query |= Q(id__in=manual_stations_without_measurements.values_list("id", flat=True))
+                self.logger.info("Including manual stations without measurements for current hour today")
+            else:
+                self.logger.info("Skipping manual stations as measurements already exist for current hour today")
         else:
             self.logger.info("Skipping manual stations for current run")
 
@@ -307,6 +342,13 @@ class LindasSparqlHydroScraper:
             },
         }
 
+        # Determine measurement type based on station type
+        value_type = (
+            HydrologicalMeasurementType.MANUAL
+            if station.station_type == HydrologicalStation.StationType.MANUAL
+            else HydrologicalMeasurementType.AUTOMATIC
+        )
+
         for data_key, mapping in metric_mappings.items():
             value = site_data.get(data_key)
             if value is not None:
@@ -315,7 +357,7 @@ class LindasSparqlHydroScraper:
                         timestamp_local=timestamp_local,
                         station=station,
                         metric_name=mapping["metric_name"],
-                        value_type=HydrologicalMeasurementType.AUTOMATIC,
+                        value_type=value_type,  # Use the determined value type
                         unit=mapping["unit"],
                         avg_value=value,
                         source_type=HydrologicalMetric.SourceType.UNKNOWN,
