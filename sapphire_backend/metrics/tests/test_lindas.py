@@ -1,9 +1,7 @@
-from datetime import datetime
 from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-from freezegun import freeze_time
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName
@@ -90,31 +88,6 @@ class TestLindasSparqlHydroScraper:
         timezone = scraper._get_organization_timezone("NonexistentOrg")
         assert timezone == str(ZoneInfo("UTC"))
 
-    @pytest.mark.parametrize(
-        "current_hour,should_include_manual",
-        [
-            (8, True),  # Manual station hour
-            (20, True),  # Manual station hour
-            (15, False),  # Non-manual station hour
-        ],
-    )
-    @pytest.mark.django_db
-    def test_get_stations_to_process_time_based(
-        self,
-        hydrosolutions_organization,
-        hydrosolutions_station_automatic,
-        hydrosolutions_station_manual,
-        current_hour,
-        should_include_manual,
-    ):
-        test_time = datetime(2024, 3, 19, current_hour, 0, tzinfo=ZoneInfo("Europe/Zurich"))
-        with freeze_time(test_time):
-            scraper = LindasSparqlHydroScraper(organization_name=hydrosolutions_organization.name)
-            stations = scraper._get_stations_to_process()
-
-            assert hydrosolutions_station_automatic in stations
-            assert (hydrosolutions_station_manual in stations) == should_include_manual
-
     @pytest.mark.django_db
     def test_get_stations_nonexistent_codes(self, hydrosolutions_organization):
         """Test that no stations are returned when providing nonexistent station codes."""
@@ -133,16 +106,6 @@ class TestLindasSparqlHydroScraper:
         stations = scraper._get_stations_to_process()
 
         assert len(stations) == 0
-
-    @pytest.mark.django_db
-    def test_get_stations_to_process_force_all(
-        self, hydrosolutions_organization, hydrosolutions_station_automatic, hydrosolutions_station_manual
-    ):
-        scraper = LindasSparqlHydroScraper(organization_name=hydrosolutions_organization.name, force_all_stations=True)
-        stations = scraper._get_stations_to_process()
-
-        assert hydrosolutions_station_automatic in stations
-        assert hydrosolutions_station_manual in stations
 
     @pytest.mark.django_db
     def test_get_stations_specific_codes(
@@ -261,68 +224,6 @@ class TestLindasSparqlHydroScraper:
         assert metrics.count() == 2
 
     @pytest.mark.django_db
-    @pytest.mark.parametrize("current_hour", [8, 20])
-    def test_get_stations_to_process_manual_with_existing_measurement(
-        self,
-        hydrosolutions_organization,
-        hydrosolutions_station_automatic,
-        hydrosolutions_station_manual,
-        current_hour,
-    ):
-        # Create time in UTC for both metric and freeze_time
-        test_time = datetime(2024, 12, 3, current_hour, 0, tzinfo=ZoneInfo("Europe/Zurich"))
-
-        # Create metric with UTC time
-        metric = HydrologicalMetric(
-            timestamp_local=test_time.replace(tzinfo=ZoneInfo("UTC")),
-            station=hydrosolutions_station_manual,
-            metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
-            value_type=HydrologicalMeasurementType.MANUAL,
-            avg_value=100.0,
-        )
-        metric.save()
-
-        with freeze_time(test_time):
-            scraper = LindasSparqlHydroScraper(organization_name=hydrosolutions_organization.name)
-            stations = scraper._get_stations_to_process()
-
-            assert hydrosolutions_station_automatic in stations
-            assert hydrosolutions_station_manual not in stations
-
-    @pytest.mark.django_db
-    @pytest.mark.parametrize("current_hour", [8, 20])
-    def test_get_stations_to_process_manual_with_different_hour_measurement(
-        self,
-        hydrosolutions_organization,
-        hydrosolutions_station_automatic,
-        hydrosolutions_station_manual,
-        current_hour,
-    ):
-        # Create time in UTC
-        test_time = datetime(2024, 12, 3, current_hour, 0, tzinfo=ZoneInfo("Europe/Zurich"))
-
-        # Create different hour time in UTC
-        different_hour = 8 if current_hour == 20 else 20
-        different_time = test_time.replace(hour=different_hour)
-
-        # Create metric with different hour in local time
-        metric = HydrologicalMetric(
-            timestamp_local=different_time.replace(tzinfo=ZoneInfo("UTC")),
-            station=hydrosolutions_station_manual,
-            metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
-            value_type=HydrologicalMeasurementType.MANUAL,
-            avg_value=100.0,
-        )
-        metric.save()
-
-        with freeze_time(test_time):
-            scraper = LindasSparqlHydroScraper(organization_name=hydrosolutions_organization.name)
-            stations = scraper._get_stations_to_process()
-
-            assert hydrosolutions_station_automatic in stations
-            assert hydrosolutions_station_manual in stations
-
-    @pytest.mark.django_db
     @patch.object(LindasSparqlHydroScraper, "fetch_data")
     def test_save_metrics_respects_station_type(
         self, mock_fetch, mock_sparql_response, hydrosolutions_station_automatic, hydrosolutions_station_manual
@@ -346,3 +247,45 @@ class TestLindasSparqlHydroScraper:
         scraper._save_metrics(hydrosolutions_station_manual, site_data)
         manual_metrics = HydrologicalMetric.objects.filter(station=hydrosolutions_station_manual)
         assert all(m.value_type == HydrologicalMeasurementType.MANUAL for m in manual_metrics)
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize(
+        "timestamp,should_save",
+        [
+            ("2024-12-03T08:30:00+01:00", True),  # Within 8-9 window
+            ("2024-12-03T20:30:00+01:00", True),  # Within 20-21 window
+            ("2024-12-03T07:30:00+01:00", False),  # Outside windows
+            ("2024-12-03T15:30:00+01:00", False),  # Outside windows
+        ],
+    )
+    def test_save_metrics_manual_station_time_windows(self, hydrosolutions_station_manual, timestamp, should_save):
+        """Test that manual station measurements are only saved within specific time windows."""
+        scraper = LindasSparqlHydroScraper()
+
+        site_data = {
+            "timestamp": timestamp,
+            "water_level": 123.45,
+            "water_temperature": 15.6,
+        }
+
+        scraper._save_metrics(hydrosolutions_station_manual, site_data)
+        metrics = HydrologicalMetric.objects.filter(station=hydrosolutions_station_manual)
+
+        if should_save:
+            assert metrics.count() == 2
+            for metric in metrics:
+                assert metric.value_type == HydrologicalMeasurementType.MANUAL
+        else:
+            assert metrics.count() == 0
+
+    @pytest.mark.django_db
+    def test_get_stations_to_process_basic(
+        self, hydrosolutions_organization, hydrosolutions_station_automatic, hydrosolutions_station_manual
+    ):
+        """Test that _get_stations_to_process returns all non-deleted stations."""
+        scraper = LindasSparqlHydroScraper(organization_name=hydrosolutions_organization.name)
+        stations = scraper._get_stations_to_process()
+
+        assert hydrosolutions_station_automatic in stations
+        assert hydrosolutions_station_manual in stations
+        assert stations.count() == 2
