@@ -5,8 +5,7 @@ import time
 from datetime import datetime
 from urllib.parse import urljoin
 
-from django.db.models import Q
-from django.utils import timezone
+from django.db.models import QuerySet
 from SPARQLWrapper import JSON, SPARQLWrapper
 from zoneinfo import ZoneInfo
 
@@ -121,7 +120,6 @@ class LindasSparqlHydroScraper:
 
     Args:
         organization_name: Name of the organization to scrape stations for
-        force_all_stations: If True, scrapes all stations regardless of time
         site_codes: Optional list of specific site codes to scrape
         parameters: Optional list of parameters to query
 
@@ -143,7 +141,6 @@ class LindasSparqlHydroScraper:
     def __init__(
         self,
         organization_name: str = "Hydrosolutions GmbH",
-        force_all_stations: bool = False,
         site_codes: list[str] | None = None,
         parameters: list[str] | None = None,
     ):
@@ -154,7 +151,6 @@ class LindasSparqlHydroScraper:
             raise ValueError("SPARQL_ENDPOINT environment variable is not set")
 
         self.organization_name = organization_name
-        self.force_all_stations = force_all_stations
         self.site_codes = site_codes
         self.parameters = parameters or self.DEFAULT_PARAMETERS
 
@@ -248,76 +244,15 @@ class LindasSparqlHydroScraper:
             self.logger.warning(f"Organization {organization_name} not found")
             return "UTC"
 
-    def _get_stations_to_process(self) -> list[HydrologicalStation]:
-        """Get list of stations to process based on current time and station type."""
-        # If specific site codes are provided, use those
+    def _get_stations_to_process(self) -> QuerySet[HydrologicalStation]:
+        """Get queryset of stations to process."""
         if self.site_codes:
-            return list(
-                HydrologicalStation.objects.filter(
-                    station_code__in=[f"0{code}" for code in self.site_codes], is_deleted=False
-                )
+            return HydrologicalStation.objects.filter(
+                station_code__in=[f"0{code}" for code in self.site_codes], is_deleted=False
             )
 
-        # Otherwise, get stations for the organization
-        stations = HydrologicalStation.objects.filter(
-            site__organization__name=self.organization_name, is_deleted=False
-        )
-
-        if self.force_all_stations:
-            return list(stations)
-
-        # Get current hour in organization's timezone
-        org_timezone = self._get_organization_timezone(self.organization_name)
-        current_time = timezone.now().astimezone(ZoneInfo(org_timezone))
-        current_hour = current_time.hour
-
-        self.logger.info(f"Current time in {org_timezone}: {current_time}")
-
-        # Build query based on time
-        query = Q(station_type=HydrologicalStation.StationType.AUTOMATIC)
-        if current_hour in self.MANUAL_STATION_HOURS:
-            # Get stations with measurements using raw SQL
-            stations_with_measurements = HydrologicalStation.objects.raw(
-                """
-                SELECT DISTINCT s.*
-                FROM stations_hydrologicalstation s
-                INNER JOIN metrics_hydrologicalmetric m ON s.id = m.station_id
-                WHERE DATE(m.timestamp_local) = %s
-                AND EXTRACT(HOUR FROM m.timestamp_local) = %s
-                AND m.metric_name = %s
-                AND s.station_type = %s
-            """,
-                [
-                    current_time.date(),
-                    current_hour,
-                    HydrologicalMetricName.WATER_LEVEL_DAILY,
-                    HydrologicalStation.StationType.MANUAL,
-                ],
-            )
-
-            # Convert to list of IDs since we need to use this in a subsequent query
-            stations_with_measurements_ids = [s.id for s in stations_with_measurements]
-
-            self.logger.info(
-                f"Found {len(stations_with_measurements_ids)} existing measurements for manual stations on {current_time.date()} at {current_hour}:00"
-            )
-
-            # Get manual stations without measurements
-            manual_stations_without_measurements = HydrologicalStation.objects.filter(
-                station_type=HydrologicalStation.StationType.MANUAL,
-                site__organization__name=self.organization_name,
-                is_deleted=False,
-            ).exclude(id__in=stations_with_measurements_ids)
-
-            if manual_stations_without_measurements.exists():
-                query |= Q(id__in=manual_stations_without_measurements.values_list("id", flat=True))
-                self.logger.info("Including manual stations without measurements for current hour today")
-            else:
-                self.logger.info("Skipping manual stations as measurements already exist for current hour today")
-        else:
-            self.logger.info("Skipping manual stations for current run")
-
-        return list(stations.filter(query))
+        # Return all non-deleted stations for the organization
+        return HydrologicalStation.objects.filter(site__organization__name=self.organization_name, is_deleted=False)
 
     def _convert_timestamp(self, timestamp_str: str) -> datetime:
         """Convert LINDAS timestamp to UTC-based local time."""
@@ -330,6 +265,15 @@ class LindasSparqlHydroScraper:
     def _save_metrics(self, station: HydrologicalStation, site_data: dict) -> None:
         """Save metrics for a station."""
         timestamp_local = self._convert_timestamp(site_data["timestamp"])
+
+        # For manual stations, only save measurements if they fall within our target hours
+        if station.station_type == HydrologicalStation.StationType.MANUAL:
+            hour = timestamp_local.hour
+            if hour not in self.MANUAL_STATION_HOURS:
+                self.logger.info(
+                    f"Skipping manual measurement for station {station.name} at {timestamp_local} - outside target hours"
+                )
+                return
 
         metric_mappings = {
             "water_level": {
@@ -357,7 +301,7 @@ class LindasSparqlHydroScraper:
                         timestamp_local=timestamp_local,
                         station=station,
                         metric_name=mapping["metric_name"],
-                        value_type=value_type,  # Use the determined value type
+                        value_type=value_type,
                         unit=mapping["unit"],
                         avg_value=value,
                         source_type=HydrologicalMetric.SourceType.UNKNOWN,

@@ -28,18 +28,12 @@ class Command(BaseCommand):
             default="Hydrosolutions GmbH",
             help="Organization name to scrape stations for",
         )
-        parser.add_argument(
-            "--force-all",
-            action="store_true",
-            help="Force processing of all stations regardless of time",
-        )
 
     def handle(self, *args, **options):
         """Execute the command."""
         try:
             scraper = LindasSparqlHydroScraper(
                 organization_name=options["organization"],
-                force_all_stations=options["force_all"],
                 site_codes=options.get("site_codes"),
                 parameters=options.get("parameters"),
             )
