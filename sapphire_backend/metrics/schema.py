@@ -105,7 +105,11 @@ class OperationalJournalDailyDataSchema(OperationalJournalDailyVirtualDataSchema
     water_level_evening: int | str
     water_level_average: int | str
     ice_phenomena: str | None = "--"
+    ice_phenomena_values: list[float] | None = None
+    ice_phenomena_codes: list[int] | None = None
     daily_precipitation: str | None = "--"
+    daily_precipitation_value: float | None = None
+    daily_precipitation_code: int | None = None
     water_temperature: float | str
     air_temperature: float | str
 
@@ -269,3 +273,24 @@ class DetailedDailyHydroMetricFilterSchema(Schema):
             if date_range.days > 365:
                 raise ValidationError("Date range cannot be more than 365 days")
         return v
+
+
+class UpdateHydrologicalMetricSchema(Schema):
+    # Fields to identify the metric
+    timestamp_local: datetime
+    station_id: int
+    metric_name: str
+    value_type: str
+    sensor_identifier: str = ""  # matches the blank=True in model
+
+    # New value and metadata
+    new_value: float
+    comment: str = ""
+
+    # For precipitation specifically
+    value_code: int | None = None
+
+
+class UpdateHydrologicalMetricResponseSchema(Schema):
+    success: bool
+    message: str

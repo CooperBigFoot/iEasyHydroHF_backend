@@ -1,14 +1,13 @@
 from datetime import datetime, timezone
 from math import ceil
+from typing import Any
 
 import pandas as pd
 
 from sapphire_backend.metrics.choices import NormType
 from sapphire_backend.metrics.managers import HydrologicalNormQuerySet, MeteorologicalNormQuerySet
 from sapphire_backend.organizations.models import Organization
-from sapphire_backend.utils.daily_precipitation_mapper import DailyPrecipitationCodeMapper
 from sapphire_backend.utils.datetime_helper import SmartDatetime
-from sapphire_backend.utils.ice_phenomena_mapper import IcePhenomenaCodeMapper
 from sapphire_backend.utils.rounding import hydrological_round
 
 from ...stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
@@ -153,31 +152,41 @@ class OperationalJournalDataTransformer:
         return "--"
 
     @staticmethod
-    def _get_ice_phenomena(data: pd.DataFrame | pd.Series) -> str:
-        output_string = "--"
+    def _get_ice_phenomena(data: pd.DataFrame | pd.Series) -> dict[str, list | str]:
+        result = {"ice_phenomena": "--", "ice_phenomena_values": [], "ice_phenomena_codes": []}
+
         if not data.empty:
             ice_phenomena_data = data[data["metric_name"] == HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION]
-            values = ice_phenomena_data[["avg_value", "value_code"]].to_dict("records")
-            strings = []
-            for value in values:
-                description = IcePhenomenaCodeMapper(value["value_code"]).get_description()
-                intensity = f" ({round(value['avg_value'] * 10, 0)}%)" if value["avg_value"] != -1 else ""
-                strings.append(f"{description}{intensity}")
-            output_string = ",".join(strings) if strings else "--"
+            if not ice_phenomena_data.empty:
+                values = ice_phenomena_data[["avg_value", "value_code"]].to_dict("records")
+                if values:
+                    result.update(
+                        {
+                            "ice_phenomena_values": [v["avg_value"] for v in values],
+                            "ice_phenomena_codes": [v["value_code"] for v in values],
+                            "ice_phenomena": "--",  # Frontend will format this
+                        }
+                    )
 
-        return output_string
+        return result
 
     @staticmethod
-    def _get_daily_precipitation(data: pd.DataFrame | pd.Series) -> str:
-        output_string = "--"
+    def _get_daily_precipitation(data: pd.DataFrame | pd.Series) -> dict[str, float | int | str]:
+        result = {"daily_precipitation": "--", "daily_precipitation_value": None, "daily_precipitation_code": None}
+
         if not data.empty:
             daily_precipitation_data = data[data["metric_name"] == HydrologicalMetricName.PRECIPITATION_DAILY]
             if not daily_precipitation_data.empty:
                 value = daily_precipitation_data[["avg_value", "value_code"]].iloc[0].to_dict()
-                description = DailyPrecipitationCodeMapper(value["value_code"]).get_description()
-                output_string = f"{round(value['avg_value'], 1)} ({description})"
+                result.update(
+                    {
+                        "daily_precipitation_value": value["avg_value"],
+                        "daily_precipitation_code": value["value_code"],
+                        "daily_precipitation": "--",  # Frontend will format this
+                    }
+                )
 
-        return output_string
+        return result
 
     @staticmethod
     def _get_daily_data_extremes(daily_data: list[dict[str, str | float | int]]) -> list[dict[str, str | float]]:
@@ -237,7 +246,8 @@ class OperationalJournalDataTransformer:
 
         return avg_row
 
-    def get_daily_data(self) -> list[dict[str, str | float | int]]:
+    def get_daily_data(self) -> list[dict[str, Any]]:
+        results = []
         df = self.df
         results = []
         if self.is_empty:
@@ -296,9 +306,9 @@ class OperationalJournalDataTransformer:
 
             # finally, get the rest of the daily data, including water level and discharge averages
             ice_phenomena_data = self._get_ice_phenomena(daily_data)
-            day_dict["ice_phenomena"] = ice_phenomena_data
+            day_dict.update(ice_phenomena_data)
             daily_precipitation_data = self._get_daily_precipitation(daily_data)
-            day_dict["daily_precipitation"] = daily_precipitation_data
+            day_dict.update(daily_precipitation_data)
 
             for metric_name, metric_code in {
                 "water_level_average": HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
