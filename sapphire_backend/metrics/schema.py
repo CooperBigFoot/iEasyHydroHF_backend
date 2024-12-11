@@ -91,27 +91,48 @@ class MeasuredDischargeMeasurementSchema(Schema):
     f: float | None
 
 
+class MetricValueWithMetadata(Schema):
+    value: int | float | str
+    timestamp_local: datetime | None = None
+    station_id: int | None = None
+    sensor_identifier: str | None = None
+    value_type: str | None = None
+
+
+class IcePhenomenaWithMetadata(Schema):
+    ice_phenomena_values: list[float] | None = None
+    ice_phenomena_codes: list[int] | None = None
+    sensor_identifiers: list[str] | None = None
+    timestamps_local: list[datetime] | None = None
+
+
+class PrecipitationWithMetadata(Schema):
+    daily_precipitation_value: float | None = None
+    daily_precipitation_code: int | None = None
+    sensor_identifier: list[str] | None = None
+    timestamp_local: list[datetime] | None = None
+
+
 class OperationalJournalDailyVirtualDataSchema(Schema):
     id: str
     date: str
-    water_discharge_morning: float | str
-    water_discharge_evening: float | str
-    water_discharge_average: float | str
+    water_discharge_morning: MetricValueWithMetadata
+    water_discharge_evening: MetricValueWithMetadata
+    water_discharge_average: MetricValueWithMetadata
 
 
 class OperationalJournalDailyDataSchema(OperationalJournalDailyVirtualDataSchema):
-    water_level_morning: int | str
     trend: int | str | None = "--"
-    water_level_evening: int | str
-    water_level_average: int | str
-    ice_phenomena: str | None = "--"
-    ice_phenomena_values: list[float] | None = None
-    ice_phenomena_codes: list[int] | None = None
-    daily_precipitation: str | None = "--"
-    daily_precipitation_value: float | None = None
-    daily_precipitation_code: int | None = None
-    water_temperature: float | str
-    air_temperature: float | str
+
+    # Values with metadata
+    water_level_morning: MetricValueWithMetadata
+    water_level_evening: MetricValueWithMetadata
+    water_level_average: MetricValueWithMetadata
+    water_temperature: MetricValueWithMetadata
+    air_temperature: MetricValueWithMetadata
+
+    ice_phenomena: IcePhenomenaWithMetadata
+    daily_precipitation: PrecipitationWithMetadata
 
 
 class OperationalJournalDischargeDataSchema(Schema):

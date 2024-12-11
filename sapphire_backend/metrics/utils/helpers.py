@@ -102,11 +102,17 @@ class PentadDecadeHelper:
 
 
 class OperationalJournalDataTransformer:
-    def __init__(self, data: list[dict[str, float | None]], target_month: int):
+    def __init__(
+        self,
+        data: list[dict[str, float | None]],
+        target_month: int,
+        station: HydrologicalStation | MeteorologicalStation,
+    ):
         self.original_data = data
         self.df = self._convert_data_to_dataframe()
         self.is_empty = self.df.empty
         self.requested_month = target_month
+        self.station = station
 
     def _convert_data_to_dataframe(self):
         df = pd.DataFrame(self.original_data)
@@ -125,31 +131,47 @@ class OperationalJournalDataTransformer:
     def _get_evening_data(data: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
         return data[data["time"] == "20:00"]
 
-    @staticmethod
-    def _get_metric_value(data: pd.DataFrame | pd.Series, metric: str) -> int | float | str:
+    def _get_metric_value(
+        self, data: pd.DataFrame | pd.Series, metric: str, include_metadata: bool = False
+    ) -> dict[str, Any]:
         if not data.empty:
+            metric_data = data[data["metric_name"] == metric]
             try:
-                metric_value = data[data["metric_name"] == metric]["avg_value"]
+                metric_value = metric_data["avg_value"]
             except KeyError:
-                metric_value = data[data["metric_name"] == metric]["value"]
+                metric_value = metric_data["value"]
+
             if metric_value.empty:
-                return "--"
+                return {"value": "--"}
+
+            # Get the value based on metric type
             if metric in [
                 HydrologicalMetricName.WATER_LEVEL_DAILY,
                 HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
                 HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE,
             ]:
-                return ceil(metric_value.iloc[0])
+                value = ceil(metric_value.iloc[0])
             elif metric in [
                 HydrologicalMetricName.WATER_DISCHARGE_DAILY,
                 HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
                 HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE,
             ]:
-                return hydrological_round(metric_value.iloc[0])
+                value = hydrological_round(metric_value.iloc[0])
             else:
-                return round(metric_value.iloc[0], 1)
+                value = round(metric_value.iloc[0], 1)
 
-        return "--"
+            if not include_metadata:
+                return {"value": value}
+
+            # Include metadata if requested
+            return {
+                "value": value,
+                "timestamp_local": metric_data.iloc[0]["timestamp_local"],
+                "station_id": self.station.id,
+                "sensor_identifier": metric_data.iloc[0]["sensor_identifier"] or "",
+            }
+
+        return {"value": "--"}
 
     @staticmethod
     def _get_ice_phenomena(data: pd.DataFrame | pd.Series) -> dict[str, list | str]:
@@ -158,13 +180,16 @@ class OperationalJournalDataTransformer:
         if not data.empty:
             ice_phenomena_data = data[data["metric_name"] == HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION]
             if not ice_phenomena_data.empty:
-                values = ice_phenomena_data[["avg_value", "value_code"]].to_dict("records")
+                values = ice_phenomena_data[
+                    ["avg_value", "value_code", "sensor_identifier", "timestamp_local"]
+                ].to_dict("records")
                 if values:
                     result.update(
                         {
                             "ice_phenomena_values": [v["avg_value"] for v in values],
                             "ice_phenomena_codes": [v["value_code"] for v in values],
-                            "ice_phenomena": "--",  # Frontend will format this
+                            "sensor_identifiers": [v["sensor_identifier"] for v in values],
+                            "timestamps_local": [v["timestamp_local"] for v in values],
                         }
                     )
 
@@ -177,12 +202,17 @@ class OperationalJournalDataTransformer:
         if not data.empty:
             daily_precipitation_data = data[data["metric_name"] == HydrologicalMetricName.PRECIPITATION_DAILY]
             if not daily_precipitation_data.empty:
-                value = daily_precipitation_data[["avg_value", "value_code"]].iloc[0].to_dict()
+                value = (
+                    daily_precipitation_data[["avg_value", "value_code", "sensor_identifier", "timestamp_local"]]
+                    .iloc[0]
+                    .to_dict()
+                )
                 result.update(
                     {
                         "daily_precipitation_value": value["avg_value"],
                         "daily_precipitation_code": value["value_code"],
-                        "daily_precipitation": "--",  # Frontend will format this
+                        "sensor_identifier": [value["sensor_identifier"]],
+                        "timestamp_local": [value["timestamp_local"]],
                     }
                 )
 
@@ -205,13 +235,19 @@ class OperationalJournalDataTransformer:
         max_row = {"id": "max", "date": "maximum"}
 
         for metric in relevant_metrics:
-            valid_values = [row[metric] for row in daily_data if row[metric] != "--"]
+            valid_values = [row[metric]["value"] for row in daily_data if row[metric]["value"] != "--"]
             if valid_values:
-                min_row[metric] = min(valid_values)
-                max_row[metric] = max(valid_values)
+                min_row[metric] = {"value": min(valid_values)}
+                max_row[metric] = {"value": max(valid_values)}
             else:
-                min_row[metric] = "--"
-                max_row[metric] = "--"
+                min_row[metric] = {"value": "--"}
+                max_row[metric] = {"value": "--"}
+
+        min_row["ice_phenomena"] = {"value": "--"}
+        max_row["ice_phenomena"] = {"value": "--"}
+
+        min_row["daily_precipitation"] = {"value": "--"}
+        max_row["daily_precipitation"] = {"value": "--"}
 
         return [min_row, max_row]
 
@@ -219,7 +255,7 @@ class OperationalJournalDataTransformer:
     def _get_monthly_averages_from_decadal_data(decadal_data: list[dict[int | str, int | float | str]]):
         avg_row = {"id": "avg", "decade": "average"}
         for metric in ["water_level", "water_discharge"]:
-            valid_values = [row[metric] for row in decadal_data if row[metric] != "--"]
+            valid_values = [row[metric]["value"] for row in decadal_data if row[metric]["value"] != "--"]
             if valid_values:
                 avg_value = sum(valid_values) / len(valid_values)
                 avg_row[metric] = hydrological_round(avg_value) if metric == "water_discharge" else ceil(avg_value)
@@ -231,13 +267,17 @@ class OperationalJournalDataTransformer:
     @staticmethod
     def _get_meteo_decade_aggregation_data(decadal_data: list[dict[int | str, int | float | str]]):
         avg_row = {"id": "agg", "decade": "values"}
-        temperature_values = [row["temperature"] for row in decadal_data if row["temperature"] != "--"]
+        temperature_values = [
+            row["temperature"]["value"] for row in decadal_data if row["temperature"]["value"] != "--"
+        ]
         if temperature_values:
             avg_value = sum(temperature_values) / len(temperature_values)
             avg_row["temperature"] = round(avg_value, 1)
         else:
             avg_row["temperature"] = "--"
-        precipitation_values = [row["precipitation"] for row in decadal_data if row["precipitation"] != "--"]
+        precipitation_values = [
+            row["precipitation"]["value"] for row in decadal_data if row["precipitation"]["value"] != "--"
+        ]
         if precipitation_values:
             sum_value = sum(precipitation_values)
             avg_row["precipitation"] = round(sum_value, 1)
@@ -277,32 +317,41 @@ class OperationalJournalDataTransformer:
             # get morning data first
             morning_data = self._get_morning_data(daily_data)
             if not morning_data.empty:
-                water_level_morning = self._get_metric_value(morning_data, HydrologicalMetricName.WATER_LEVEL_DAILY)
+                water_level_morning = self._get_metric_value(
+                    morning_data, HydrologicalMetricName.WATER_LEVEL_DAILY, True
+                )
                 water_discharge_morning = self._get_metric_value(
                     morning_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY
                 )
                 day_dict["water_level_morning"] = water_level_morning
                 day_dict["water_discharge_morning"] = water_discharge_morning
-                if previous_day_water_level and previous_day_water_level != "--" and water_level_morning != "--":
-                    day_dict["trend"] = water_level_morning - previous_day_water_level
+                if (
+                    previous_day_water_level
+                    and previous_day_water_level["value"] != "--"
+                    and water_level_morning["value"] != "--"
+                ):
+                    day_dict["trend"] = water_level_morning["value"] - previous_day_water_level["value"]
                 previous_day_water_level = water_level_morning
+
             else:
                 previous_day_water_level = None
-                day_dict["water_level_morning"] = "--"
-                day_dict["water_discharge_morning"] = "--"
+                day_dict["water_level_morning"] = {"value": "--"}
+                day_dict["water_discharge_morning"] = {"value": "--"}
 
             # get evening data next
             evening_data = self._get_evening_data(daily_data)
             if not evening_data.empty:
-                water_level_evening = self._get_metric_value(evening_data, HydrologicalMetricName.WATER_LEVEL_DAILY)
+                water_level_evening = self._get_metric_value(
+                    evening_data, HydrologicalMetricName.WATER_LEVEL_DAILY, True
+                )
                 water_discharge_evening = self._get_metric_value(
                     evening_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY
                 )
                 day_dict["water_level_evening"] = water_level_evening
                 day_dict["water_discharge_evening"] = water_discharge_evening
             else:
-                day_dict["water_level_evening"] = "--"
-                day_dict["water_discharge_evening"] = "--"
+                day_dict["water_level_evening"] = {"value": "--"}
+                day_dict["water_discharge_evening"] = {"value": "--"}
 
             # finally, get the rest of the daily data, including water level and discharge averages
             ice_phenomena_data = self._get_ice_phenomena(daily_data)
@@ -316,7 +365,11 @@ class OperationalJournalDataTransformer:
                 "water_temperature": HydrologicalMetricName.WATER_TEMPERATURE,
                 "air_temperature": HydrologicalMetricName.AIR_TEMPERATURE,
             }.items():
-                day_dict[metric_name] = self._get_metric_value(daily_data, metric_code)
+                day_dict[metric_name] = self._get_metric_value(
+                    daily_data,
+                    metric_code,
+                    metric_code in (HydrologicalMetricName.WATER_TEMPERATURE, HydrologicalMetricName.AIR_TEMPERATURE),
+                )
             day_dict["date"] = date.strftime("%Y-%m-%d")
             day_dict["id"] = date.strftime("%Y-%m-%d")
 
@@ -342,7 +395,7 @@ class OperationalJournalDataTransformer:
                 "water_discharge": HydrologicalMetricName.WATER_DISCHARGE_DAILY,
                 "cross_section": HydrologicalMetricName.RIVER_CROSS_SECTION_AREA,
             }.items():
-                day_dict[metric_name] = self._get_metric_value(daily_data, metric_code)
+                day_dict[metric_name] = self._get_metric_value(daily_data, metric_code, True)
 
             day_dict["date"] = date.strftime("%Y-%m-%d")
             day_dict["id"] = date.strftime("%Y-%m-%d")
@@ -364,7 +417,7 @@ class OperationalJournalDataTransformer:
                 "temperature": MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
                 "precipitation": MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE,
             }.items():
-                decade_dict[metric_name] = self._get_metric_value(decade_data, metric_code)
+                decade_dict[metric_name] = self._get_metric_value(decade_data, metric_code, True)
 
             decade_dict["decade"] = PentadDecadeHelper.calculate_decade_from_the_day_in_month(date.day)
             decade_dict["id"] = date.strftime("%Y-%m-%d")

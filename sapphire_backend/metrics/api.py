@@ -704,7 +704,9 @@ class OperationalJournalAPIController:
         ).execute_query()
 
         operational_journal_data.extend(
-            daily_hydro_metric_data.values("timestamp_local", "avg_value", "metric_name", "value_code")
+            daily_hydro_metric_data.values(
+                "timestamp_local", "avg_value", "metric_name", "value_code", "sensor_identifier"
+            )
         )
 
         cls_estimations_views = [
@@ -724,8 +726,8 @@ class OperationalJournalAPIController:
                 for d in estimation_data
             )
 
-        prepared_data = OperationalJournalDataTransformer(operational_journal_data, month).get_daily_data()
-
+        prepared_data = OperationalJournalDataTransformer(operational_journal_data, month, station).get_daily_data()
+        print(prepared_data)
         return prepared_data
 
     @route.get("daily-data-virtual", response={200: list[OperationalJournalDailyVirtualDataSchema]})
@@ -781,7 +783,7 @@ class OperationalJournalAPIController:
         ).execute_query()
 
         prepared_data = OperationalJournalDataTransformer(
-            discharge_data.values("timestamp_local", "avg_value", "metric_name"), month
+            discharge_data.values("timestamp_local", "avg_value", "metric_name"), month, station
         ).get_discharge_data()
 
         return prepared_data
@@ -839,7 +841,7 @@ class OperationalJournalAPIController:
                 for d in view_data
             )
 
-        prepared_data = OperationalJournalDataTransformer(decadal_data, month).get_hydro_decadal_data()
+        prepared_data = OperationalJournalDataTransformer(decadal_data, month, station).get_hydro_decadal_data()
 
         return prepared_data
 
@@ -870,7 +872,7 @@ class OperationalJournalAPIController:
         ).execute_query()
 
         prepared_data = OperationalJournalDataTransformer(
-            meteo_data.values("timestamp_local", "value", "metric_name"), month
+            meteo_data.values("timestamp_local", "value", "metric_name"), month, station
         ).get_meteo_decadal_data()
 
         return prepared_data
