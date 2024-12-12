@@ -175,8 +175,7 @@ class OperationalJournalDataTransformer:
 
     @staticmethod
     def _get_ice_phenomena(data: pd.DataFrame | pd.Series) -> dict[str, list | str]:
-        result = {"ice_phenomena": "--", "ice_phenomena_values": [], "ice_phenomena_codes": []}
-
+        result = {"ice_phenomena_values": [], "ice_phenomena_codes": []}
         if not data.empty:
             ice_phenomena_data = data[data["metric_name"] == HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION]
             if not ice_phenomena_data.empty:
@@ -197,8 +196,7 @@ class OperationalJournalDataTransformer:
 
     @staticmethod
     def _get_daily_precipitation(data: pd.DataFrame | pd.Series) -> dict[str, float | int | str]:
-        result = {"daily_precipitation": "--", "daily_precipitation_value": None, "daily_precipitation_code": None}
-
+        result = {"daily_precipitation_value": None, "daily_precipitation_code": None}
         if not data.empty:
             daily_precipitation_data = data[data["metric_name"] == HydrologicalMetricName.PRECIPITATION_DAILY]
             if not daily_precipitation_data.empty:
@@ -211,8 +209,8 @@ class OperationalJournalDataTransformer:
                     {
                         "daily_precipitation_value": value["avg_value"],
                         "daily_precipitation_code": value["value_code"],
-                        "sensor_identifier": [value["sensor_identifier"]],
-                        "timestamp_local": [value["timestamp_local"]],
+                        "sensor_identifier": value["sensor_identifier"],
+                        "timestamp_local": value["timestamp_local"],
                     }
                 )
 
@@ -258,9 +256,11 @@ class OperationalJournalDataTransformer:
             valid_values = [row[metric]["value"] for row in decadal_data if row[metric]["value"] != "--"]
             if valid_values:
                 avg_value = sum(valid_values) / len(valid_values)
-                avg_row[metric] = hydrological_round(avg_value) if metric == "water_discharge" else ceil(avg_value)
+                avg_row[metric] = {
+                    "value": hydrological_round(avg_value) if metric == "water_discharge" else ceil(avg_value)
+                }
             else:
-                avg_row[metric] = "--"
+                avg_row[metric] = {"value": "--"}
 
         return avg_row
 
@@ -353,11 +353,8 @@ class OperationalJournalDataTransformer:
                 day_dict["water_level_evening"] = {"value": "--"}
                 day_dict["water_discharge_evening"] = {"value": "--"}
 
-            # finally, get the rest of the daily data, including water level and discharge averages
-            ice_phenomena_data = self._get_ice_phenomena(daily_data)
-            day_dict.update(ice_phenomena_data)
-            daily_precipitation_data = self._get_daily_precipitation(daily_data)
-            day_dict.update(daily_precipitation_data)
+            day_dict["ice_phenomena"] = self._get_ice_phenomena(daily_data)
+            day_dict["daily_precipitation"] = self._get_daily_precipitation(daily_data)
 
             for metric_name, metric_code in {
                 "water_level_average": HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,

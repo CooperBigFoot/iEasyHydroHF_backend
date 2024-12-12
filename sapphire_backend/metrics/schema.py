@@ -109,8 +109,8 @@ class IcePhenomenaWithMetadata(Schema):
 class PrecipitationWithMetadata(Schema):
     daily_precipitation_value: float | None = None
     daily_precipitation_code: int | None = None
-    sensor_identifier: list[str] | None = None
-    timestamp_local: list[datetime] | None = None
+    sensor_identifier: str | None = None
+    timestamp_local: datetime | None = None
 
 
 class OperationalJournalDailyVirtualDataSchema(Schema):
@@ -138,9 +138,9 @@ class OperationalJournalDailyDataSchema(OperationalJournalDailyVirtualDataSchema
 class OperationalJournalDischargeDataSchema(Schema):
     id: str
     date: str
-    water_level: int | str
-    water_discharge: float | str
-    cross_section: float | str
+    water_level: MetricValueWithMetadata
+    water_discharge: MetricValueWithMetadata
+    cross_section: MetricValueWithMetadata
 
 
 class OperationalJournalDecadalBaseSchema(Schema):
@@ -149,11 +149,11 @@ class OperationalJournalDecadalBaseSchema(Schema):
 
 
 class OperationalJournalDecadalHydroVirtualDataSchema(OperationalJournalDecadalBaseSchema):
-    water_discharge: float | str
+    water_discharge: MetricValueWithMetadata
 
 
 class OperationalJournalDecadalHydroDataSchema(OperationalJournalDecadalHydroVirtualDataSchema):
-    water_level: int | str
+    water_level: MetricValueWithMetadata
 
 
 class OperationalJournalDecadalMeteoDataSchema(OperationalJournalDecadalBaseSchema):

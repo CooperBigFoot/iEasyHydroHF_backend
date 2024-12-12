@@ -157,7 +157,6 @@ class HydroMetricsAPIController:
             if not metric_names:
                 raise ValidationError("metric_name__in is required for daily view")
 
-            print(f"Filter dict: \n {filter_dict}")
             queries = [
                 model_mapping[metric].objects.filter(**filter_dict)
                 for metric in metric_names
@@ -727,7 +726,6 @@ class OperationalJournalAPIController:
             )
 
         prepared_data = OperationalJournalDataTransformer(operational_journal_data, month, station).get_daily_data()
-        print(prepared_data)
         return prepared_data
 
     @route.get("daily-data-virtual", response={200: list[OperationalJournalDailyVirtualDataSchema]})
@@ -783,7 +781,7 @@ class OperationalJournalAPIController:
         ).execute_query()
 
         prepared_data = OperationalJournalDataTransformer(
-            discharge_data.values("timestamp_local", "avg_value", "metric_name"), month, station
+            discharge_data.values("timestamp_local", "avg_value", "metric_name", "sensor_identifier"), month, station
         ).get_discharge_data()
 
         return prepared_data
@@ -837,12 +835,12 @@ class OperationalJournalAPIController:
                     "timestamp_local": d.timestamp_local.replace(tzinfo=ZoneInfo("UTC")),
                     "avg_value": d.avg_value,
                     "metric_name": d.metric_name,
+                    "sensor_identifier": d.sensor_identifier,
                 }
                 for d in view_data
             )
 
         prepared_data = OperationalJournalDataTransformer(decadal_data, month, station).get_hydro_decadal_data()
-
         return prepared_data
 
     @route.get(
