@@ -121,7 +121,8 @@ class HydrologicalMetric(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin
                 source_type = EXCLUDED.source_type,
                 source_id = EXCLUDED.source_id,
                 unit = EXCLUDED.unit,
-                sensor_type = EXCLUDED.sensor_type;
+                sensor_type = EXCLUDED.sensor_type,
+                value_code = EXCLUDED.value_code;
         """
 
         try:  # TODO this is horrible, the metrics test factory only transactional block, need to find a better way

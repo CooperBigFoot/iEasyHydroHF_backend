@@ -9,6 +9,7 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Avg, Case, Count, DecimalField, Max, Min, QuerySet, Sum, Value, When
 from django.db.models.functions import Round
 from django.http import FileResponse
@@ -21,8 +22,11 @@ from ninja_extra.pagination import PageNumberPaginationExtra, paginate
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
+from sapphire_backend.quality_control.choices import HistoryLogStationType
+from sapphire_backend.quality_control.models import HistoryLogEntry
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
 from sapphire_backend.utils.datetime_helper import SmartDatetime
+from sapphire_backend.utils.mixins.models import SourceTypeMixin
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
@@ -81,6 +85,8 @@ from .schema import (
     OrderQueryParamSchema,
     TimeBucketQueryParams,
     TimestampGroupedHydroMetricSchema,
+    UpdateHydrologicalMetricResponseSchema,
+    UpdateHydrologicalMetricSchema,
     ViewType,
 )
 from .timeseries.query import TimeseriesQueryManager
@@ -151,7 +157,6 @@ class HydroMetricsAPIController:
             if not metric_names:
                 raise ValidationError("metric_name__in is required for daily view")
 
-            print(f"Filter dict: \n {filter_dict}")
             queries = [
                 model_mapping[metric].objects.filter(**filter_dict)
                 for metric in metric_names
@@ -373,6 +378,51 @@ class HydroMetricsAPIController:
             return {"total": manager.get_total()}
         else:
             return manager.get_metric_distribution()
+
+    @route.put("update", response={200: UpdateHydrologicalMetricResponseSchema, 404: Message, 400: Message})
+    def update_hydrological_metric(self, request, payload: UpdateHydrologicalMetricSchema) -> dict:
+        try:
+            with transaction.atomic():
+                # Find the existing metric using composite key fields
+                metric = HydrologicalMetric.objects.get(
+                    timestamp_local=payload.timestamp_local,
+                    station_id=payload.station_id,
+                    metric_name=payload.metric_name,
+                    value_type=payload.value_type,
+                    sensor_identifier=payload.sensor_identifier,
+                )
+
+                # Create history log entry with old value and original source info
+                history_entry = HistoryLogEntry(
+                    timestamp_local=metric.timestamp_local,
+                    station_id=metric.station_id,
+                    metric_name=metric.metric_name,
+                    value_type=metric.value_type,
+                    sensor_identifier=metric.sensor_identifier,
+                    station_type=HistoryLogStationType.HYDRO,
+                    value=metric.avg_value,
+                    description=payload.comment,
+                    source_type=metric.source_type,
+                    source_id=metric.source_id,
+                )
+
+                # Update the metric with new values and user source info
+                metric.avg_value = payload.new_value
+                if payload.value_code is not None:
+                    metric.value_code = payload.value_code
+                metric.source_type = SourceTypeMixin.SourceType.USER
+                metric.source_id = request.user.id
+
+                # Save both changes in the transaction
+                metric.save()
+                history_entry.save()
+
+                return {"success": True, "message": "Metric updated successfully"}
+
+        except HydrologicalMetric.DoesNotExist:
+            raise ValidationError("Metric not found")
+        except Exception as e:
+            raise ValidationError(f"Failed to update metric: {str(e)}")
 
 
 @api_controller(
@@ -652,7 +702,9 @@ class OperationalJournalAPIController:
         ).execute_query()
 
         operational_journal_data.extend(
-            daily_hydro_metric_data.values("timestamp_local", "avg_value", "metric_name", "value_code")
+            daily_hydro_metric_data.values(
+                "timestamp_local", "avg_value", "metric_name", "value_code", "sensor_identifier"
+            )
         )
 
         cls_estimations_views = [
@@ -672,8 +724,7 @@ class OperationalJournalAPIController:
                 for d in estimation_data
             )
 
-        prepared_data = OperationalJournalDataTransformer(operational_journal_data, month).get_daily_data()
-
+        prepared_data = OperationalJournalDataTransformer(operational_journal_data, month, station).get_daily_data()
         return prepared_data
 
     @route.get("daily-data-virtual", response={200: list[OperationalJournalDailyVirtualDataSchema]})
@@ -729,7 +780,7 @@ class OperationalJournalAPIController:
         ).execute_query()
 
         prepared_data = OperationalJournalDataTransformer(
-            discharge_data.values("timestamp_local", "avg_value", "metric_name"), month
+            discharge_data.values("timestamp_local", "avg_value", "metric_name", "sensor_identifier"), month, station
         ).get_discharge_data()
 
         return prepared_data
@@ -783,12 +834,12 @@ class OperationalJournalAPIController:
                     "timestamp_local": d.timestamp_local.replace(tzinfo=ZoneInfo("UTC")),
                     "avg_value": d.avg_value,
                     "metric_name": d.metric_name,
+                    "sensor_identifier": d.sensor_identifier,
                 }
                 for d in view_data
             )
 
-        prepared_data = OperationalJournalDataTransformer(decadal_data, month).get_hydro_decadal_data()
-
+        prepared_data = OperationalJournalDataTransformer(decadal_data, month, station).get_hydro_decadal_data()
         return prepared_data
 
     @route.get(
@@ -818,7 +869,7 @@ class OperationalJournalAPIController:
         ).execute_query()
 
         prepared_data = OperationalJournalDataTransformer(
-            meteo_data.values("timestamp_local", "value", "metric_name"), month
+            meteo_data.values("timestamp_local", "value", "metric_name"), month, station
         ).get_meteo_decadal_data()
 
         return prepared_data

@@ -91,31 +91,56 @@ class MeasuredDischargeMeasurementSchema(Schema):
     f: float | None
 
 
+class MetricValueWithMetadata(Schema):
+    value: int | float | str
+    timestamp_local: datetime | None = None
+    sensor_identifier: str | None = None
+    value_type: str | None = None
+
+
+class IcePhenomenaWithMetadata(Schema):
+    ice_phenomena_values: list[float] | None = None
+    ice_phenomena_codes: list[int] | None = None
+    sensor_identifiers: list[str] | None = None
+    timestamps_local: list[datetime] | None = None
+
+
+class PrecipitationWithMetadata(Schema):
+    daily_precipitation_value: float | None = None
+    daily_precipitation_code: int | None = None
+    sensor_identifier: str | None = None
+    timestamp_local: datetime | None = None
+
+
 class OperationalJournalDailyVirtualDataSchema(Schema):
     id: str
     date: str
-    water_discharge_morning: float | str
-    water_discharge_evening: float | str
-    water_discharge_average: float | str
+    station_id: int
+    water_discharge_morning: MetricValueWithMetadata
+    water_discharge_evening: MetricValueWithMetadata
+    water_discharge_average: MetricValueWithMetadata
 
 
 class OperationalJournalDailyDataSchema(OperationalJournalDailyVirtualDataSchema):
-    water_level_morning: int | str
     trend: int | str | None = "--"
-    water_level_evening: int | str
-    water_level_average: int | str
-    ice_phenomena: str | None = "--"
-    daily_precipitation: str | None = "--"
-    water_temperature: float | str
-    air_temperature: float | str
+
+    # Values with metadata
+    water_level_morning: MetricValueWithMetadata
+    water_level_evening: MetricValueWithMetadata
+    water_level_average: MetricValueWithMetadata
+    water_temperature: MetricValueWithMetadata
+    air_temperature: MetricValueWithMetadata
+
+    ice_phenomena: IcePhenomenaWithMetadata
+    daily_precipitation: PrecipitationWithMetadata
 
 
 class OperationalJournalDischargeDataSchema(Schema):
     id: str
     date: str
-    water_level: int | str
-    water_discharge: float | str
-    cross_section: float | str
+    water_level: MetricValueWithMetadata
+    water_discharge: MetricValueWithMetadata
+    cross_section: MetricValueWithMetadata
 
 
 class OperationalJournalDecadalBaseSchema(Schema):
@@ -124,11 +149,11 @@ class OperationalJournalDecadalBaseSchema(Schema):
 
 
 class OperationalJournalDecadalHydroVirtualDataSchema(OperationalJournalDecadalBaseSchema):
-    water_discharge: float | str
+    water_discharge: MetricValueWithMetadata
 
 
 class OperationalJournalDecadalHydroDataSchema(OperationalJournalDecadalHydroVirtualDataSchema):
-    water_level: int | str
+    water_level: MetricValueWithMetadata
 
 
 class OperationalJournalDecadalMeteoDataSchema(OperationalJournalDecadalBaseSchema):
@@ -269,3 +294,24 @@ class DetailedDailyHydroMetricFilterSchema(Schema):
             if date_range.days > 365:
                 raise ValidationError("Date range cannot be more than 365 days")
         return v
+
+
+class UpdateHydrologicalMetricSchema(Schema):
+    # Fields to identify the metric
+    timestamp_local: datetime
+    station_id: int
+    metric_name: str
+    value_type: str
+    sensor_identifier: str = ""  # matches the blank=True in model
+
+    # New value and metadata
+    new_value: float
+    comment: str = ""
+
+    # For precipitation specifically
+    value_code: int | None = None
+
+
+class UpdateHydrologicalMetricResponseSchema(Schema):
+    success: bool
+    message: str
