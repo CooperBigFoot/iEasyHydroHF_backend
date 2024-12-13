@@ -94,7 +94,6 @@ class MeasuredDischargeMeasurementSchema(Schema):
 class MetricValueWithMetadata(Schema):
     value: int | float | str
     timestamp_local: datetime | None = None
-    station_id: int | None = None
     sensor_identifier: str | None = None
     value_type: str | None = None
 
@@ -116,6 +115,7 @@ class PrecipitationWithMetadata(Schema):
 class OperationalJournalDailyVirtualDataSchema(Schema):
     id: str
     date: str
+    station_id: int
     water_discharge_morning: MetricValueWithMetadata
     water_discharge_evening: MetricValueWithMetadata
     water_discharge_average: MetricValueWithMetadata

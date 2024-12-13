@@ -167,7 +167,6 @@ class OperationalJournalDataTransformer:
             return {
                 "value": value,
                 "timestamp_local": metric_data.iloc[0]["timestamp_local"],
-                "station_id": self.station.id,
                 "sensor_identifier": metric_data.iloc[0]["sensor_identifier"] or "",
             }
 
@@ -216,8 +215,7 @@ class OperationalJournalDataTransformer:
 
         return result
 
-    @staticmethod
-    def _get_daily_data_extremes(daily_data: list[dict[str, str | float | int]]) -> list[dict[str, str | float]]:
+    def _get_daily_data_extremes(self, daily_data: list[dict[str, str | float | int]]) -> list[dict[str, str | float]]:
         relevant_metrics = [
             "water_level_morning",
             "water_discharge_morning",
@@ -229,8 +227,8 @@ class OperationalJournalDataTransformer:
             "air_temperature",
         ]
 
-        min_row = {"id": "min", "date": "minimum"}
-        max_row = {"id": "max", "date": "maximum"}
+        min_row = {"id": "min", "date": "minimum", "station_id": self.station.id}
+        max_row = {"id": "max", "date": "maximum", "station_id": self.station.id}
 
         for metric in relevant_metrics:
             valid_values = [row[metric]["value"] for row in daily_data if row[metric]["value"] != "--"]
@@ -369,6 +367,7 @@ class OperationalJournalDataTransformer:
                 )
             day_dict["date"] = date.strftime("%Y-%m-%d")
             day_dict["id"] = date.strftime("%Y-%m-%d")
+            day_dict["station_id"] = self.station.id
 
             results.append(day_dict)
 

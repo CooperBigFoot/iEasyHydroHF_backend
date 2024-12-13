@@ -381,7 +381,6 @@ class HydroMetricsAPIController:
 
     @route.put("update", response={200: UpdateHydrologicalMetricResponseSchema, 404: Message, 400: Message})
     def update_hydrological_metric(self, request, payload: UpdateHydrologicalMetricSchema) -> dict:
-        print(payload)
         try:
             with transaction.atomic():
                 # Find the existing metric using composite key fields
