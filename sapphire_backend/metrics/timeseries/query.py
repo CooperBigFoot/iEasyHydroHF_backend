@@ -1,10 +1,11 @@
 from typing import Any
 
 from django.db import connection
-from django.db.models import Count
+from django.db.models import Count, Exists, OuterRef
 from django.db.utils import DataError, ProgrammingError
 
 from sapphire_backend.organizations.models import Organization
+from sapphire_backend.quality_control.models import HistoryLogEntry
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, Site
 
 from ..models import HydrologicalMetric, MeteorologicalMetric
@@ -17,6 +18,7 @@ class TimeseriesQueryManager:
         filter_dict: dict[str, str | list[str]] = None,
         order_param: str = "timestamp_local",
         order_direction: str = "DESC",
+        include_history: bool = False,
     ):
         self.model = self._set_model(model)
         self.filter_fields = self._add_filter_fields()
@@ -25,6 +27,7 @@ class TimeseriesQueryManager:
         self.order_param = order_param
         self.order_direction = order_direction
         self.order = self._construct_order()
+        self.include_history = include_history
 
     @staticmethod
     def _set_model(model: HydrologicalMetric | MeteorologicalMetric):
@@ -145,7 +148,22 @@ class TimeseriesQueryManager:
         return where_clause, params
 
     def execute_query(self):
-        return self.model.objects.filter(**self.filter_dict).order_by(self.order)
+        qs = self.model.objects.filter(**self.filter_dict).order_by(self.order)
+
+        if not self.include_history:
+            return qs
+
+        return qs.annotate(
+            has_history=Exists(
+                HistoryLogEntry.objects.filter(
+                    timestamp_local=OuterRef("timestamp_local"),
+                    station_id=OuterRef("station_id"),
+                    metric_name=OuterRef("metric_name"),
+                    value_type=OuterRef("value_type"),
+                    sensor_identifier=OuterRef("sensor_identifier"),
+                )
+            )
+        )
 
     def get_total(self):
         return self.model.objects.filter(**self.filter_dict).count()

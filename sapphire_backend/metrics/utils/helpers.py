@@ -168,6 +168,7 @@ class OperationalJournalDataTransformer:
                 "value": value,
                 "timestamp_local": metric_data.iloc[0]["timestamp_local"],
                 "sensor_identifier": metric_data.iloc[0]["sensor_identifier"] or "",
+                "has_history": metric_data.iloc[0]["has_history"] or False,
             }
 
         return {"value": "--"}
@@ -179,7 +180,7 @@ class OperationalJournalDataTransformer:
             ice_phenomena_data = data[data["metric_name"] == HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION]
             if not ice_phenomena_data.empty:
                 values = ice_phenomena_data[
-                    ["avg_value", "value_code", "sensor_identifier", "timestamp_local"]
+                    ["avg_value", "value_code", "sensor_identifier", "timestamp_local", "has_history"]
                 ].to_dict("records")
                 if values:
                     result.update(
@@ -188,6 +189,7 @@ class OperationalJournalDataTransformer:
                             "ice_phenomena_codes": [v["value_code"] for v in values],
                             "sensor_identifiers": [v["sensor_identifier"] for v in values],
                             "timestamps_local": [v["timestamp_local"] for v in values],
+                            "has_history": [v["has_history"] for v in values],
                         }
                     )
 
@@ -200,7 +202,9 @@ class OperationalJournalDataTransformer:
             daily_precipitation_data = data[data["metric_name"] == HydrologicalMetricName.PRECIPITATION_DAILY]
             if not daily_precipitation_data.empty:
                 value = (
-                    daily_precipitation_data[["avg_value", "value_code", "sensor_identifier", "timestamp_local"]]
+                    daily_precipitation_data[
+                        ["avg_value", "value_code", "sensor_identifier", "timestamp_local", "has_history"]
+                    ]
                     .iloc[0]
                     .to_dict()
                 )
@@ -210,6 +214,7 @@ class OperationalJournalDataTransformer:
                         "daily_precipitation_code": value["value_code"],
                         "sensor_identifier": value["sensor_identifier"],
                         "timestamp_local": value["timestamp_local"],
+                        "has_history": value["has_history"],
                     }
                 )
 
@@ -395,6 +400,7 @@ class OperationalJournalDataTransformer:
 
             day_dict["date"] = date.strftime("%Y-%m-%d")
             day_dict["id"] = date.strftime("%Y-%m-%d")
+            day_dict["station_id"] = self.station.id
             results.append(day_dict)
 
         return results

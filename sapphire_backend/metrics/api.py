@@ -699,11 +699,12 @@ class OperationalJournalAPIController:
             order_param="timestamp_local",
             order_direction="ASC",
             filter_dict=daily_data_filter_dict,
+            include_history=True,
         ).execute_query()
 
         operational_journal_data.extend(
             daily_hydro_metric_data.values(
-                "timestamp_local", "avg_value", "metric_name", "value_code", "sensor_identifier"
+                "timestamp_local", "avg_value", "metric_name", "value_code", "sensor_identifier", "has_history"
             )
         )
 
@@ -777,10 +778,13 @@ class OperationalJournalAPIController:
                     HydrologicalMetricName.RIVER_CROSS_SECTION_AREA,
                 ],
             },
+            include_history=True,
         ).execute_query()
 
         prepared_data = OperationalJournalDataTransformer(
-            discharge_data.values("timestamp_local", "avg_value", "metric_name", "sensor_identifier"), month, station
+            discharge_data.values("timestamp_local", "avg_value", "metric_name", "sensor_identifier", "has_history"),
+            month,
+            station,
         ).get_discharge_data()
 
         return prepared_data
