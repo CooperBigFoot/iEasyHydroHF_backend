@@ -20,56 +20,40 @@ class HistoryLogFilterSchema(FilterSchema):
 
 class SourceDetailsSchema(Schema):
     display: str | None
+    value: float | None
+    value_code: int | None
     error: str | None
     type: str = Literal["unknown", "user", "telegram", "ingester"]
 
 
-class HistoryLogOutputSchema(Schema):
-    created_date: datetime
+class TimelineEntrySchema(Schema):
+    type: str = Literal["initial", "change", "current"]
+    created_date: datetime | None
     description: str
     value: float
-    source_details: SourceDetailsSchema
+    value_code: int | None
+    source_type: str
+    source_id: int
+    source_name: str | None = None
 
     @staticmethod
-    def resolve_source_details(obj):
-        print(obj)
-        if obj.source_type == HistoryLogEntry.SourceType.USER:
-            User = get_user_model()
+    def resolve_source_name(obj):
+        if obj["source_type"] == HistoryLogEntry.SourceType.USER:
             try:
-                user = User.objects.get(id=obj.source_id)
-                return {
-                    "display": user.display_name,
-                    "type": "user",
-                    "error": None,
-                }
-            except User.DoesNotExist:
-                return {"type": "user", "display": None, "error": "not_found"}
-
-        elif obj.source_type == HistoryLogEntry.SourceType.TELEGRAM:
-            # Assuming you have a Telegram model that stores telegram details
+                user = get_user_model().objects.get(id=obj["source_id"])
+                return user.display_name
+            except get_user_model().DoesNotExist:
+                return None
+        elif obj["source_type"] == HistoryLogEntry.SourceType.TELEGRAM:
             try:
-                telegram = TelegramStored.objects.get(id=obj.source_id)
-                return {
-                    "type": "telegram",
-                    "display": telegram.telegram,
-                    "error": None,
-                }
+                telegram = TelegramStored.objects.get(id=obj["source_id"])
+                return telegram.telegram
             except TelegramStored.DoesNotExist:
-                return {"type": "telegram", "display": None, "error": "not_found"}
-
-        elif obj.source_type == HistoryLogEntry.SourceType.INGESTER:
+                return None
+        elif obj["source_type"] == HistoryLogEntry.SourceType.INGESTER:
             try:
-                ingester = FileState.objects.get(id=obj.source_id)
-                return {
-                    "type": "ingester",
-                    "display": ingester.filename,
-                    "error": None,
-                }
+                ingester = FileState.objects.get(id=obj["source_id"])
+                return ingester.filename
             except FileState.DoesNotExist:
-                return {"type": "ingester", "display": None, "error": "not_found"}
-
-        return {
-            "type": "unknown",
-            "display": None,
-            "error": None,
-        }
+                return None
+        return None

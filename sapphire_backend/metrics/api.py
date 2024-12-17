@@ -22,8 +22,6 @@ from ninja_extra.pagination import PageNumberPaginationExtra, paginate
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.quality_control.choices import HistoryLogStationType
-from sapphire_backend.quality_control.models import HistoryLogEntry
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.mixins.models import SourceTypeMixin
@@ -103,6 +101,7 @@ from .utils.helpers import (
     create_norm_dataframe,
     hydro_station_uuids_belong_to_organization_uuid,
     meteo_station_uuids_belong_to_organization_uuid,
+    save_metric_and_create_log,
     virtual_station_uuids_belong_to_organization_uuid,
 )
 from .utils.parser import (
@@ -384,38 +383,19 @@ class HydroMetricsAPIController:
         try:
             with transaction.atomic():
                 # Find the existing metric using composite key fields
-                metric = HydrologicalMetric.objects.get(
+                metric = HydrologicalMetric(
                     timestamp_local=payload.timestamp_local,
                     station_id=payload.station_id,
                     metric_name=payload.metric_name,
                     value_type=payload.value_type,
                     sensor_identifier=payload.sensor_identifier,
+                    avg_value=payload.new_value,
+                    value_code=payload.value_code,
+                    source_type=SourceTypeMixin.SourceType.USER,
+                    source_id=request.user.id,
                 )
 
-                # Create history log entry with old value and original source info
-                history_entry = HistoryLogEntry(
-                    timestamp_local=metric.timestamp_local,
-                    station_id=metric.station_id,
-                    metric_name=metric.metric_name,
-                    value_type=metric.value_type,
-                    sensor_identifier=metric.sensor_identifier,
-                    station_type=HistoryLogStationType.HYDRO,
-                    value=metric.avg_value,
-                    description=payload.comment,
-                    source_type=metric.source_type,
-                    source_id=metric.source_id,
-                )
-
-                # Update the metric with new values and user source info
-                metric.avg_value = payload.new_value
-                if payload.value_code is not None:
-                    metric.value_code = payload.value_code
-                metric.source_type = SourceTypeMixin.SourceType.USER
-                metric.source_id = request.user.id
-
-                # Save both changes in the transaction
-                metric.save()
-                history_entry.save()
+                save_metric_and_create_log(metric, description=payload.comment)
 
                 return {"success": True, "message": "Metric updated successfully"}
 

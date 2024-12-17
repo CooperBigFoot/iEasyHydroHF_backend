@@ -312,7 +312,6 @@ class UpdateHydrologicalMetricSchema(Schema):
     new_value: float
     comment: str = ""
 
-    # For precipitation specifically
     value_code: int | None = None
 
 

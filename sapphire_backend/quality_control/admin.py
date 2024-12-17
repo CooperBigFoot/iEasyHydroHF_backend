@@ -10,10 +10,10 @@ class HistoryLogEntryAdmin(admin.ModelAdmin):
         "timestamp_local_display",  # Use the custom display method
         "metric_name",
         "station_id",
-        "source_type",
-        "source_id",
+        "previous_value",
+        "new_value",
     ]
-    list_filter = ["source_type"]
+    list_filter = ["previous_source_type", "new_source_type"]
 
     def timestamp_local_display(self, obj):
         return obj.timestamp_local.replace(tzinfo=None)

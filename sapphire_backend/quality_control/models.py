@@ -6,7 +6,8 @@ from sapphire_backend.utils.mixins.models import CreatedDateMixin, SourceTypeMix
 from .choices import HistoryLogStationType
 
 
-class HistoryLogEntry(CreatedDateMixin, SourceTypeMixin, models.Model):
+class HistoryLogEntry(CreatedDateMixin, models.Model):
+    # metric PK fields
     timestamp_local = models.DateTimeField(verbose_name=_("Timestamp local without timezone"))
     station_id = models.PositiveIntegerField(verbose_name=_("Station ID"))
     metric_name = models.CharField(verbose_name=_("Metric name"), max_length=10)
@@ -18,7 +19,24 @@ class HistoryLogEntry(CreatedDateMixin, SourceTypeMixin, models.Model):
         default=HistoryLogStationType.HYDRO,
         max_length=50,
     )
-    value = models.DecimalField(verbose_name=_("Value"), max_digits=10, decimal_places=5)
+
+    # previous state
+    previous_value = models.DecimalField(verbose_name=_("Previous value"), max_digits=10, decimal_places=5)
+    previous_value_code = models.IntegerField(verbose_name=_("Previous code"), blank=True, null=True)
+    previous_source_type = models.CharField(
+        verbose_name=_("Previous source type"), max_length=2, choices=SourceTypeMixin.SourceType
+    )
+    previous_source_id = models.IntegerField(verbose_name=_("Previous source ID"))
+
+    # new state
+    new_value = models.DecimalField(verbose_name=_("New value"), max_digits=10, decimal_places=5)
+    new_value_code = models.IntegerField(verbose_name=_("New code"), blank=True, null=True)
+    new_source_type = models.CharField(
+        verbose_name=_("New source type"), max_length=2, choices=SourceTypeMixin.SourceType
+    )
+    new_source_id = models.IntegerField(verbose_name=_("New source ID"))
+
+    # description fields
     description = models.TextField(verbose_name=_("Description"), blank=True)
 
     class Meta:
