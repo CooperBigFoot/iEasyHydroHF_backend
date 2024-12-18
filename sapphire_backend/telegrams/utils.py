@@ -131,7 +131,7 @@ def save_section_one_metrics(
     )
     save_metric_and_create_log(morning_wl_metric, True)
 
-    if section_one.get("air_temperature", False):
+    if section_one.get("air_temperature") is not None:
         air_temp_metric = HydrologicalMetric(
             timestamp_local=section_day_smart.morning_local,
             min_value=None,
@@ -148,7 +148,7 @@ def save_section_one_metrics(
         )
         save_metric_and_create_log(air_temp_metric)
 
-    if section_one.get("water_temperature", False):
+    if section_one.get("water_temperature") is not None:
         water_temp_metric = HydrologicalMetric(
             timestamp_local=section_day_smart.morning_local,
             min_value=None,
