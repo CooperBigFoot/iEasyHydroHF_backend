@@ -6,8 +6,8 @@ from ninja import FilterSchema, Schema
 
 from sapphire_backend.ingestion.models import FileState
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName
-from sapphire_backend.quality_control.models import HistoryLogEntry
 from sapphire_backend.telegrams.models import TelegramStored
+from sapphire_backend.utils.mixins.models import SourceTypeMixin
 
 
 class HistoryLogFilterSchema(FilterSchema):
@@ -38,19 +38,19 @@ class TimelineEntrySchema(Schema):
 
     @staticmethod
     def resolve_source_name(obj):
-        if obj["source_type"] == HistoryLogEntry.SourceType.USER:
+        if obj["source_type"] == SourceTypeMixin.SourceType.USER:
             try:
                 user = get_user_model().objects.get(id=obj["source_id"])
                 return user.display_name
             except get_user_model().DoesNotExist:
                 return None
-        elif obj["source_type"] == HistoryLogEntry.SourceType.TELEGRAM:
+        elif obj["source_type"] == SourceTypeMixin.SourceType.TELEGRAM:
             try:
                 telegram = TelegramStored.objects.get(id=obj["source_id"])
                 return telegram.telegram
             except TelegramStored.DoesNotExist:
                 return None
-        elif obj["source_type"] == HistoryLogEntry.SourceType.INGESTER:
+        elif obj["source_type"] == SourceTypeMixin.SourceType.INGESTER:
             try:
                 ingester = FileState.objects.get(id=obj["source_id"])
                 return ingester.filename
