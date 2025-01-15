@@ -28,10 +28,17 @@ class RemarkOutputSchema(RemarkInputSchema):
 class NestedStationSchema(Schema):
     uuid: str
     name: str
+    id: int
+    station_type: str | None = None
+    station_code: str
 
     @staticmethod
     def resolve_uuid(obj):
         return str(obj.uuid)
+
+    @staticmethod
+    def resolve_station_type(obj):
+        return getattr(obj, "station_type", None)
 
 
 class ChartSettingsBaseSchema(Schema):
