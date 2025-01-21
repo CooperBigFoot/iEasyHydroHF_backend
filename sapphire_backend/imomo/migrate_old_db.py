@@ -489,20 +489,41 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
     refresh_water_level_daily_average('2015-01-01', '2030-01-01')
 
 
-def migrate_discharge_models(old_session):
-    old_discharge_models = old_session.query(OldDischargeModel).all()
+def migrate_discharge_models(old_session, target_station: str):
+    query = old_session.query(OldDischargeModel)
+    if target_station:
+        # Filter discharge models for specific station
+        query = query.join(OldSite).filter(OldSite.site_code == target_station)
+
+    old_discharge_models = query.all()
+
     for old in tqdm(old_discharge_models, desc="Discharge models", position=0):
-        hydro_station = HydrologicalStation.objects.get(station_code=old.site.site_code_repr,
-                                                        station_type=HydrologicalStation.StationType.MANUAL)
+        hydro_station = HydrologicalStation.objects.get(
+            station_code=old.site.site_code_repr,
+            station_type=HydrologicalStation.StationType.MANUAL
+        )
+
         if old.valid_from is None:
             # when valid_from is None then it is initial discharge model
             # 2000-01-01 is sufficient as the beginning date of the initial model
-            valid_from_local = SmartDatetime(datetime(2000, 1, 1, 0, 0, 0), hydro_station,
-                                             tz_included=False).day_beginning_local
+            valid_from_local = SmartDatetime(
+                datetime(2000, 1, 1, 0, 0, 0),
+                hydro_station,
+                tz_included=False
+            ).day_beginning_local
         else:
-            valid_from_local = SmartDatetime(old.valid_from, hydro_station, tz_included=False).day_beginning_local
+            valid_from_local = SmartDatetime(
+                old.valid_from,
+                hydro_station,
+                tz_included=False
+            ).day_beginning_local
 
-        DischargeModel.objects.filter(station_id=hydro_station.id, valid_from_local=valid_from_local).delete()  # upsert
+        # upsert
+        DischargeModel.objects.filter(
+            station_id=hydro_station.id,
+            valid_from_local=valid_from_local
+        ).delete()
+
         new_discharge_model = DischargeModel(
             name=old.model_name,
             param_a=old.param_a,
@@ -574,7 +595,7 @@ def migrate(skip_cleanup: bool, skip_structure: bool, target_station: str, limit
     if target_station != "":
         logging.info(f"Will migrate only station {target_station} (--station)")
 
-    migrate_discharge_models(old_session)
+    migrate_discharge_models(old_session, target_station)
     migrate_hydro_metrics(old_session, limiter, target_station)
     migrate_meteo_metrics(old_session, limiter, target_station)
     old_session.close()
