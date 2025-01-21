@@ -12,6 +12,7 @@ class User(UUIDMixin, AbstractUser):
         REGULAR_USER = "regular_user", _("Regular user")
         ORGANIZATION_ADMIN = "organization_admin", _("Organization admin")
         SUPER_ADMIN = "super_admin", _("Super admin")
+        REGIME_USER = "regime_user", _("Regime user")
 
     class Language(models.TextChoices):
         ENGLISH = "en", _("English")
@@ -56,6 +57,10 @@ class User(UUIDMixin, AbstractUser):
     @property
     def is_regular(self):
         return self.user_role == self.UserRoles.REGULAR_USER
+
+    @property
+    def is_regime_user(self):
+        return self.user_role == self.UserRoles.REGIME_USER
 
     @property
     def display_name(self):
