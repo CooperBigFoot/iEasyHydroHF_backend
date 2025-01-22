@@ -100,8 +100,8 @@ def get_or_create_site(
     region: Region,
     latitude,
     longitude,
-    elevation,  # TODO figure out
-    timezone=None,  # TODO figure out
+    elevation,
+    timezone=None,
 ):
     site = MAP_OLD_SITE_CODE_TO_NEW_SITE_OBJ.get(old_site_code_repr, None)
     if site is None:
@@ -112,8 +112,8 @@ def get_or_create_site(
             region=region,
             latitude=latitude,
             longitude=longitude,
-            timezone=None,  # TODO not available in old, figure out
-            elevation=elevation,  # TODO not available in old,figure out
+            timezone=None,
+            elevation=elevation,
         )
         site.save()
         MAP_OLD_SITE_CODE_TO_NEW_SITE_OBJ[old_site_code_repr] = site
@@ -212,10 +212,6 @@ def migrate_sites_and_stations(old_session):
     for old in tqdm(old_data, desc="Stations", position=0):
         organization = MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ[old.source_id]
 
-        # logic for basins, hydro stations basins are prioritized, so if there are both hydro and meteo
-        # of the same code, the hydro basin will be created in DB and referenced by Site model
-        # TODO ask them to standardize basin names according to the official list
-        # so that we remove all the duplicates and redundant names
         if old.site_type == "meteo":
             shared_hydro_station = old_session.query(OldSite).filter(OldSite.site_code == old.site_code_repr).first()
             if shared_hydro_station is not None:
@@ -232,14 +228,15 @@ def migrate_sites_and_stations(old_session):
             region=get_or_create_region(region_name=old.region, organization=organization),
             latitude=old.latitude,
             longitude=old.longitude,
-            timezone=None,  # TODO figure out
-            elevation=old.elevation_m,  # TODO figure out
+            timezone=None,
+            elevation=old.elevation_m,
         )
+        print(site)
 
         if old.site_type == "meteo":
             meteo_station = MeteorologicalStation(
                 name=old.site_name,
-                station_code=old.site_code_repr,  # TODO blank could be fine, or blank name in Site model
+                station_code=old.site_code_repr,
                 site=site,
                 description=old.comments or "",
                 is_deleted=False,
@@ -249,11 +246,11 @@ def migrate_sites_and_stations(old_session):
         elif old.site_type == "discharge":
             hydro_station = HydrologicalStation(
                 name=old.site_name,
-                station_code=old.site_code_repr,  # TODO blank could be fine, or blank name in Site model
+                station_code=old.site_code_repr,
                 station_type=HydrologicalStation.StationType.MANUAL,
                 site=site,
                 description=old.comments or "",
-                measurement_time_step=None,  # TODO figure out for manual stations
+                measurement_time_step=None,
                 discharge_level_alarm=None,
                 is_deleted=False,
             )
