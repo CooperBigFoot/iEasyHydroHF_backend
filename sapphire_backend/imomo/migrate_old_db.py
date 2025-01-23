@@ -231,7 +231,7 @@ def migrate_sites_and_stations(old_session):
             timezone=None,
             elevation=old.elevation_m,
         )
-        print(site)
+        print(f"created site inside migrate_sites_and_stations: {site}")
 
         if old.site_type == "meteo":
             meteo_station = MeteorologicalStation(
@@ -254,7 +254,9 @@ def migrate_sites_and_stations(old_session):
                 discharge_level_alarm=None,
                 is_deleted=False,
             )
+            print(f"instantiated hydro_station inside migrate_sites_and_stations: {hydro_station}")
             hydro_station.save()
+            print(f"saved hydro_station inside migrate_sites_and_stations: {hydro_station}")
             cnt_hydro = cnt_hydro + 1
 
     logging.info(f"Meteo count: {cnt_meteo}, hydro count: {cnt_hydro}")
@@ -561,39 +563,58 @@ def cleanup_all():
     Organization.objects.all().delete()
     logging.info("Done")
 
-
-def migrate(skip_cleanup: bool, skip_structure: bool, target_station: str, limiter: int):
-    # now do the things that you want with your models here
-    old_db_engine = create_engine(
-        "postgresql+psycopg2://{user}:{password}@{host}:{port}/{db_name}".format(
-            user=os.environ.get("OLD_MIGRATION_DB_USERNAME", "hydrosolutions"),
-            password=os.environ.get("OLD_MIGRATION_DB_PASSWORD", "hydrosolutions"),
-            host=os.environ.get("OLD_MIGRATION_DB_HOST", "localhost"),
-            port=os.environ.get("OLD_MIGRATION_DB_PORT", "5432"),
-            db_name=os.environ.get("OLD_MIGRATION_DB_NAME", "hydrosolutions"),
-        )
+def get_old_db_url():
+    return "postgresql+psycopg2://{user}:{password}@{host}:{port}/{db_name}".format(
+        user=os.environ.get("OLD_MIGRATION_DB_USERNAME", "hydrosolutions"),
+        password=os.environ.get("OLD_MIGRATION_DB_PASSWORD", "hydrosolutions"),
+        host=os.environ.get("OLD_MIGRATION_DB_HOST", "localhost"),
+        port=os.environ.get("OLD_MIGRATION_DB_PORT", "5432"),
+        db_name=os.environ.get("OLD_MIGRATION_DB_NAME", "hydrosolutions"),
     )
-    # Update with your old database connection string
-    Session = sessionmaker(bind=old_db_engine)
-    old_session = Session()
-    if limiter != 0:
-        logging.info(f"Starting migrations in debugging mode (limiter = {limiter})")
+
+def migrate(
+    skip_cleanup: bool,
+    skip_structure: bool,
+    target_station: str,
+    target_organization: str,
+    limiter: int
+):
     if not skip_cleanup:
         cleanup_all()
     else:
         logging.info(f"Skipped cleanup (--skip-cleanup = {skip_cleanup})")
 
-    if not skip_structure:
-        migrate_organizations(old_session)
-        migrate_sites_and_stations(old_session)
-        migrate_virtual_stations(old_session)
-    else:
-        logging.info(f"Skipped structure build (--skip-structure = {skip_structure})")
-    if target_station != "":
-        logging.info(f"Will migrate only station {target_station} (--station)")
+    if limiter != 0:
+        logging.info(f"Starting migrations in debugging mode (limiter = {limiter})")
 
-    migrate_discharge_models(old_session, target_station)
-    migrate_hydro_metrics(old_session, limiter, target_station)
-    migrate_meteo_metrics(old_session, limiter, target_station)
-    old_session.close()
-    print("Data migration completed successfully.")
+    engine = create_engine(get_old_db_url())
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    try:
+        if not skip_structure:
+            migrate_organizations(session)
+            migrate_sites_and_stations(session)
+            migrate_virtual_stations(session)
+        else:
+             logging.info(f"Skipped structure build (--skip-structure = {skip_structure})")
+
+        # get target stations based on filters
+        stations_query = session.query(OldSite)
+
+        if target_organization:
+            stations_query = stations_query.join(OldSource).filter(
+                OldSource.organization == target_organization
+            )
+        if target_station:
+            stations_query = stations_query.filter(OldSite.site_code == target_station)
+
+        old_stations = stations_query.all()
+
+        # migrate data for each station
+        for old_station in tqdm(old_stations, desc="Migrating stations"):
+            migrate_discharge_models(session, old_station.site_code)
+    finally:
+        session.close()
+
+    logging.info("Data migration completed successfully.")

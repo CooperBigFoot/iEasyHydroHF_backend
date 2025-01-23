@@ -5,8 +5,19 @@ from .factories import (
     OldDBFactory,
     OldSourceFactory,
     OldSiteFactory,
-    OldDischargeModelFactory
+    OldDischargeModelFactory,
+    DataValueFactory
 )
+from sapphire_backend.organizations.models import Organization
+from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.stations.tests.factories import (
+    OrganizationFactory,
+    BasinFactory,
+    RegionFactory,
+    SiteFactory,
+    HydrologicalStationFactory,
+)
+from sapphire_backend.imomo.data_structs.standard_data import Variables
 
 @pytest.fixture
 def old_db_session():
@@ -144,7 +155,74 @@ def old_uzbek_discharge_model_second(old_db_session, old_uzbek_station_second):
     )
 
 @pytest.fixture
+def old_water_level_value(old_db_session, old_kyrgyz_station_first):
+    """Create water level observation in old DB"""
+    return DataValueFactory.create(
+        old_db_session,
+        site=old_kyrgyz_station_first,
+        data_value=123.45,
+        local_date_time=datetime(2023, 1, 1, 8, 0),
+        variable__variable_code=Variables.gauge_height_daily_measurement.value
+    )
+
+@pytest.fixture
 def clean_django_db():
     """Ensure clean Django test database"""
     from sapphire_backend.imomo.migrate_old_db import cleanup_all
     cleanup_all()
+
+@pytest.fixture
+def existing_kyrgyz_org():
+    """Create Kyrgyz Hydromet organization in new DB"""
+    return OrganizationFactory(
+        name="КыргызГидроМет",
+        language=Organization.Language.RUSSIAN
+    )
+
+@pytest.fixture
+def existing_kyrgyz_basin(existing_kyrgyz_org):
+    """Create Naryn basin in new DB"""
+    return BasinFactory(
+        name="Нарын",
+        organization=existing_kyrgyz_org
+    )
+
+@pytest.fixture
+def existing_kyrgyz_region(existing_kyrgyz_org):
+    """Create Jalal-Abad region in new DB"""
+    return RegionFactory(
+        name="ЖАЛАЛ-АБАДСКАЯ ОБЛАСТЬ",
+        organization=existing_kyrgyz_org
+    )
+
+@pytest.fixture
+def existing_kyrgyz_site(existing_kyrgyz_org, existing_kyrgyz_basin, existing_kyrgyz_region):
+    """Create Kyrgyz site in new DB"""
+    return SiteFactory(
+        organization=existing_kyrgyz_org,
+        basin=existing_kyrgyz_basin,
+        region=existing_kyrgyz_region,
+        country="Kyrgyzstan",
+        latitude=42.8746,
+        longitude=74.5698
+    )
+
+@pytest.fixture
+def existing_kyrgyz_station(existing_kyrgyz_site):
+    """Create Kyrgyz station in new DB"""
+    return HydrologicalStationFactory(
+        name="Kyrgyz Station First",
+        station_code="1234",
+        station_type=HydrologicalStation.StationType.MANUAL,
+        site=existing_kyrgyz_site
+    )
+
+@pytest.fixture
+def existing_kyrgyz_station_second(existing_kyrgyz_site):
+    """Create second Kyrgyz station in new DB"""
+    return HydrologicalStationFactory(
+        name="Kyrgyz Station Second",
+        station_code="5678",
+        station_type=HydrologicalStation.StationType.MANUAL,
+        site=existing_kyrgyz_site
+    )

@@ -1,6 +1,7 @@
 from faker import Faker
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
+from datetime import datetime
 
 from sapphire_backend.imomo.old_models import (
     Source as OldSource,
@@ -8,7 +9,9 @@ from sapphire_backend.imomo.old_models import (
     DischargeModel as OldDischargeModel,
     VirtualSiteAssociation as OldVirtualSiteAssociation,
     DataValue,
+    Variable,
 )
+from sapphire_backend.imomo.data_structs.standard_data import Variables
 
 fake = Faker("ru_RU")
 
@@ -105,3 +108,54 @@ class OldDischargeModelFactory:
         session.add(model)
         session.commit()
         return model
+
+
+class DataValueFactory:
+    """Factory for creating DataValue instances in old DB"""
+    @staticmethod
+    def create(session, site, data_value=None, local_date_time=None,
+               variable__variable_code=None, ice_phenomena_string=None):
+        """Create a DataValue instance
+
+        Args:
+            session: SQLAlchemy session
+            site: OldSite instance
+            data_value: Optional float value
+            local_date_time: Optional datetime
+            variable__variable_code: Optional variable code from Variables enum
+            ice_phenomena_string: Optional ice phenomena string (e.g. "1:50|2:75")
+        """
+        if local_date_time is None:
+            local_date_time = datetime(2023, 1, 1, 8, 0)
+
+        # Create variable
+        variable = Variable(
+            variable_code=variable__variable_code or Variables.gauge_height_observation.value,
+            variable_name="Test Variable",
+            variable_unit_id=1  # Assuming unit exists
+        )
+        session.add(variable)
+
+        # Create data value
+        data_value_obj = DataValue(
+            data_value=data_value if data_value is not None else 123.45,
+            local_date_time=local_date_time,
+            utc_offset=6.0,  # Example offset
+            date_time_utc=local_date_time,  # Simplified for testing
+            ice_phenomena_string=ice_phenomena_string,
+            site=site,
+            variable=variable,
+            method_id=1,  # Default method
+            source_id=site.source_id,
+            censor_code_id=1,  # Will be set by set_default_censor_code_id
+            quality_control_level_id=1  # Will be set by set_default_quality_control_level_id
+        )
+
+        # Set default values using the model's methods
+        data_value_obj.set_default_censor_code_id(session)
+        data_value_obj.set_default_quality_control_level_id(session)
+
+        session.add(data_value_obj)
+        session.commit()
+
+        return data_value_obj
