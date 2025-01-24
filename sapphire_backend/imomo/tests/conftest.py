@@ -166,6 +166,17 @@ def old_water_level_value(old_db_session, old_kyrgyz_station_first):
     )
 
 @pytest.fixture
+def old_uzbek_water_level_value(old_db_session, old_uzbek_station_first):
+    """Create a water level value for the Uzbek station"""
+    return DataValueFactory.create(
+        session=old_db_session,
+        site=old_uzbek_station_first,
+        data_value=456.78,
+        local_date_time=datetime(2023, 1, 1, 8, 0),
+        variable__variable_code=Variables.gauge_height_daily_measurement.value
+    )
+
+@pytest.fixture
 def clean_django_db():
     """Ensure clean Django test database"""
     from sapphire_backend.imomo.migrate_old_db import cleanup_all
@@ -225,4 +236,50 @@ def existing_kyrgyz_station_second(existing_kyrgyz_site):
         station_code="5678",
         station_type=HydrologicalStation.StationType.MANUAL,
         site=existing_kyrgyz_site
+    )
+
+@pytest.fixture
+def existing_uzbek_org():
+    """Create Uzbek Hydromet organization in new DB"""
+    return OrganizationFactory(
+        name="УзГидроМет",
+        language=Organization.Language.RUSSIAN
+    )
+
+@pytest.fixture
+def existing_uzbek_basin(existing_uzbek_org):
+    """Create Syrdarya basin in new DB"""
+    return BasinFactory(
+        name="Сырдарья",
+        organization=existing_uzbek_org
+    )
+
+@pytest.fixture
+def existing_uzbek_region(existing_uzbek_org):
+    """Create Tashkent region in new DB"""
+    return RegionFactory(
+        name="ТАШКЕНТСКАЯ ОБЛАСТЬ",
+        organization=existing_uzbek_org
+    )
+
+@pytest.fixture
+def existing_uzbek_site(existing_uzbek_org, existing_uzbek_basin, existing_uzbek_region):
+    """Create Uzbek site in new DB"""
+    return SiteFactory(
+        organization=existing_uzbek_org,
+        basin=existing_uzbek_basin,
+        region=existing_uzbek_region,
+        country="Uzbekistan",
+        latitude=41.2995,
+        longitude=69.2401
+    )
+
+@pytest.fixture
+def existing_uzbek_station(existing_uzbek_site):
+    """Create Uzbek station in new DB"""
+    return HydrologicalStationFactory(
+        name="Uzbek Station First",
+        station_code="9012",
+        station_type=HydrologicalStation.StationType.MANUAL,
+        site=existing_uzbek_site
     )

@@ -1,9 +1,20 @@
 import pytest
 from unittest.mock import patch
 from sapphire_backend.organizations.models import Organization, Basin, Region
-from sapphire_backend.stations.models import HydrologicalStation, Site
+from sapphire_backend.stations.models import HydrologicalStation, Site, MeteorologicalStation
 from sapphire_backend.estimations.models import DischargeModel
-from sapphire_backend.imomo.migrate_old_db import MAP_OLD_SITE_CODE_TO_NEW_SITE_OBJ, MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ
+from sapphire_backend.imomo.migrate_old_db import (
+    MAP_OLD_SOURCE_ID_TO_NEW_ORGANIZATION_OBJ,
+    MAP_OLD_SITE_CODE_TO_NEW_SITE_OBJ,
+)
+from sapphire_backend.imomo.migrate_old_db import migrate
+from sapphire_backend.imomo.data_structs.standard_data import Variables
+from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric
+from sapphire_backend.metrics.choices import HydrologicalMetricName, HydrologicalMeasurementType, MetricUnit
+from datetime import datetime, timezone
+
+from .factories import DataValueFactory
+
 
 @pytest.mark.django_db(transaction=True)
 @patch('sapphire_backend.imomo.migrate_old_db.create_engine')
@@ -34,8 +45,6 @@ class TestImomoMigration:
             self, mock_create_engine, old_db_session, old_kyrgyz_station_first, old_kyrgyz_discharge_model_first
         ):
         """Test migration of a single station with its discharge model"""
-        from sapphire_backend.imomo.migrate_old_db import migrate
-
         self.verify_empty_state()
         mock_create_engine.return_value = old_db_session.bind
 
@@ -77,7 +86,6 @@ class TestImomoMigration:
             old_kyrgyz_discharge_model_second
         ):
         """Test migration of multiple stations"""
-        from sapphire_backend.imomo.migrate_old_db import migrate
 
         self.verify_empty_state()
         mock_create_engine.return_value = old_db_session.bind
@@ -109,7 +117,6 @@ class TestImomoMigration:
             old_uzbek_discharge_model_first
         ):
         """Test migration of stations from different organizations"""
-        from sapphire_backend.imomo.migrate_old_db import migrate
 
         self.verify_empty_state()
         mock_create_engine.return_value = old_db_session.bind
@@ -144,7 +151,6 @@ class TestImomoPartialMigration:
             self, mock_create_engine, old_db_session, old_kyrgyz_station_first,
             old_kyrgyz_discharge_model_first, existing_kyrgyz_station):
         """Test migrating just a discharge model when station structure already exists"""
-        from sapphire_backend.imomo.migrate_old_db import migrate
 
         assert DischargeModel.objects.filter(station=existing_kyrgyz_station).count() == 0
         mock_create_engine.return_value = old_db_session.bind
@@ -167,7 +173,6 @@ class TestImomoPartialMigration:
             old_kyrgyz_discharge_model_first, old_kyrgyz_discharge_model_second,
             existing_kyrgyz_station, existing_kyrgyz_station_second):
         """Test migrating multiple discharge models when stations already exist"""
-        from sapphire_backend.imomo.migrate_old_db import migrate
 
         # Verify no discharge models exist initially
         assert DischargeModel.objects.count() == 0
@@ -194,19 +199,10 @@ class TestImomoPartialMigration:
         assert model2.name == "Kyrgyz Model Second"
         assert model2.param_a == 1.0
 
-
-@pytest.mark.django_db(transaction=True)
-@patch('sapphire_backend.imomo.migrate_old_db.create_engine')
-class TestImomoMetricMigration:
-    """Test migration of metrics from old DataValue to new HydrologicalMetric"""
-
     def test_migrate_basic_water_level(
             self, mock_create_engine, old_db_session, old_kyrgyz_station_first,
             existing_kyrgyz_station, old_water_level_value):
         """Test migrating a basic water level measurement"""
-        from sapphire_backend.imomo.migrate_old_db import migrate
-        from sapphire_backend.metrics.models import HydrologicalMetric
-        from sapphire_backend.metrics.choices import HydrologicalMetricName, HydrologicalMeasurementType, MetricUnit
 
         assert HydrologicalMetric.objects.count() == 0
         mock_create_engine.return_value = old_db_session.bind
@@ -228,5 +224,292 @@ class TestImomoMetricMigration:
         assert metric.metric_name == HydrologicalMetricName.WATER_LEVEL_DAILY
         assert metric.value_type == HydrologicalMeasurementType.MANUAL
         assert float(metric.avg_value) == 123.45  # From fixture
-        assert metric.timestamp_local == old_water_level_value.local_date_time
-        assert metric.unit == MetricUnit.CENTIMETER
+        # Expect UTC timestamp in the metric
+        expected_timestamp = old_water_level_value.local_date_time.replace(tzinfo=timezone.utc)
+        assert metric.timestamp_local == expected_timestamp
+        assert metric.unit == MetricUnit.WATER_LEVEL
+
+    def test_migrate_nonexistent_organization(
+            self, mock_create_engine, old_db_session, old_kyrgyz_station_first,
+            old_water_level_value):
+        """Test migration with non-existing organization"""
+        mock_create_engine.return_value = old_db_session.bind
+
+        # Migrate with non-existent organization
+        migrate(
+            skip_cleanup=True,
+            skip_structure=True,
+            target_station="",
+            target_organization="NonExistentOrg",
+            limiter=100
+        )
+
+        # Verify no metrics were created
+        assert HydrologicalMetric.objects.count() == 0
+
+    def test_migrate_specific_organization_metrics(
+            self, mock_create_engine, old_db_session,
+            old_kyrgyz_station_first, old_uzbek_station_first,
+            old_water_level_value, old_uzbek_water_level_value,
+            existing_kyrgyz_station, existing_uzbek_station):
+        """Test migration of metrics for specific organization only"""
+        mock_create_engine.return_value = old_db_session.bind
+
+        # Migrate only Kyrgyz organization data
+        migrate(
+            skip_cleanup=True,
+            skip_structure=True,
+            target_station="",
+            target_organization="КыргызГидроМет",
+            limiter=100
+        )
+
+        # Verify only Kyrgyz metrics were created
+        assert HydrologicalMetric.objects.count() == 1
+        metric = HydrologicalMetric.objects.first()
+        assert metric.station == existing_kyrgyz_station
+
+    def test_migrate_invalid_organization_station_combination(
+            self, mock_create_engine, old_db_session,
+            old_kyrgyz_station_first, old_water_level_value,
+            existing_kyrgyz_station):
+        """Test migration with mismatched organization and station"""
+        mock_create_engine.return_value = old_db_session.bind
+
+        # Try to migrate Kyrgyz station with Uzbek organization
+        migrate(
+            skip_cleanup=True,
+            skip_structure=True,
+            target_station="1234",  # Kyrgyz station
+            target_organization="УзГидроМет",  # Uzbek organization
+            limiter=100
+        )
+
+        # Verify no metrics were created due to mismatch
+        assert HydrologicalMetric.objects.count() == 0
+
+    def test_migrate_organization_new_data(
+        self, mock_create_engine, old_db_session,
+        old_kyrgyz_station_first, old_water_level_value,
+        existing_kyrgyz_station):
+        """Test migration when organization has no existing data for timestamp"""
+        mock_create_engine.return_value = old_db_session.bind
+
+        # Create existing metric with different timestamp
+        different_timestamp = old_water_level_value.local_date_time.replace(hour=10)  # 10:00 instead of 8:00
+        existing_metric = HydrologicalMetric.objects.create(
+            station=existing_kyrgyz_station,
+            timestamp_local=different_timestamp.replace(tzinfo=timezone.utc),
+            avg_value=999.99,
+            metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+            value_type=HydrologicalMeasurementType.MANUAL,
+            unit=MetricUnit.WATER_LEVEL
+        )
+
+        initial_count = HydrologicalMetric.objects.count()
+
+        # Migrate additional data
+        migrate(
+            skip_cleanup=True,
+            skip_structure=True,
+            target_station="",
+            target_organization="КыргызГидроМет",
+            limiter=100
+        )
+
+        # Verify new metric was added (no upsert, different timestamp)
+        assert HydrologicalMetric.objects.count() == initial_count + 1
+        assert HydrologicalMetric.objects.filter(avg_value=999.99).exists()
+        assert HydrologicalMetric.objects.filter(avg_value=123.45).exists()
+
+    def test_migrate_organization_upsert_data(
+            self, mock_create_engine, old_db_session,
+            old_kyrgyz_station_first, old_water_level_value,
+            existing_kyrgyz_station):
+        """Test migration when organization has existing data for same timestamp (should upsert)"""
+        mock_create_engine.return_value = old_db_session.bind
+
+        # Create existing metric with same timestamp
+        existing_metric = HydrologicalMetric.objects.create(
+            station=existing_kyrgyz_station,
+            timestamp_local=old_water_level_value.local_date_time.replace(tzinfo=timezone.utc),
+            avg_value=999.99,
+            metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+            value_type=HydrologicalMeasurementType.MANUAL,
+            unit=MetricUnit.WATER_LEVEL
+        )
+
+        initial_count = HydrologicalMetric.objects.count()
+
+        # Migrate additional data
+        migrate(
+            skip_cleanup=True,
+            skip_structure=True,
+            target_station="",
+            target_organization="КыргызГидроМет",
+            limiter=100
+        )
+
+        # Verify upsert happened (count stayed same, value updated)
+        assert HydrologicalMetric.objects.count() == initial_count  # No new records
+        assert not HydrologicalMetric.objects.filter(avg_value=999.99).exists()  # Old value gone
+        assert HydrologicalMetric.objects.filter(avg_value=123.45).exists()  # New value present
+
+    def test_migrate_date_range_hydro_metrics(
+            self, mock_create_engine, old_db_session,
+            old_kyrgyz_station_first, existing_kyrgyz_station):
+        """Test migration of hydro metrics within date range"""
+        mock_create_engine.return_value = old_db_session.bind
+
+        # Create test data with different dates
+        dates = [
+            datetime(2023, 1, 1, 8, 0),  # Should be included
+            datetime(2023, 2, 1, 8, 0),  # Should be included
+            datetime(2023, 3, 1, 8, 0),  # Should be excluded
+        ]
+
+        for i, date in enumerate(dates):
+            DataValueFactory.create(
+                old_db_session,
+                site=old_kyrgyz_station_first,
+                local_date_time=date,
+                data_value=100 + i,
+                variable__variable_code=Variables.gauge_height_daily_measurement.value
+            )
+
+        # Migrate with date range
+        migrate(
+            skip_cleanup=True,
+            skip_structure=True,
+            target_station="1234",
+            target_organization="КыргызГидроМет",
+            limiter=0,
+            start_date=datetime(2023, 1, 1),
+            end_date=datetime(2023, 2, 28)
+        )
+
+        # Verify only metrics within date range were created
+        assert HydrologicalMetric.objects.count() == 2
+        assert HydrologicalMetric.objects.filter(avg_value=100).exists()  # Jan 1
+        assert HydrologicalMetric.objects.filter(avg_value=101).exists()  # Feb 1
+        assert not HydrologicalMetric.objects.filter(avg_value=102).exists()  # Mar 1 excluded
+
+    def test_migrate_date_range_meteo_metrics(
+            self, mock_create_engine, old_db_session,
+            old_kyrgyz_station_first, existing_kyrgyz_station):
+        """Test migration of meteo metrics within date range"""
+        mock_create_engine.return_value = old_db_session.bind
+
+        # Create meteo station first
+        MeteorologicalStation.objects.create(
+            station_code=f"{old_kyrgyz_station_first.site_code}m",
+            name="Kyrgyz Meteo Station First",
+            site=existing_kyrgyz_station.site
+        )
+
+        # Create test data with different dates
+        dates = [
+            datetime(2023, 1, 1, 8, 0),  # Should be included
+            datetime(2023, 2, 1, 8, 0),  # Should be included
+            datetime(2023, 3, 1, 8, 0),  # Should be excluded
+        ]
+
+        for i, date in enumerate(dates):
+            DataValueFactory.create(
+                old_db_session,
+                site=old_kyrgyz_station_first,
+                local_date_time=date,
+                data_value=100 + i,
+                variable__variable_code=Variables.temperature_decade_average.value  # Use a meteo variable
+            )
+
+        # Migrate with date range
+        migrate(
+            skip_cleanup=True,
+            skip_structure=True,
+            target_station="1234",
+            target_organization="КыргызГидроМет",
+            limiter=0,
+            start_date=datetime(2023, 1, 1),
+            end_date=datetime(2023, 2, 28)
+        )
+
+        # Verify only metrics within date range were created
+        assert MeteorologicalMetric.objects.count() == 2
+        assert MeteorologicalMetric.objects.filter(value=100).exists()  # Jan 1
+        assert MeteorologicalMetric.objects.filter(value=101).exists()  # Feb 1
+        assert not MeteorologicalMetric.objects.filter(value=102).exists()  # Mar 1 excluded
+
+    def test_migrate_invalid_values_meteo(
+            self, mock_create_engine, old_db_session,
+            old_kyrgyz_station_first, existing_kyrgyz_station):
+        """Test migration handles invalid meteo values (-9999)"""
+        mock_create_engine.return_value = old_db_session.bind
+
+        # Create meteo station first
+        MeteorologicalStation.objects.create(
+            station_code=f"{old_kyrgyz_station_first.site_code}m",
+            name="Kyrgyz Meteo Station First",
+            site=existing_kyrgyz_station.site
+        )
+
+        # Create test data with invalid values
+        DataValueFactory.create(
+            old_db_session,
+            site=old_kyrgyz_station_first,
+            local_date_time=datetime(2023, 1, 1, 8, 0),
+            data_value=-9999,  # Should be skipped
+            variable__variable_code=Variables.temperature_decade_average.value
+        )
+        DataValueFactory.create(
+            old_db_session,
+            site=old_kyrgyz_station_first,
+            local_date_time=datetime(2023, 1, 3, 8, 0),
+            data_value=100,  # Should be included
+            variable__variable_code=Variables.temperature_decade_average.value
+        )
+
+        migrate(
+            skip_cleanup=True,
+            skip_structure=True,
+            target_station="1234",
+            target_organization="КыргызГидроМет",
+            limiter=0
+        )
+
+        # Verify only valid metric was created
+        assert MeteorologicalMetric.objects.count() == 1
+        assert MeteorologicalMetric.objects.filter(value=100).exists()
+
+    def test_migrate_organization_structure(
+            self, mock_create_engine, old_db_session,
+            old_kyrgyz_station_first, old_uzbek_station_first):
+        """Test migration of structure for specific organization"""
+        mock_create_engine.return_value = old_db_session.bind
+
+        # Clear any existing organizations
+        Organization.objects.all().delete()
+
+        # Migrate only Kyrgyz organization structure
+        migrate(
+            skip_cleanup=False,  # Changed to True to ensure clean state
+            skip_structure=False,
+            target_station="",
+            target_organization="КыргызГидроМет",
+            limiter=0
+        )
+
+        # Verify only Kyrgyz organization structure was created
+        assert Organization.objects.count() == 1
+        org = Organization.objects.get(name="КыргызГидроМет")
+
+        # Check only Kyrgyz sites were created
+        assert Site.objects.count() == 1
+        site = Site.objects.first()
+        assert site.organization == org
+
+        # Check only Kyrgyz stations were created
+        assert HydrologicalStation.objects.count() == 1
+        station = HydrologicalStation.objects.first()
+        assert station.site == site
+        assert station.station_code == "1234"

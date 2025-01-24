@@ -22,10 +22,13 @@ from sapphire_backend.metrics.choices import (
     HydrologicalMetricName,
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
-    MetricUnit
+    MetricUnit,
+    NormType
 )
 from sapphire_backend.metrics.models import HydrologicalMetric, MeteorologicalMetric, HydrologicalNorm
+
 from sapphire_backend.organizations.models import Basin, Organization, Region
+from sapphire_backend.metrics.utils.helpers import PentadDecadeHelper
 from sapphire_backend.stations.models import (
     HydrologicalStation,
     MeteorologicalStation,
@@ -204,8 +207,14 @@ def get_metric_name_unit_type(variable: Variable):
     return metric_name, metric_unit, measurement_type
 
 
-def migrate_sites_and_stations(old_session):
-    old_data = old_session.query(OldSite).order_by(OldSite.id).all()
+def migrate_sites_and_stations(old_session, target_organization: str = ""):
+    """Migrate sites and stations, optionally filtered by organization"""
+    query = old_session.query(OldSite).order_by(OldSite.id)
+
+    if target_organization:
+        query = query.join(OldSource).filter(OldSource.organization == target_organization)
+
+    old_data = query.all()
     cnt_hydro = 0
     cnt_meteo = 0
 
@@ -262,8 +271,14 @@ def migrate_sites_and_stations(old_session):
     logging.info(f"Meteo count: {cnt_meteo}, hydro count: {cnt_hydro}")
 
 
-def migrate_virtual_stations(old_session):
-    old_virtual_stations = old_session.query(OldSite).filter(OldSite.is_virtual == True).order_by(OldSite.id).all()
+def migrate_virtual_stations(old_session, target_organization: str = ""):
+    """Migrate virtual stations, optionally filtered by organization"""
+    query = old_session.query(OldSite).filter(OldSite.is_virtual == True).order_by(OldSite.id)
+
+    if target_organization:
+        query = query.join(OldSource).filter(OldSource.organization == target_organization)
+
+    old_virtual_stations = query.all()
     cnt_virtual = 0
     cnt_associations = 0
 
@@ -305,25 +320,50 @@ def migrate_virtual_stations(old_session):
     logging.info(f"Virtual count: {cnt_virtual}, associations count: {cnt_associations}")
 
 
-def migrate_meteo_metrics(old_session, limiter, target_station):
+def migrate_meteo_metrics(
+    old_session,
+    limiter: int,
+    target_station: str = "",
+    start_date: datetime = None,
+    end_date: datetime = None
+):
+    """Migrate meteorological metrics with optional date range filtering"""
     if target_station == "":
         old_data = old_session.query(OldSite).all()
     else:
         old_data = old_session.query(OldSite).filter(OldSite.site_code == f"{target_station}m")
+
     meteo_stations = [station for station in old_data if station.site_type == "meteo"]
     for old in tqdm(meteo_stations, desc="Meteo stations", position=0):
         meteo_station = MeteorologicalStation.objects.get(station_code=old.site_code_repr)
 
-        for data_row in tqdm(
-            old.data_values[-limiter:], desc="Meteo metrics", position=1, leave=False
-        ):
-            smart_datetime = SmartDatetime(data_row.local_date_time, meteo_station, tz_included=False)
+        # Build data values query with date filtering
+        data_values = old.data_values
+        if start_date:
+            data_values = [dv for dv in data_values if dv.local_date_time >= start_date]
+        if end_date:
+            data_values = [dv for dv in data_values if dv.local_date_time <= end_date]
+        if limiter:
+            data_values = data_values[-limiter:]
 
+        for data_row in tqdm(
+            data_values, desc="Meteo metrics", position=1, leave=False
+        ):
+            data_value = data_row.data_value
+
+            if data_value == -9999:
+                # Skip empty/unused values
+                continue
+
+            if math.isnan(data_value):
+                continue  # Skip NaN values
+
+            smart_datetime = SmartDatetime(data_row.local_date_time, meteo_station, tz_included=False)
             metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
 
             new_meteo_metric = MeteorologicalMetric(
                 timestamp_local=smart_datetime.local,
-                value=data_row.data_value,
+                value=data_value,
                 value_type=measurement_type,
                 metric_name=metric_name,
                 unit=metric_unit,
@@ -367,21 +407,37 @@ def parse_ice_phenomena(data_row):
     return ice_phenomena_values
 
 
-def migrate_hydro_metrics(old_session, limiter, target_station):
+def migrate_hydro_metrics(
+    old_session,
+    limiter: int,
+    target_station: str = "",
+    start_date: datetime = None,
+    end_date: datetime = None
+):
     global nan_count
     if target_station == "":
         old_data = old_session.query(OldSite).all()
     else:
         old_data = old_session.query(OldSite).filter(OldSite.site_code == target_station)
+
     hydro_stations = [station for station in old_data if station.site_type == "discharge"]
     for old in tqdm(hydro_stations, desc="Hydro stations", position=0):
-        hydro_station = HydrologicalStation.objects.get(station_code=old.site_code_repr,
-                                                        station_type=HydrologicalStation.StationType.MANUAL)
+        hydro_station = HydrologicalStation.objects.get(
+            station_code=old.site_code_repr,
+            station_type=HydrologicalStation.StationType.MANUAL
+        )
         station_decades = {}
-        for data_row in tqdm(
-            old.data_values[-limiter:], desc="Hydro metrics", position=1, leave=False
-        ):
 
+        # Build data values query with date filtering
+        data_values = old.data_values
+        if start_date:
+            data_values = [dv for dv in data_values if dv.local_date_time >= start_date]
+        if end_date:
+            data_values = [dv for dv in data_values if dv.local_date_time <= end_date]
+        if limiter:
+            data_values = data_values[-limiter:]
+
+        for data_row in tqdm(data_values, desc="Hydro metrics", position=1, leave=False):
             smart_datetime = SmartDatetime(data_row.local_date_time, hydro_station, tz_included=False)
             timestamp_local = smart_datetime.local
 
@@ -399,20 +455,20 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
                 hydro_station.save()
                 continue
 
-            # if data_row.variable.variable_code == Variables.discharge_decade_average_historical.value:  # temporarily commented
-            #     if data_value == -9999:
-            #         # empty value for some reason
-            #         continue
-            #
-            #     decade = PentadDecadeHelper.calculate_decade_from_the_date_in_year(smart_datetime.local)
-            #     if decade not in station_decades:
-            #         station_decades[decade] = [data_value]
-            #     else:
-            #         station_decades[decade].append(data_value)
-            #
-            #     # right now we're only preparing the data, we need to go over all the data values
-            #     # to store every relevant value after which we average them and store to the HydrologicalNorm model
-            #     continue
+            if data_row.variable.variable_code == Variables.discharge_decade_average_historical.value:
+                if data_value == -9999:
+                    # empty value for some reason
+                    continue
+
+                decade = PentadDecadeHelper.calculate_decade_from_the_date_in_year(smart_datetime.local)
+                if decade not in station_decades:
+                    station_decades[decade] = [data_value]
+                else:
+                    station_decades[decade].append(data_value)
+
+                # right now we're only preparing the data, we need to go over all the data values
+                # to store every relevant value after which we average them and store to the HydrologicalNorm model
+                continue
 
             metric_name, metric_unit, measurement_type = get_metric_name_unit_type(data_row.variable)
 
@@ -471,28 +527,39 @@ def migrate_hydro_metrics(old_session, limiter, target_station):
             )
             new_hydro_metric.save(refresh_view=False)
 
-        # for key, value in station_decades.items(): # temporarily commented
-        #     if len(value) > 0:
-        #         avg = sum(value) / len(value)
-        #         HydrologicalNorm.objects.filter(
-        #             station=hydro_station,
-        #             ordinal_number=key,
-        #             norm_type=NormType.DECADAL
-        #         ).delete()
-        #         HydrologicalNorm.objects.create(
-        #             station=hydro_station,
-        #             ordinal_number=key,
-        #             value=avg,
-        #             norm_type=NormType.DECADAL
-        #         )
+        for key, value in station_decades.items():
+            if len(value) > 0:
+                avg = sum(value) / len(value)
+                HydrologicalNorm.objects.filter(
+                    station=hydro_station,
+                    ordinal_number=key,
+                    norm_type=NormType.DECADAL
+                ).delete()
+                HydrologicalNorm.objects.create(
+                    station=hydro_station,
+                    ordinal_number=key,
+                    value=avg,
+                    norm_type=NormType.DECADAL
+                )
     refresh_water_level_daily_average('2015-01-01', '2030-01-01')
 
 
-def migrate_discharge_models(old_session, target_station: str):
+def migrate_discharge_models(
+    old_session,
+    target_station: str = "",
+    start_date: datetime = None,
+    end_date: datetime = None
+):
+    """Migrate discharge models with optional date range filtering"""
     query = old_session.query(OldDischargeModel)
+
     if target_station:
-        # Filter discharge models for specific station
         query = query.join(OldSite).filter(OldSite.site_code == target_station)
+
+    if start_date:
+        query = query.filter(OldDischargeModel.valid_from >= start_date)
+    if end_date:
+        query = query.filter(OldDischargeModel.valid_from <= end_date)
 
     old_discharge_models = query.all()
 
@@ -577,8 +644,11 @@ def migrate(
     skip_structure: bool,
     target_station: str,
     target_organization: str,
-    limiter: int
+    limiter: int,
+    start_date: datetime = None,
+    end_date: datetime = None
 ):
+    """Main migration function with enhanced filtering options"""
     if not skip_cleanup:
         cleanup_all()
     else:
@@ -587,6 +657,9 @@ def migrate(
     if limiter != 0:
         logging.info(f"Starting migrations in debugging mode (limiter = {limiter})")
 
+    if start_date and end_date:
+        logging.info(f"Migrating data between {start_date} and {end_date}")
+
     engine = create_engine(get_old_db_url())
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -594,10 +667,10 @@ def migrate(
     try:
         if not skip_structure:
             migrate_organizations(session)
-            migrate_sites_and_stations(session)
-            migrate_virtual_stations(session)
+            migrate_sites_and_stations(session, target_organization)
+            migrate_virtual_stations(session, target_organization)
         else:
-             logging.info(f"Skipped structure build (--skip-structure = {skip_structure})")
+            logging.info(f"Skipped structure build (--skip-structure = {skip_structure})")
 
         # get target stations based on filters
         stations_query = session.query(OldSite)
@@ -613,7 +686,26 @@ def migrate(
 
         # migrate data for each station
         for old_station in tqdm(old_stations, desc="Migrating stations"):
-            migrate_discharge_models(session, old_station.site_code)
+            migrate_discharge_models(
+                session,
+                old_station.site_code,
+                start_date,
+                end_date
+            )
+            migrate_hydro_metrics(
+                session,
+                limiter,
+                old_station.site_code,
+                start_date,
+                end_date
+            )
+            migrate_meteo_metrics(
+                session,
+                limiter,
+                old_station.site_code,
+                start_date,
+                end_date
+            )
     finally:
         session.close()
 
