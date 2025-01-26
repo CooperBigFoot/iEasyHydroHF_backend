@@ -141,6 +141,38 @@ class TestImomoMigration:
         uzbek_station = HydrologicalStation.objects.get(station_code="9012")
         assert uzbek_station.site == uzbek_site
 
+    def test_migrate_organization_structure(
+            self, mock_create_engine, old_db_session,
+            old_kyrgyz_station_first, old_uzbek_station_first):
+        """Test migration of structure for specific organization"""
+
+        self.verify_empty_state()
+        mock_create_engine.return_value = old_db_session.bind
+
+        # Migrate only Kyrgyz organization structure
+        migrate(
+            skip_cleanup=False,
+            skip_structure=False,
+            target_station="",
+            target_organization="КыргызГидроМет",
+            limiter=0
+        )
+
+        # Verify only Kyrgyz organization structure was created
+        assert Organization.objects.count() == 1
+        org = Organization.objects.get(name="КыргызГидроМет")
+
+        # Check only Kyrgyz sites were created
+        assert Site.objects.count() == 1
+        site = Site.objects.first()
+        assert site.organization == org
+
+        # Check only Kyrgyz stations were created
+        assert HydrologicalStation.objects.count() == 1
+        station = HydrologicalStation.objects.first()
+        assert station.site == site
+        assert station.station_code == "1234"
+
 
 @pytest.mark.django_db(transaction=True)
 @patch('sapphire_backend.imomo.migrate_old_db.create_engine')
@@ -396,16 +428,9 @@ class TestImomoPartialMigration:
 
     def test_migrate_date_range_meteo_metrics(
             self, mock_create_engine, old_db_session,
-            old_kyrgyz_station_first, existing_kyrgyz_station):
+            old_kyrgyz_meteo_station, existing_kyrgyz_meteo_station):
         """Test migration of meteo metrics within date range"""
         mock_create_engine.return_value = old_db_session.bind
-
-        # Create meteo station first
-        MeteorologicalStation.objects.create(
-            station_code=f"{old_kyrgyz_station_first.site_code}m",
-            name="Kyrgyz Meteo Station First",
-            site=existing_kyrgyz_station.site
-        )
 
         # Create test data with different dates
         dates = [
@@ -417,7 +442,7 @@ class TestImomoPartialMigration:
         for i, date in enumerate(dates):
             DataValueFactory.create(
                 old_db_session,
-                site=old_kyrgyz_station_first,
+                site=old_kyrgyz_meteo_station,
                 local_date_time=date,
                 data_value=100 + i,
                 variable__variable_code=Variables.temperature_decade_average.value  # Use a meteo variable
@@ -427,7 +452,7 @@ class TestImomoPartialMigration:
         migrate(
             skip_cleanup=True,
             skip_structure=True,
-            target_station="1234",
+            target_station="",
             target_organization="КыргызГидроМет",
             limiter=0,
             start_date=datetime(2023, 1, 1),
@@ -442,28 +467,22 @@ class TestImomoPartialMigration:
 
     def test_migrate_invalid_values_meteo(
             self, mock_create_engine, old_db_session,
-            old_kyrgyz_station_first, existing_kyrgyz_station):
+            old_kyrgyz_meteo_station, existing_kyrgyz_meteo_station
+        ):
         """Test migration handles invalid meteo values (-9999)"""
         mock_create_engine.return_value = old_db_session.bind
-
-        # Create meteo station first
-        MeteorologicalStation.objects.create(
-            station_code=f"{old_kyrgyz_station_first.site_code}m",
-            name="Kyrgyz Meteo Station First",
-            site=existing_kyrgyz_station.site
-        )
 
         # Create test data with invalid values
         DataValueFactory.create(
             old_db_session,
-            site=old_kyrgyz_station_first,
+            site=old_kyrgyz_meteo_station,
             local_date_time=datetime(2023, 1, 1, 8, 0),
             data_value=-9999,  # Should be skipped
             variable__variable_code=Variables.temperature_decade_average.value
         )
         DataValueFactory.create(
             old_db_session,
-            site=old_kyrgyz_station_first,
+            site=old_kyrgyz_meteo_station,
             local_date_time=datetime(2023, 1, 3, 8, 0),
             data_value=100,  # Should be included
             variable__variable_code=Variables.temperature_decade_average.value
@@ -472,7 +491,7 @@ class TestImomoPartialMigration:
         migrate(
             skip_cleanup=True,
             skip_structure=True,
-            target_station="1234",
+            target_station="",
             target_organization="КыргызГидроМет",
             limiter=0
         )
@@ -480,36 +499,3 @@ class TestImomoPartialMigration:
         # Verify only valid metric was created
         assert MeteorologicalMetric.objects.count() == 1
         assert MeteorologicalMetric.objects.filter(value=100).exists()
-
-    def test_migrate_organization_structure(
-            self, mock_create_engine, old_db_session,
-            old_kyrgyz_station_first, old_uzbek_station_first):
-        """Test migration of structure for specific organization"""
-        mock_create_engine.return_value = old_db_session.bind
-
-        # Clear any existing organizations
-        Organization.objects.all().delete()
-
-        # Migrate only Kyrgyz organization structure
-        migrate(
-            skip_cleanup=False,  # Changed to True to ensure clean state
-            skip_structure=False,
-            target_station="",
-            target_organization="КыргызГидроМет",
-            limiter=0
-        )
-
-        # Verify only Kyrgyz organization structure was created
-        assert Organization.objects.count() == 1
-        org = Organization.objects.get(name="КыргызГидроМет")
-
-        # Check only Kyrgyz sites were created
-        assert Site.objects.count() == 1
-        site = Site.objects.first()
-        assert site.organization == org
-
-        # Check only Kyrgyz stations were created
-        assert HydrologicalStation.objects.count() == 1
-        station = HydrologicalStation.objects.first()
-        assert station.site == site
-        assert station.station_code == "1234"

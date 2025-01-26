@@ -16,6 +16,7 @@ from sapphire_backend.stations.tests.factories import (
     RegionFactory,
     SiteFactory,
     HydrologicalStationFactory,
+    MeteorologicalStationFactory
 )
 from sapphire_backend.imomo.data_structs.standard_data import Variables
 
@@ -87,6 +88,23 @@ def old_kyrgyz_station_second(old_db_session, old_kyrgyz_source):
         basin="Нарын",
         region="ЖАЛАЛ-АБАДСКАЯ ОБЛАСТЬ"
     )
+
+
+@pytest.fixture
+def old_kyrgyz_meteo_station(old_db_session, old_kyrgyz_source):
+    """Create second Kyrgyz station"""
+    return OldSiteFactory.create(
+        old_db_session,
+        source=old_kyrgyz_source,
+        site_code="1234m",
+        site_name="Kyrgyz Meteo Station",
+        latitude=42.8746,
+        longitude=74.5698,
+        country="Kyrgyzstan",
+        basin="Нарын",
+        region="ЖАЛАЛ-АБАДСКАЯ ОБЛАСТЬ"
+    )
+
 
 @pytest.fixture
 def old_uzbek_station_first(old_db_session, old_uzbek_source):
@@ -225,6 +243,15 @@ def existing_kyrgyz_station(existing_kyrgyz_site):
         name="Kyrgyz Station First",
         station_code="1234",
         station_type=HydrologicalStation.StationType.MANUAL,
+        site=existing_kyrgyz_site
+    )
+
+@pytest.fixture
+def existing_kyrgyz_meteo_station(existing_kyrgyz_site):
+    """Create Kyrgyz meteo station in new DB"""
+    return MeteorologicalStationFactory(
+        name="Kyrgyz Meteo Station",
+        station_code="1234",
         site=existing_kyrgyz_site
     )
 
