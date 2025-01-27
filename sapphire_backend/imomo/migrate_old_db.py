@@ -242,7 +242,6 @@ def migrate_sites_and_stations(old_session, target_organization: str = ""):
             timezone=None,
             elevation=old.elevation_m,
         )
-        print(f"created site inside migrate_sites_and_stations: {site}")
 
         if old.site_type == "meteo":
             meteo_station = MeteorologicalStation(
@@ -265,9 +264,7 @@ def migrate_sites_and_stations(old_session, target_organization: str = ""):
                 discharge_level_alarm=None,
                 is_deleted=False,
             )
-            print(f"instantiated hydro_station inside migrate_sites_and_stations: {hydro_station}")
             hydro_station.save()
-            print(f"saved hydro_station inside migrate_sites_and_stations: {hydro_station}")
             cnt_hydro = cnt_hydro + 1
 
     logging.info(f"Meteo count: {cnt_meteo}, hydro count: {cnt_hydro}")
@@ -330,15 +327,13 @@ def migrate_meteo_metrics(
     end_date: datetime = None
 ):
     """Migrate meteorological metrics with optional date range filtering"""
-    print("Hello from migrate_meteo_metrics")
     old_stations = old_session.query(OldSite).filter(OldSite.site_code == target_station.site_code)
 
-    for old in tqdm(old_stations, desc="Meteo stations", position=0):
+    for old in tqdm(old_stations, desc=f"Meteo station {target_station.site_code}", position=0):
         meteo_station = MeteorologicalStation.objects.get(station_code=old.site_code_repr)
 
         # Build data values query with date filtering
         data_values = old.data_values
-        print(f"data_values: {data_values}")
         if start_date:
             data_values = [dv for dv in data_values if dv.local_date_time >= start_date]
         if end_date:
@@ -414,11 +409,10 @@ def migrate_hydro_metrics(
     start_date: datetime = None,
     end_date: datetime = None
 ):
-    print("Hello from migrate_hydro_metrics")
     old_stations = old_session.query(OldSite).filter(OldSite.site_code == target_station.site_code)
     global nan_count
 
-    for old in tqdm(old_stations, desc="Hydro stations", position=0):
+    for old in tqdm(old_stations, desc=f"Hydro station {target_station.site_code}", position=0):
         hydro_station = HydrologicalStation.objects.get(
             station_code=old.site_code_repr,
             station_type=HydrologicalStation.StationType.MANUAL
@@ -548,7 +542,6 @@ def migrate_discharge_models(
     end_date: datetime = None
 ):
     """Migrate discharge models with optional date range filtering"""
-    print("Hello from migrate_discharge_models")
     query = old_session.query(OldDischargeModel).join(OldSite).filter(OldSite.site_code == target_station.site_code)
 
     if start_date:
@@ -558,7 +551,7 @@ def migrate_discharge_models(
 
     old_discharge_models = query.all()
 
-    for old in tqdm(old_discharge_models, desc="Discharge models", position=0):
+    for old in tqdm(old_discharge_models, desc=f"Discharge models for station {target_station.site_code}", position=0):
         hydro_station = HydrologicalStation.objects.get(
             station_code=old.site.site_code_repr,
             station_type=HydrologicalStation.StationType.MANUAL
@@ -679,11 +672,8 @@ def migrate(
 
         old_stations = stations_query.all()
 
-        print("Hello from migrate")
-        print(f"old_stations: {old_stations}")
         # migrate data for each station
         for old_station in tqdm(old_stations, desc="Migrating stations"):
-            print(f"old_station: {old_station}")
             if old_station.site_type == "discharge":
                 migrate_discharge_models(
                     session,
