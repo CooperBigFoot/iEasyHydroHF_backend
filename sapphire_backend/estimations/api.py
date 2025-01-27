@@ -40,14 +40,20 @@ class DischargeModelsAPIController:
         try:
             queryset = DischargeModel.objects.filter(station__uuid=station_uuid)
 
+            if not queryset.exists():
+                return 404, {"detail": _("Discharge model not found."), "code": "not_found"}
+
             if year is not None:
-                queryset = queryset.filter(valid_from_local__year=year)
+                year_queryset = queryset.filter(valid_from_local__year=year).order_by("-valid_from_local")
+                if year_queryset.exists():
+                    return 200, list(year_queryset)
+                # If no models for requested year, return latest model
+                return 200, [queryset.order_by("-valid_from_local").first()]
 
-            queryset = queryset.order_by("-valid_from_local")
+            return 200, list(queryset.order_by("-valid_from_local"))
 
-            return 200, queryset
-        except DischargeModel.DoesNotExist:
-            return 404, {"detail": _("Discharge model not found."), "code": "not_found"}
+        except Exception as e:
+            return 404, {"detail": str(e), "code": "error"}
 
     @route.post(
         "discharge-models/{station_uuid}/create-points", response={200: DischargeModelBaseSchema, 404: Message}
