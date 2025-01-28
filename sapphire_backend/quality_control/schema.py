@@ -23,11 +23,11 @@ class SourceDetailsSchema(Schema):
     value: float | None
     value_code: int | None
     error: str | None
-    type: str = Literal["unknown", "user", "telegram", "ingester"]
+    type: Literal["unknown", "user", "telegram", "ingester"]
 
 
 class TimelineEntrySchema(Schema):
-    type: str = Literal["initial", "change", "current"]
+    type: Literal["initial", "change", "current"]
     created_date: datetime | None
     description: str
     value: float

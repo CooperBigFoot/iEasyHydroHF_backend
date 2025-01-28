@@ -101,3 +101,80 @@ class TestDischargeModelsListAPI:
         assert len(res) == len(expected_queryset)
         for returned, expected in zip(res, expected_queryset):
             assert returned["uuid"] == str(expected.uuid)
+
+    @pytest.mark.parametrize(
+        "client",
+        [
+            "regular_user_kyrgyz_api_client",
+            "organization_admin_kyrgyz_api_client",
+            "superadmin_kyrgyz_api_client",
+            "superadmin_uzbek_api_client",
+        ],
+    )
+    def test_list_future_year_returns_latest_model(self, client, manual_hydro_station_kyrgyz, request):
+        # Create models for 2021
+        DischargeModel(
+            name="Discharge model 2021",
+            valid_from_local=date(2021, 1, 1),
+            param_a=10,
+            param_b=2,
+            param_c=0.0005,
+            station=manual_hydro_station_kyrgyz,
+        ).save()
+
+        latest_model = DischargeModel(
+            name="Latest model 2022",
+            valid_from_local=date(2022, 12, 31),
+            param_a=20,
+            param_b=2,
+            param_c=0.0005,
+            station=manual_hydro_station_kyrgyz,
+        )
+        latest_model.save()
+
+        client = request.getfixturevalue(client)
+
+        # Request models for 2023 (which doesn't exist)
+        response = client.get(
+            self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid),
+            {"year": 2023},
+        )
+
+        res = response.json()
+        assert len(res) == 1
+        assert res[0]["uuid"] == str(latest_model.uuid)
+
+    @pytest.mark.parametrize(
+        "client",
+        [
+            "regular_user_kyrgyz_api_client",
+            "organization_admin_kyrgyz_api_client",
+            "superadmin_kyrgyz_api_client",
+            "superadmin_uzbek_api_client",
+        ],
+    )
+    def test_list_without_year_returns_all_models(self, client, manual_hydro_station_kyrgyz, request):
+        # Create models across different years
+        models = [
+            DischargeModel(
+                name=f"Discharge model {year}",
+                valid_from_local=date(year, 1, 1),
+                param_a=10,
+                param_b=2,
+                param_c=0.0005,
+                station=manual_hydro_station_kyrgyz,
+            )
+            for year in [2021, 2022, 2023]
+        ]
+        for model in models:
+            model.save()
+
+        client = request.getfixturevalue(client)
+
+        # Request without specifying year
+        response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid))
+
+        res = response.json()
+        assert len(res) == 3  # All models should be returned
+        # Verify descending order by valid_from_local
+        assert [item["valid_from_local"] for item in res] == ["2023-01-01", "2022-01-01", "2021-01-01"]
