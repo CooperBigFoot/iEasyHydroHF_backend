@@ -121,7 +121,7 @@ class TestDischargeModelsListAPI:
             param_c=0.0005,
             station=manual_hydro_station_kyrgyz,
         ).save()
-        
+
         latest_model = DischargeModel(
             name="Latest model 2022",
             valid_from_local=date(2022, 12, 31),
@@ -133,13 +133,13 @@ class TestDischargeModelsListAPI:
         latest_model.save()
 
         client = request.getfixturevalue(client)
-        
+
         # Request models for 2023 (which doesn't exist)
         response = client.get(
             self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid),
             {"year": 2023},
         )
-        
+
         res = response.json()
         assert len(res) == 1
         assert res[0]["uuid"] == str(latest_model.uuid)
@@ -163,7 +163,8 @@ class TestDischargeModelsListAPI:
                 param_b=2,
                 param_c=0.0005,
                 station=manual_hydro_station_kyrgyz,
-            ) for year in [2021, 2022, 2023]
+            ) 
+            for year in [2021, 2022, 2023]
         ]
         for model in models:
             model.save()
@@ -171,9 +172,7 @@ class TestDischargeModelsListAPI:
         client = request.getfixturevalue(client)
         
         # Request without specifying year
-        response = client.get(
-            self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid)
-        )
+        response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid))
         
         res = response.json()
         assert len(res) == 3  # All models should be returned
