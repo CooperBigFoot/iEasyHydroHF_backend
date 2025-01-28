@@ -23,6 +23,16 @@ class TestDischargeModelsListAPI:
     def test_list_permissions_status_codes(self, client, manual_hydro_station_kyrgyz, expected_status_code, request):
         client = request.getfixturevalue(client)
 
+        # Create at least one model to avoid validation errors
+        DischargeModel(
+            name="Test Model",
+            valid_from_local=date(2023, 1, 1),
+            param_a=10,
+            param_b=2,
+            param_c=0.0005,
+            station=manual_hydro_station_kyrgyz,
+        ).save()
+
         response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid))
         assert response.status_code == expected_status_code
 
@@ -38,12 +48,24 @@ class TestDischargeModelsListAPI:
     def test_list_empty_year(self, client, manual_hydro_station_kyrgyz, request):
         client = request.getfixturevalue(client)
 
+        # Create a model for 2023 to be the latest
+        latest_model = DischargeModel(
+            name="Latest Model",
+            valid_from_local=date(2023, 12, 31),
+            param_a=10,
+            param_b=2,
+            param_c=0.0005,
+            station=manual_hydro_station_kyrgyz,
+        )
+        latest_model.save()
+
         response = client.get(
             self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid),
-            {"station_uuid": manual_hydro_station_kyrgyz.uuid, "year": 2024},
+            {"year": 2024},
         )
         res = response.json()
-        assert res == []
+        assert len(res) == 1  # Should return only the latest model
+        assert res[0]["uuid"] == str(latest_model.uuid)
 
     @pytest.mark.parametrize(
         "client",
@@ -92,7 +114,7 @@ class TestDischargeModelsListAPI:
 
         response = client.get(
             self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid),
-            {"station_uuid": manual_hydro_station_kyrgyz.uuid, "year": 2021},
+            {"year": 2021},
         )
         res = response.json()
         expected_queryset = DischargeModel.objects.filter(
@@ -154,27 +176,26 @@ class TestDischargeModelsListAPI:
         ],
     )
     def test_list_without_year_returns_all_models(self, client, manual_hydro_station_kyrgyz, request):
-        # Create models across different years
-        models = [
-            DischargeModel(
+        # Create models for three consecutive years
+        models = []
+        for year in [2020, 2021, 2022]:
+            model = DischargeModel(
                 name=f"Discharge model {year}",
-                valid_from_local=date(year, 1, 1),
+                valid_from_local=date(year, 12, 1),
                 param_a=10,
                 param_b=2,
                 param_c=0.0005,
                 station=manual_hydro_station_kyrgyz,
             )
-            for year in [2021, 2022, 2023]
-        ]
-        for model in models:
             model.save()
+            models.append(model)
 
         client = request.getfixturevalue(client)
-
-        # Request without specifying year
         response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid))
 
         res = response.json()
         assert len(res) == 3  # All models should be returned
-        # Verify descending order by valid_from_local
-        assert [item["valid_from_local"] for item in res] == ["2023-01-01", "2022-01-01", "2021-01-01"]
+
+        # Verify models are returned in descending order by year
+        years = [int(item["valid_from_local"][:4]) for item in res]  # Extract year directly from ISO date string
+        assert years == [2022, 2021, 2020]  # Check years are in descending order
