@@ -163,17 +163,17 @@ class TestDischargeModelsListAPI:
                 param_b=2,
                 param_c=0.0005,
                 station=manual_hydro_station_kyrgyz,
-            ) 
+            )
             for year in [2021, 2022, 2023]
         ]
         for model in models:
             model.save()
 
         client = request.getfixturevalue(client)
-        
+
         # Request without specifying year
         response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid))
-        
+
         res = response.json()
         assert len(res) == 3  # All models should be returned
         # Verify descending order by valid_from_local
