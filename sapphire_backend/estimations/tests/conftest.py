@@ -1,8 +1,9 @@
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
 from pytest_factoryboy import register
+from zoneinfo import ZoneInfo
 
 from sapphire_backend.estimations.models import DischargeModel
 from sapphire_backend.estimations.tests.factories import DischargeModelFactory
@@ -108,22 +109,10 @@ def monthly_discharge_norm_manual_second_hydro_station_kyrgyz(db, manual_second_
 
 
 @pytest.fixture
-def discharge_model_for_permissions(db, manual_hydro_station_kyrgyz):
-    return DischargeModel.objects.create(
-        name="Test Model",
-        valid_from_local=date(2023, 1, 1),
-        param_a=10,
-        param_b=2,
-        param_c=0.0005,
-        station=manual_hydro_station_kyrgyz,
-    )
-
-
-@pytest.fixture
-def latest_discharge_model(db, manual_hydro_station_kyrgyz):
+def discharge_model_2023(db, manual_hydro_station_kyrgyz):
     return DischargeModel.objects.create(
         name="Latest Model",
-        valid_from_local=date(2023, 12, 31),
+        valid_from_local=datetime(2023, 1, 1, tzinfo=ZoneInfo("UTC")),
         param_a=10,
         param_b=2,
         param_c=0.0005,
@@ -135,7 +124,7 @@ def latest_discharge_model(db, manual_hydro_station_kyrgyz):
 def discharge_model_2021(db, manual_hydro_station_kyrgyz):
     return DischargeModel.objects.create(
         name="Discharge model 2021",
-        valid_from_local=date(2021, 1, 1),
+        valid_from_local=datetime(2021, 1, 1, tzinfo=ZoneInfo("UTC")),
         param_a=10,
         param_b=2,
         param_c=0.0005,

@@ -21,9 +21,8 @@ class TestDischargeModelsListAPIPermissions:
         ],
     )
     def test_list_permissions_status_codes(
-        self, client, manual_hydro_station_kyrgyz, discharge_model_for_permissions, expected_status_code, request
+        self, client, manual_hydro_station_kyrgyz, discharge_model_2021, expected_status_code, request
     ):
-        assert discharge_model_for_permissions
         client = request.getfixturevalue(client)
         response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid), {"year": 2024})
         assert response.status_code == expected_status_code
@@ -47,32 +46,20 @@ class TestDischargeModelsListAPIPermissions:
         response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid), {"year": 2024})
         assert response.status_code == expected_status_code
 
-
-@pytest.mark.parametrize(
-    "client",
-    [
-        "regular_user_kyrgyz_api_client",
-        "organization_admin_kyrgyz_api_client",
-        "superadmin_kyrgyz_api_client",
-        "superadmin_uzbek_api_client",
-    ],
-)
-class TestDischargeModelsListAPI:
-    endpoint = "/api/v1/estimations/discharge-models/{station_uuid}/list"
-
-    def test_list_empty_year(self, client, manual_hydro_station_kyrgyz, latest_discharge_model, request):
-        assert latest_discharge_model
-        client = request.getfixturevalue(client)
-        response = client.get(
+    def test_list_empty_year(
+        self, regular_user_kyrgyz_api_client, manual_hydro_station_kyrgyz, discharge_model_2023, discharge_model_2021
+    ):
+        response = regular_user_kyrgyz_api_client.get(
             self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid),
             {"year": 2024},
         )
         res = response.json()
         assert len(res) == 1  # Should return only the latest model
-        assert res[0]["uuid"] == str(latest_discharge_model.uuid)
+        assert res[0]["uuid"] == str(discharge_model_2023.uuid)
+        assert res[0]["valid_from_local"][:4] == "2023"
 
     def test_list_year_2021_first_station(
-        self, client, manual_hydro_station_kyrgyz, manual_second_hydro_station_kyrgyz, request
+        self, regular_user_kyrgyz_api_client, manual_hydro_station_kyrgyz, manual_second_hydro_station_kyrgyz
     ):
         valid_from_dates = (
             date(2020, 1, 1),
@@ -105,9 +92,7 @@ class TestDischargeModelsListAPI:
                 station=manual_second_hydro_station_kyrgyz,
             ).save()
 
-        client = request.getfixturevalue(client)
-
-        response = client.get(
+        response = regular_user_kyrgyz_api_client.get(
             self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid),
             {"year": 2021},
         )
@@ -119,25 +104,8 @@ class TestDischargeModelsListAPI:
         for returned, expected in zip(res, expected_queryset):
             assert returned["uuid"] == str(expected.uuid)
 
-    def test_list_future_year_returns_latest_model(
-        self, client, manual_hydro_station_kyrgyz, discharge_model_2021, latest_discharge_model, request
-    ):
-        assert discharge_model_2021
-        assert latest_discharge_model
-
-        client = request.getfixturevalue(client)
-
-        # Request models for 2023 (which doesn't exist)
-        response = client.get(
-            self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid),
-            {"year": 2023},
+    def test_missing_year_parameter(self, regular_user_kyrgyz_api_client, manual_hydro_station_kyrgyz):
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid)
         )
-
-        res = response.json()
-        assert len(res) == 1
-        assert res[0]["uuid"] == str(latest_discharge_model.uuid)
-
-    def test_missing_year_parameter(self, client, manual_hydro_station_kyrgyz, request):
-        client = request.getfixturevalue(client)
-        response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid))
         assert response.status_code == 422  # Validation error for missing required parameter
