@@ -5,7 +5,7 @@ import pytest
 from sapphire_backend.estimations.models import DischargeModel
 
 
-class TestDischargeModelsListAPIPermissions:
+class TestDischargeModelsListAPI:
     endpoint = "/api/v1/estimations/discharge-models/{station_uuid}/list"
 
     @pytest.mark.parametrize(
