@@ -5,7 +5,7 @@ import pytest
 from sapphire_backend.estimations.models import DischargeModel
 
 
-class TestDischargeModelsListAPI:
+class TestDischargeModelsListAPIPermissions:
     endpoint = "/api/v1/estimations/discharge-models/{station_uuid}/list"
 
     @pytest.mark.parametrize(
@@ -20,62 +20,57 @@ class TestDischargeModelsListAPI:
             ("superadmin_uzbek_api_client", 200),
         ],
     )
-    def test_list_permissions_status_codes(self, client, manual_hydro_station_kyrgyz, expected_status_code, request):
+    def test_list_permissions_status_codes(
+        self, client, manual_hydro_station_kyrgyz, discharge_model_for_permissions, expected_status_code, request
+    ):
+        assert discharge_model_for_permissions
         client = request.getfixturevalue(client)
-
-        # Create at least one model to avoid validation errors
-        DischargeModel(
-            name="Test Model",
-            valid_from_local=date(2023, 1, 1),
-            param_a=10,
-            param_b=2,
-            param_c=0.0005,
-            station=manual_hydro_station_kyrgyz,
-        ).save()
-
-        response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid))
+        response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid), {"year": 2024})
         assert response.status_code == expected_status_code
 
     @pytest.mark.parametrize(
-        "client",
+        "client, expected_status_code",
         [
-            "regular_user_kyrgyz_api_client",
-            "organization_admin_kyrgyz_api_client",
-            "superadmin_kyrgyz_api_client",
-            "superadmin_uzbek_api_client",
+            ("unauthenticated_api_client", 401),
+            ("regular_user_uzbek_api_client", 403),
+            ("organization_admin_uzbek_api_client", 403),
+            ("regular_user_kyrgyz_api_client", 404),
+            ("organization_admin_kyrgyz_api_client", 404),
+            ("superadmin_kyrgyz_api_client", 404),
+            ("superadmin_uzbek_api_client", 404),
         ],
     )
-    def test_list_empty_year(self, client, manual_hydro_station_kyrgyz, request):
+    def test_list_permissions_status_codes_no_models(
+        self, client, manual_hydro_station_kyrgyz, expected_status_code, request
+    ):
         client = request.getfixturevalue(client)
+        response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid), {"year": 2024})
+        assert response.status_code == expected_status_code
 
-        # Create a model for 2023 to be the latest
-        latest_model = DischargeModel(
-            name="Latest Model",
-            valid_from_local=date(2023, 12, 31),
-            param_a=10,
-            param_b=2,
-            param_c=0.0005,
-            station=manual_hydro_station_kyrgyz,
-        )
-        latest_model.save()
 
+@pytest.mark.parametrize(
+    "client",
+    [
+        "regular_user_kyrgyz_api_client",
+        "organization_admin_kyrgyz_api_client",
+        "superadmin_kyrgyz_api_client",
+        "superadmin_uzbek_api_client",
+    ],
+)
+class TestDischargeModelsListAPI:
+    endpoint = "/api/v1/estimations/discharge-models/{station_uuid}/list"
+
+    def test_list_empty_year(self, client, manual_hydro_station_kyrgyz, latest_discharge_model, request):
+        assert latest_discharge_model
+        client = request.getfixturevalue(client)
         response = client.get(
             self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid),
             {"year": 2024},
         )
         res = response.json()
         assert len(res) == 1  # Should return only the latest model
-        assert res[0]["uuid"] == str(latest_model.uuid)
+        assert res[0]["uuid"] == str(latest_discharge_model.uuid)
 
-    @pytest.mark.parametrize(
-        "client",
-        [
-            "regular_user_kyrgyz_api_client",
-            "organization_admin_kyrgyz_api_client",
-            "superadmin_kyrgyz_api_client",
-            "superadmin_uzbek_api_client",
-        ],
-    )
     def test_list_year_2021_first_station(
         self, client, manual_hydro_station_kyrgyz, manual_second_hydro_station_kyrgyz, request
     ):
@@ -124,35 +119,11 @@ class TestDischargeModelsListAPI:
         for returned, expected in zip(res, expected_queryset):
             assert returned["uuid"] == str(expected.uuid)
 
-    @pytest.mark.parametrize(
-        "client",
-        [
-            "regular_user_kyrgyz_api_client",
-            "organization_admin_kyrgyz_api_client",
-            "superadmin_kyrgyz_api_client",
-            "superadmin_uzbek_api_client",
-        ],
-    )
-    def test_list_future_year_returns_latest_model(self, client, manual_hydro_station_kyrgyz, request):
-        # Create models for 2021
-        DischargeModel(
-            name="Discharge model 2021",
-            valid_from_local=date(2021, 1, 1),
-            param_a=10,
-            param_b=2,
-            param_c=0.0005,
-            station=manual_hydro_station_kyrgyz,
-        ).save()
-
-        latest_model = DischargeModel(
-            name="Latest model 2022",
-            valid_from_local=date(2022, 12, 31),
-            param_a=20,
-            param_b=2,
-            param_c=0.0005,
-            station=manual_hydro_station_kyrgyz,
-        )
-        latest_model.save()
+    def test_list_future_year_returns_latest_model(
+        self, client, manual_hydro_station_kyrgyz, discharge_model_2021, latest_discharge_model, request
+    ):
+        assert discharge_model_2021
+        assert latest_discharge_model
 
         client = request.getfixturevalue(client)
 
@@ -164,38 +135,9 @@ class TestDischargeModelsListAPI:
 
         res = response.json()
         assert len(res) == 1
-        assert res[0]["uuid"] == str(latest_model.uuid)
+        assert res[0]["uuid"] == str(latest_discharge_model.uuid)
 
-    @pytest.mark.parametrize(
-        "client",
-        [
-            "regular_user_kyrgyz_api_client",
-            "organization_admin_kyrgyz_api_client",
-            "superadmin_kyrgyz_api_client",
-            "superadmin_uzbek_api_client",
-        ],
-    )
-    def test_list_without_year_returns_all_models(self, client, manual_hydro_station_kyrgyz, request):
-        # Create models for three consecutive years
-        models = []
-        for year in [2020, 2021, 2022]:
-            model = DischargeModel(
-                name=f"Discharge model {year}",
-                valid_from_local=date(year, 12, 1),
-                param_a=10,
-                param_b=2,
-                param_c=0.0005,
-                station=manual_hydro_station_kyrgyz,
-            )
-            model.save()
-            models.append(model)
-
+    def test_missing_year_parameter(self, client, manual_hydro_station_kyrgyz, request):
         client = request.getfixturevalue(client)
         response = client.get(self.endpoint.format(station_uuid=manual_hydro_station_kyrgyz.uuid))
-
-        res = response.json()
-        assert len(res) == 3  # All models should be returned
-
-        # Verify models are returned in descending order by year
-        years = [int(item["valid_from_local"][:4]) for item in res]  # Extract year directly from ISO date string
-        assert years == [2022, 2021, 2020]  # Check years are in descending order
+        assert response.status_code == 422  # Validation error for missing required parameter

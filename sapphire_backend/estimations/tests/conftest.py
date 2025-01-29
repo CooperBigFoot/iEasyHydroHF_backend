@@ -1,9 +1,10 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
 from pytest_factoryboy import register
 
+from sapphire_backend.estimations.models import DischargeModel
 from sapphire_backend.estimations.tests.factories import DischargeModelFactory
 from sapphire_backend.metrics.choices import NormType
 from sapphire_backend.metrics.tests.factories import HydrologicalNormFactory
@@ -103,4 +104,40 @@ def monthly_discharge_norm_manual_second_hydro_station_kyrgyz(db, manual_second_
         value=hydrological_round(Decimal(15.0)),
         norm_type=NormType.MONTHLY,
         ordinal_number=1,
+    )
+
+
+@pytest.fixture
+def discharge_model_for_permissions(db, manual_hydro_station_kyrgyz):
+    return DischargeModel.objects.create(
+        name="Test Model",
+        valid_from_local=date(2023, 1, 1),
+        param_a=10,
+        param_b=2,
+        param_c=0.0005,
+        station=manual_hydro_station_kyrgyz,
+    )
+
+
+@pytest.fixture
+def latest_discharge_model(db, manual_hydro_station_kyrgyz):
+    return DischargeModel.objects.create(
+        name="Latest Model",
+        valid_from_local=date(2023, 12, 31),
+        param_a=10,
+        param_b=2,
+        param_c=0.0005,
+        station=manual_hydro_station_kyrgyz,
+    )
+
+
+@pytest.fixture
+def discharge_model_2021(db, manual_hydro_station_kyrgyz):
+    return DischargeModel.objects.create(
+        name="Discharge model 2021",
+        valid_from_local=date(2021, 1, 1),
+        param_a=10,
+        param_b=2,
+        param_c=0.0005,
+        station=manual_hydro_station_kyrgyz,
     )

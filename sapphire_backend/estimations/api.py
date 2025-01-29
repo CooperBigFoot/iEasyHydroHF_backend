@@ -3,7 +3,6 @@ from datetime import datetime
 
 from django.db.models import F
 from django.http import HttpRequest
-from django.utils.translation import gettext_lazy as _
 from ninja import Query
 from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
@@ -36,20 +35,17 @@ from .utils import least_squares_fit
 @api_controller("estimations", tags=["Discharge Models"], auth=JWTAuth(), permissions=regular_permissions)
 class DischargeModelsAPIController:
     @route.get("discharge-models/{station_uuid}/list", response={200: list[DischargeModelBaseSchema], 404: Message})
-    def get_discharge_models(self, station_uuid: str, year: int = Query(None, description="Filter by year")):
+    def get_discharge_models(self, station_uuid: str, year: int = Query(..., description="Filter by year")):
         queryset = DischargeModel.objects.filter(station__uuid=station_uuid)
 
         if not queryset.exists():
-            return 404, {"detail": _("Discharge model not found."), "code": "not_found"}
+            return 404, {"detail": "Discharge model not found.", "code": "not_found"}
 
-        if year is not None:
-            year_queryset = queryset.filter(valid_from_local__year=year).order_by("-valid_from_local")
-            if year_queryset.exists():
-                return 200, year_queryset
-            # If no models for requested year, return latest model
-            return 200, [queryset.order_by("-valid_from_local").first()]
-
-        return 200, queryset.order_by("-valid_from_local")
+        year_queryset = queryset.filter(valid_from_local__year=year).order_by("-valid_from_local")
+        if year_queryset.exists():
+            return 200, year_queryset
+        # If no models for requested year, return latest model
+        return 200, [queryset.order_by("-valid_from_local").first()]
 
     @route.post(
         "discharge-models/{station_uuid}/create-points", response={200: DischargeModelBaseSchema, 404: Message}
