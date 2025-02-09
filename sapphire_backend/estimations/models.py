@@ -1,10 +1,11 @@
 from django.db import models
-from django.db.models import Func
+from django.db.models import F, Func, Q
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from sapphire_backend.metrics.managers import HydrologicalNormQuerySet
 from sapphire_backend.metrics.mixins import BaseHydroMetricMixin, MinMaxValueMixin, NormModelMixin, SensorInfoMixin
-from sapphire_backend.utils.mixins.models import UUIDMixin
+from sapphire_backend.utils.mixins.models import CreateLastModifiedDateMixin, UUIDMixin
 from sapphire_backend.utils.rounding import hydrological_round
 
 
@@ -166,3 +167,60 @@ class HydrologicalNormVirtual(NormModelMixin, models.Model):
 
 class HydrologicalRound(Func):
     function = "hydrological_round"
+
+
+class DischargeCalculationPeriod(UUIDMixin, CreateLastModifiedDateMixin, models.Model):
+    class CalculationState(models.TextChoices):
+        MANUAL = "MANUAL", _("Manual Discharge")
+        SUSPENDED = "SUSPENDED", _("No Calculation")
+
+    class CalculationReason(models.TextChoices):
+        ICE = "ICE", _("Ice Phenomena")
+        PRIVODKA = "PRIVODKA", _("Privodka")
+        STATION_CLOSED = "STATION_CLOSED", _("Station Closed")
+        OTHER = "OTHER", _("Other")
+
+    station = models.ForeignKey(
+        "stations.HydrologicalStation",
+        verbose_name=_("Station"),
+        to_field="uuid",
+        on_delete=models.PROTECT,
+        related_name="discharge_calculation_periods",
+    )
+
+    user = models.ForeignKey(
+        "users.User",
+        verbose_name=_("Created By"),
+        to_field="uuid",
+        on_delete=models.PROTECT,
+        related_name="discharge_calculation_periods",
+    )
+
+    start_date_local = models.DateTimeField(verbose_name=_("Start Date"))
+    end_date_local = models.DateTimeField(verbose_name=_("End Date"), null=True, blank=True)
+
+    state = models.CharField(verbose_name=_("Calculation State"), max_length=20, choices=CalculationState.choices)
+
+    reason = models.CharField(verbose_name=_("Reason"), max_length=20, choices=CalculationReason.choices)
+
+    comments = models.TextField(verbose_name=_("Comments"), blank=True)
+
+    class Meta:
+        verbose_name = _("Discharge Calculation Period")
+        verbose_name_plural = _("Discharge Calculation Periods")
+        ordering = ["-start_date_local"]
+        constraints = [
+            models.CheckConstraint(
+                check=Q(end_date_local__isnull=True) | Q(end_date_local__gt=F("start_date_local")),
+                name="end_date_local__after_start_date_local",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.station.name} - {self.get_state_display()} ({self.start_date_local})"
+
+    @property
+    def is_active(self):
+        """Return True if this period is currently active."""
+        now = timezone.now()
+        return self.start_date_local <= now and (self.end_date_local is None or self.end_date_local >= now)
