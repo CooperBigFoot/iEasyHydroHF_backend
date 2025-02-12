@@ -100,6 +100,23 @@ class PentadDecadeHelper:
         pentad_num = cls.calculate_pentad_ordinal_number_from_the_day_in_month(day)
         return cls.days_in_pentad[pentad_num - 1]
 
+    @classmethod
+    def calculate_pentad_date(cls, ordinal_number: int) -> datetime:
+        """
+        Construct a datetime object from a given ordinal number of a pentad in a year
+
+        :param ordinal_number:
+        integer representing the absolute ordinal number of the pentad in a year, ranged from 1 to 72
+        :return: datetime object for the given ordinal number
+        """
+        idx = (ordinal_number - 1) % 6
+        month_increment = (ordinal_number - 1) // 6
+
+        month = month_increment + 1
+        day = cls.days_in_pentad[idx]
+
+        return datetime(datetime.utcnow().year, month, day, 12, tzinfo=timezone.utc)
+
 
 class OperationalJournalDataTransformer:
     def __init__(

@@ -109,8 +109,6 @@ class PentadalDischargeNormFileParser(BaseNormFileParser):
                     {
                         "ordinal_number": col_idx,
                         "value": value,
-                        "month": ((col_idx - 1) // 6) + 1,  # 1-based month
-                        "pentad": ((col_idx - 1) % 6) + 1,  # 1-based pentad
                     }
                 )
 

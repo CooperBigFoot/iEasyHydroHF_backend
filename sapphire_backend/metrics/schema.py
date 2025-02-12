@@ -225,10 +225,7 @@ class HydrologicalNormOutputSchema(ModelSchema):
     @staticmethod
     def resolve_timestamp_local(obj):
         if obj.norm_type == NormType.PENTADAL:
-            month = ((obj.ordinal_number - 1) // 6) + 1
-            pentad = ((obj.ordinal_number - 1) % 6) + 1
-            day = PentadDecadeHelper.days_in_pentad[pentad - 1]
-            return datetime(datetime.utcnow().year, month, day, 12, tzinfo=timezone.utc)
+            return PentadDecadeHelper.calculate_pentad_date(obj.ordinal_number)
         elif obj.norm_type == NormType.MONTHLY:
             return datetime(datetime.utcnow().year, obj.ordinal_number, 1, 12, tzinfo=timezone.utc)
         else:
@@ -238,6 +235,7 @@ class HydrologicalNormOutputSchema(ModelSchema):
 class MeteorologicalNormOutputSchema(HydrologicalNormOutputSchema):
     class Meta(HydrologicalNormOutputSchema.Meta):
         model = MeteorologicalNorm
+        fields = ["ordinal_number", "value", "norm_metric"]
 
 
 class BulkDataDownloadInputSchema(Schema):
