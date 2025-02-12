@@ -15,10 +15,14 @@ from sapphire_backend.utils.permissions import (
 
 from ..stations.models import HydrologicalStation
 from .models import (
+    DischargeCalculationPeriod,
     DischargeModel,
     EstimationsWaterDischargeDailyAverageVirtual,
 )
 from .schema import (
+    DischargeCalculationPeriodInputSchema,
+    DischargeCalculationPeriodOutputSchema,
+    DischargeCalculationPeriodUpdateSchema,
     DischargeCalculationSchema,
     DischargeModelBaseSchema,
     DischargeModelCreateInputDeltaSchema,
@@ -186,3 +190,75 @@ class EstimationsAPIController:
     ):
         queryset = self._get_averages_queryset(EstimationsWaterDischargeDailyAverageVirtual, filters, order, limit)
         return queryset
+
+
+@api_controller(
+    "stations/{organization_uuid}/hydrological/{station_uuid}/discharge-calculation-periods",
+    tags=["Discharge Calculation Periods"],
+    auth=JWTAuth(),
+    permissions=regular_permissions,
+)
+class DischargeCalculationPeriodsAPIController:
+    @route.get("", response={200: list[DischargeCalculationPeriodOutputSchema], 404: Message})
+    def list_periods(self, organization_uuid: str, station_uuid: str):
+        try:
+            periods = DischargeCalculationPeriod.objects.filter(station__uuid=station_uuid).order_by(
+                "-start_date_local"
+            )
+            return 200, periods
+        except DischargeCalculationPeriod.DoesNotExist:
+            return 404, {"detail": "No calculation periods found.", "code": "not_found"}
+
+    @route.post("", response={201: DischargeCalculationPeriodOutputSchema, 400: Message})
+    def create_period(
+        self,
+        request: HttpRequest,
+        organization_uuid: str,
+        station_uuid: str,
+        data: DischargeCalculationPeriodInputSchema,
+    ):
+        try:
+            station = HydrologicalStation.objects.get(uuid=station_uuid)
+            period = DischargeCalculationPeriod.objects.create(
+                **data.dict(),
+                station=station,
+                user=request.user,
+            )
+            return 201, period
+        except Exception as e:
+            return 400, {"detail": str(e), "code": "creation_failed"}
+
+    @route.get("{period_uuid}", response={200: DischargeCalculationPeriodOutputSchema, 404: Message})
+    def get_period(self, organization_uuid: str, station_uuid: str, period_uuid: str):
+        try:
+            period = DischargeCalculationPeriod.objects.get(uuid=period_uuid, station__uuid=station_uuid)
+            return 200, period
+        except DischargeCalculationPeriod.DoesNotExist:
+            return 404, {"detail": "Calculation period not found.", "code": "not_found"}
+
+    @route.put("{period_uuid}", response={200: DischargeCalculationPeriodOutputSchema, 404: Message})
+    def update_period(
+        self,
+        request: HttpRequest,
+        organization_uuid: str,
+        station_uuid: str,
+        period_uuid: str,
+        data: DischargeCalculationPeriodUpdateSchema,
+    ):
+        try:
+            period = DischargeCalculationPeriod.objects.get(uuid=period_uuid, station__uuid=station_uuid)
+            for key, value in data.dict(exclude_unset=True).items():
+                setattr(period, key, value)
+            period.save()
+            return 200, period
+        except DischargeCalculationPeriod.DoesNotExist:
+            return 404, {"detail": "Calculation period not found.", "code": "not_found"}
+
+    @route.delete("{period_uuid}", response={200: Message, 404: Message})
+    def delete_period(self, organization_uuid: str, station_uuid: str, period_uuid: str):
+        try:
+            period = DischargeCalculationPeriod.objects.get(uuid=period_uuid, station__uuid=station_uuid)
+            period.delete()
+            return 200, {"detail": "Calculation period deleted successfully.", "code": "deleted"}
+        except DischargeCalculationPeriod.DoesNotExist:
+            return 404, {"detail": "Calculation period not found.", "code": "not_found"}
