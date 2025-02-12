@@ -238,27 +238,27 @@ class TestHydroMetricsAPI:
             # Raw measurements - 30 days limit
             (
                 "measurements",
-                dt.datetime(2020, 1, 1, tzinfo=dt.UTC),
-                dt.datetime(2020, 1, 30, tzinfo=dt.UTC),  # 29 days - should pass
+                dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc),
+                dt.datetime(2020, 1, 30, tzinfo=dt.timezone.utc),  # 29 days - should pass
                 200,
             ),
             (
                 "measurements",
-                dt.datetime(2020, 1, 1, tzinfo=dt.UTC),
-                dt.datetime(2020, 2, 1, tzinfo=dt.UTC),  # 31 days - should fail
+                dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc),
+                dt.datetime(2020, 2, 1, tzinfo=dt.timezone.utc),  # 31 days - should fail
                 422,
             ),
             # Daily data - 365 days limit
             (
                 "daily",
-                dt.datetime(2020, 1, 1, tzinfo=dt.UTC),
-                dt.datetime(2020, 12, 31, tzinfo=dt.UTC),  # 364 days - should pass
+                dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc),
+                dt.datetime(2020, 12, 31, tzinfo=dt.timezone.utc),  # 364 days - should pass
                 200,
             ),
             (
                 "daily",
-                dt.datetime(2020, 1, 1, tzinfo=dt.UTC),
-                dt.datetime(2021, 1, 2, tzinfo=dt.UTC),  # 366 days - should fail
+                dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc),
+                dt.datetime(2021, 1, 2, tzinfo=dt.timezone.utc),  # 366 days - should fail
                 422,
             ),
         ],
@@ -595,6 +595,7 @@ class TestDischargeNormsAPI:
     endpoint = "/api/v1/hydrological-norms"
     decadal_test_file = os.path.join(Path(__file__).parent, "data", "decadal_hydro_norm_example.xlsx")
     monthly_test_file = os.path.join(Path(__file__).parent, "data", "monthly_hydro_norm_example.xlsx")
+    pentadal_test_file = os.path.join(Path(__file__).parent, "data", "pentadal_hydro_norm_example.xlsx")
 
     def _get_decadal_test_file(self):
         with open(self.decadal_test_file, "rb") as f:
@@ -620,6 +621,18 @@ class TestDischargeNormsAPI:
 
         return file
 
+    def _get_pentadal_test_file(self):
+        with open(self.pentadal_test_file, "rb") as f:
+            file_content = f.read()
+
+        file = SimpleUploadedFile(
+            self.pentadal_test_file,
+            file_content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        return file
+
     @pytest.mark.django_db
     def test_download_template_file_for_unauthenticated_user(self, api_client):
         response = api_client.get(f"{self.endpoint}/download-template?norm_type=d")
@@ -639,6 +652,13 @@ class TestDischargeNormsAPI:
 
         assert response.status_code == 200
         assert response["Content-Disposition"] == 'attachment; filename="discharge_norm_monthly_template.xlsx"'
+
+    @pytest.mark.django_db
+    def test_download_pentadal_norm_template_file(self, authenticated_regular_user_api_client):
+        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/download-template?norm_type=p")
+
+        assert response.status_code == 200
+        assert response["Content-Disposition"] == 'attachment; filename="discharge_norm_pentadal_template.xlsx"'
 
     @pytest.mark.django_db
     def test_download_missing_norm_template_file(self, authenticated_regular_user_api_client):
@@ -754,6 +774,17 @@ class TestDischargeNormsAPI:
         assert response.status_code == 201
         assert HydrologicalNorm.objects.for_station(manual_hydro_station).monthly().count() == 12
 
+    def test_upload_pentadal_norm(self, authenticated_regular_user_api_client, manual_hydro_station):
+        assert HydrologicalNorm.objects.for_station(manual_hydro_station).pentadal().count() == 0
+
+        file = self._get_pentadal_test_file()
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=p", {"file": file}, format="multipart"
+        )
+
+        assert response.status_code == 201
+        assert HydrologicalNorm.objects.for_station(manual_hydro_station).pentadal().count() == 72
+
     def test_upload_monthly_norm_api_response(self, authenticated_regular_user_api_client, manual_hydro_station):
         file = self._get_monthly_test_file()
         response = authenticated_regular_user_api_client.post(
@@ -798,6 +829,30 @@ class TestDischargeNormsAPI:
             {"timestamp_local": f"{current_year}-04-05T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
             {"timestamp_local": f"{current_year}-04-15T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
             {"timestamp_local": f"{current_year}-04-25T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
+        ]
+
+    def test_upload_pentadal_norm_partial_api_response(
+        self, authenticated_regular_user_api_client, manual_hydro_station
+    ):
+        file = self._get_pentadal_test_file()
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=p", {"file": file}, format="multipart"
+        )
+
+        current_year = dt.datetime.now().year
+        assert response.json()[:12] == [
+            {"timestamp_local": f"{current_year}-01-03T12:00:00Z", "ordinal_number": 1, "value": "1.0"},
+            {"timestamp_local": f"{current_year}-01-08T12:00:00Z", "ordinal_number": 2, "value": "2.0"},
+            {"timestamp_local": f"{current_year}-01-13T12:00:00Z", "ordinal_number": 3, "value": "3.0"},
+            {"timestamp_local": f"{current_year}-01-18T12:00:00Z", "ordinal_number": 4, "value": "4.0"},
+            {"timestamp_local": f"{current_year}-01-23T12:00:00Z", "ordinal_number": 5, "value": "5.0"},
+            {"timestamp_local": f"{current_year}-01-28T12:00:00Z", "ordinal_number": 6, "value": "6.0"},
+            {"timestamp_local": f"{current_year}-02-03T12:00:00Z", "ordinal_number": 7, "value": "7.0"},
+            {"timestamp_local": f"{current_year}-02-08T12:00:00Z", "ordinal_number": 8, "value": "8.0"},
+            {"timestamp_local": f"{current_year}-02-13T12:00:00Z", "ordinal_number": 9, "value": "9.0"},
+            {"timestamp_local": f"{current_year}-02-18T12:00:00Z", "ordinal_number": 10, "value": "1.0"},
+            {"timestamp_local": f"{current_year}-02-23T12:00:00Z", "ordinal_number": 11, "value": "2.0"},
+            {"timestamp_local": f"{current_year}-02-28T12:00:00Z", "ordinal_number": 12, "value": "3.0"},
         ]
 
     def test_upload_norm_overwrites_existing_records(
@@ -878,6 +933,8 @@ class TestDischargeNormsAPI:
         decadal_discharge_norm_second,
         monthly_discharge_norm_first,
         monthly_discharge_norm_second,
+        pentadal_discharge_norm_first,
+        pentadal_discharge_norm_second,
     ):
         current_year = dt.datetime.now().year
         response = authenticated_regular_user_api_client.get(
@@ -896,6 +953,8 @@ class TestDischargeNormsAPI:
         decadal_discharge_norm_second,
         monthly_discharge_norm_first,
         monthly_discharge_norm_second,
+        pentadal_discharge_norm_first,
+        pentadal_discharge_norm_second,
     ):
         current_year = dt.datetime.now(dt.timezone.utc).year
         response = authenticated_regular_user_api_client.get(
@@ -904,4 +963,24 @@ class TestDischargeNormsAPI:
         assert response.json() == [
             {"timestamp_local": f"{current_year}-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.00000"},
             {"timestamp_local": f"{current_year}-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.00000"},
+        ]
+
+    def test_get_pentadal_norm(
+        self,
+        authenticated_regular_user_api_client,
+        manual_hydro_station,
+        decadal_discharge_norm_first,
+        decadal_discharge_norm_second,
+        monthly_discharge_norm_first,
+        monthly_discharge_norm_second,
+        pentadal_discharge_norm_first,
+        pentadal_discharge_norm_second,
+    ):
+        current_year = dt.datetime.now().year
+        response = authenticated_regular_user_api_client.get(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=p"
+        )
+        assert response.json() == [
+            {"timestamp_local": f"{current_year}-01-03T12:00:00Z", "ordinal_number": 1, "value": "1.00000"},
+            {"timestamp_local": f"{current_year}-01-08T12:00:00Z", "ordinal_number": 2, "value": "2.00000"},
         ]

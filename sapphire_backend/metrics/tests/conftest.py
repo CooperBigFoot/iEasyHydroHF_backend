@@ -175,6 +175,53 @@ def monthly_temperature_norm(db, manual_meteo_station):
 
 
 @pytest.fixture
+def pentadal_discharge_norm_first(db, manual_hydro_station):
+    return HydrologicalNormFactory(
+        station=manual_hydro_station, value=1.0, norm_type=NormType.PENTADAL, ordinal_number=1
+    )
+
+
+@pytest.fixture
+def pentadal_discharge_norm_second(db, manual_hydro_station):
+    return HydrologicalNormFactory(
+        station=manual_hydro_station, value=2.0, norm_type=NormType.PENTADAL, ordinal_number=2
+    )
+
+
+@pytest.fixture
+def pentadal_precipitation_norm_first(db, manual_meteo_station):
+    return MeteorologicalNormFactory(
+        station=manual_meteo_station,
+        value=1.0,
+        norm_type=NormType.PENTADAL,
+        ordinal_number=1,
+        norm_metric=MeteorologicalNormMetric.PRECIPITATION,
+    )
+
+
+@pytest.fixture
+def pentadal_precipitation_norm_second(db, manual_meteo_station):
+    return MeteorologicalNormFactory(
+        station=manual_meteo_station,
+        value=2.0,
+        norm_type=NormType.PENTADAL,
+        ordinal_number=2,
+        norm_metric=MeteorologicalNormMetric.PRECIPITATION,
+    )
+
+
+@pytest.fixture
+def pentadal_temperature_norm(db, manual_meteo_station):
+    return MeteorologicalNormFactory(
+        station=manual_meteo_station,
+        value=1.0,
+        norm_type=NormType.PENTADAL,
+        ordinal_number=1,
+        norm_metric=MeteorologicalNormMetric.TEMPERATURE,
+    )
+
+
+@pytest.fixture
 def mock_datetime():
     with patch("sapphire_backend.metrics.management.metrics_data_anonymizer.datetime") as mock:
         mock.now.return_value = dt.datetime(2024, 10, 8, tzinfo=ZoneInfo("UTC"))

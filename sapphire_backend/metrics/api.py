@@ -109,6 +109,8 @@ from .utils.parser import (
     DecadalMeteoNormFileParser,
     MonthlyDischargeNormFileParser,
     MonthlyMeteoNormFileParser,
+    PentadalDischargeNormFileParser,
+    PentadalMeteoNormFileParser,
 )
 
 agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": Sum}
@@ -489,6 +491,8 @@ class HydrologicalNormsAPIController:
         filename = (
             "discharge_norm_monthly_template.xlsx"
             if norm_type.norm_type.value == NormType.MONTHLY
+            else "discharge_norm_pentadal_template.xlsx"
+            if norm_type.norm_type.value == NormType.PENTADAL
             else "discharge_norm_decadal_template.xlsx"
         )
         file_path = static(f"templates/{filename}")
@@ -515,6 +519,8 @@ class HydrologicalNormsAPIController:
         parser_class = (
             DecadalDischargeNormFileParser
             if norm_type.norm_type == NormType.DECADAL
+            else PentadalDischargeNormFileParser
+            if norm_type.norm_type == NormType.PENTADAL
             else MonthlyDischargeNormFileParser
         )
         data = parser_class(file).parse()
@@ -559,6 +565,8 @@ class MeteorologicalNormsAPIController:
         filename = (
             "meteo_norm_monthly_template.xlsx"
             if norm_types.norm_type.value == NormType.MONTHLY
+            else "meteo_norm_pentadal_template.xlsx"
+            if norm_types.norm_type.value == NormType.PENTADAL
             else "meteo_norm_decadal_template.xlsx"
         )
         file_path = static(f"templates/{filename}")
@@ -586,7 +594,11 @@ class MeteorologicalNormsAPIController:
         self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema], file: UploadedFile = File(...)
     ):
         parser_class = (
-            DecadalMeteoNormFileParser if norm_type.norm_type == NormType.DECADAL else MonthlyMeteoNormFileParser
+            DecadalMeteoNormFileParser
+            if norm_type.norm_type == NormType.DECADAL
+            else PentadalMeteoNormFileParser
+            if norm_type.norm_type == NormType.PENTADAL
+            else MonthlyMeteoNormFileParser
         )
         data = parser_class(file).parse()
         _ = MeteorologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value).delete()

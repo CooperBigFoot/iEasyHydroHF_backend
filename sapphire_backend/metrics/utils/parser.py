@@ -88,11 +88,45 @@ class DecadalDischargeNormFileParser(BaseNormFileParser):
         return parsed_data
 
 
+class PentadalDischargeNormFileParser(BaseNormFileParser):
+    def _get_sheet_names(self):
+        return ["discharge"]
+
+    def parse(self):
+        data = self._load_file()
+        parsed_data = {}
+
+        for sheet in data.keys():
+            df = data[sheet]
+            if len(df.columns) != 73:
+                raise InvalidFileStructureException("Invalid number of columns, need to have 72 values.")
+            parsed_data[sheet] = []
+
+            for col_idx, col in enumerate(df.columns[1:], 1):  # Skip first column (labels)
+                value = float(df[col].iloc[0]) if not isinstance(col, int) else float(df[col])
+
+                parsed_data[sheet].append(
+                    {
+                        "ordinal_number": col_idx,
+                        "value": value,
+                        "month": ((col_idx - 1) // 6) + 1,  # 1-based month
+                        "pentad": ((col_idx - 1) % 6) + 1,  # 1-based pentad
+                    }
+                )
+
+        return parsed_data
+
+
 class MonthlyMeteoNormFileParser(MonthlyDischargeNormFileParser):
     def _get_sheet_names(self):
         return ["precipitation", "temperature"]
 
 
 class DecadalMeteoNormFileParser(DecadalDischargeNormFileParser):
+    def _get_sheet_names(self):
+        return ["precipitation", "temperature"]
+
+
+class PentadalMeteoNormFileParser(PentadalDischargeNormFileParser):
     def _get_sheet_names(self):
         return ["precipitation", "temperature"]

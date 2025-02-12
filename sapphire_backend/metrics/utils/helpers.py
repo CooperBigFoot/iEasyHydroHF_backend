@@ -574,7 +574,13 @@ class OperationalJournalVirtualDataTransformer(OperationalJournalDataTransformer
 
 
 def create_norm_dataframe(norm_data: HydrologicalNormQuerySet | MeteorologicalNormQuerySet, norm_type: NormType):
-    decade_end = 36 if norm_type == norm_type.DECADAL else 12
+    if norm_type == NormType.DECADAL:
+        decade_end = 36  # 12 months × 3 decades per month
+    elif norm_type == NormType.PENTADAL:
+        decade_end = 72  # 12 months × 6 pentads per month
+    else:  # MONTHLY
+        decade_end = 12  # 12 months
+
     if norm_data.exists():
         df = pd.DataFrame(norm_data.values("ordinal_number", "value")).set_index("ordinal_number")
         df["value"] = df["value"].astype(float)
