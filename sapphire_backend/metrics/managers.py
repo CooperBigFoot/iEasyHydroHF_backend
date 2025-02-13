@@ -36,6 +36,9 @@ class NormQuerySet(QuerySet):
     def monthly(self):
         return self.filter(norm_type=NormType.MONTHLY)
 
+    def pentadal(self):
+        return self.filter(norm_type=NormType.PENTADAL)
+
     def for_station(self, station_uuid: str):
         return self.filter(station=station_uuid)
 

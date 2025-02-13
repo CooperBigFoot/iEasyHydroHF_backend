@@ -109,6 +109,8 @@ from .utils.parser import (
     DecadalMeteoNormFileParser,
     MonthlyDischargeNormFileParser,
     MonthlyMeteoNormFileParser,
+    PentadalDischargeNormFileParser,
+    PentadalMeteoNormFileParser,
 )
 
 agg_func_mapping = {"avg": Avg, "count": Count, "min": Min, "max": Max, "sum": Sum}
@@ -486,11 +488,12 @@ class MeteoMetricsAPIController:
 class HydrologicalNormsAPIController:
     @route.get("download-template", response={200: None, 404: Message})
     def download_template_file(self, norm_type: Query[HydrologicalNormTypeFiltersSchema]):
-        filename = (
-            "discharge_norm_monthly_template.xlsx"
-            if norm_type.norm_type.value == NormType.MONTHLY
-            else "discharge_norm_decadal_template.xlsx"
-        )
+        if norm_type.norm_type.value == NormType.MONTHLY:
+            filename = "discharge_norm_monthly_template.xlsx"
+        elif norm_type.norm_type.value == NormType.PENTADAL:
+            filename = "discharge_norm_pentadal_template.xlsx"
+        else:  # DECADAL
+            filename = "discharge_norm_decadal_template.xlsx"
         file_path = static(f"templates/{filename}")
         absolute_path = os.path.join(settings.APPS_DIR, file_path.strip("/"))
         if os.path.exists(absolute_path):
@@ -512,11 +515,12 @@ class HydrologicalNormsAPIController:
     def upload_discharge_norm(
         self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema], file: UploadedFile = File(...)
     ):
-        parser_class = (
-            DecadalDischargeNormFileParser
-            if norm_type.norm_type == NormType.DECADAL
-            else MonthlyDischargeNormFileParser
-        )
+        if norm_type.norm_type == NormType.DECADAL:
+            parser_class = DecadalDischargeNormFileParser
+        elif norm_type.norm_type == NormType.PENTADAL:
+            parser_class = PentadalDischargeNormFileParser
+        else:  # MONTHLY
+            parser_class = MonthlyDischargeNormFileParser
         data = parser_class(file).parse()
         _ = HydrologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value).delete()
 
@@ -556,11 +560,12 @@ class HydrologicalNormsAPIController:
 class MeteorologicalNormsAPIController:
     @route.get("download-template", response={200: None, 404: Message})
     def download_template_file(self, norm_types: Query[HydrologicalNormTypeFiltersSchema]):
-        filename = (
-            "meteo_norm_monthly_template.xlsx"
-            if norm_types.norm_type.value == NormType.MONTHLY
-            else "meteo_norm_decadal_template.xlsx"
-        )
+        if norm_types.norm_type.value == NormType.MONTHLY:
+            filename = "meteo_norm_monthly_template.xlsx"
+        elif norm_types.norm_type.value == NormType.PENTADAL:
+            filename = "meteo_norm_pentadal_template.xlsx"
+        else:  # DECADAL
+            filename = "meteo_norm_decadal_template.xlsx"
         file_path = static(f"templates/{filename}")
         absolute_path = os.path.join(settings.APPS_DIR, file_path.strip("/"))
         if os.path.exists(absolute_path):
@@ -585,9 +590,12 @@ class MeteorologicalNormsAPIController:
     def upload_meteorological_norm(
         self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema], file: UploadedFile = File(...)
     ):
-        parser_class = (
-            DecadalMeteoNormFileParser if norm_type.norm_type == NormType.DECADAL else MonthlyMeteoNormFileParser
-        )
+        if norm_type.norm_type == NormType.DECADAL:
+            parser_class = DecadalMeteoNormFileParser
+        elif norm_type.norm_type == NormType.PENTADAL:
+            parser_class = PentadalMeteoNormFileParser
+        else:  # MONTHLY
+            parser_class = MonthlyMeteoNormFileParser
         data = parser_class(file).parse()
         _ = MeteorologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value).delete()
 

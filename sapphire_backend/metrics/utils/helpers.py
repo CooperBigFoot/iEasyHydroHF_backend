@@ -100,6 +100,23 @@ class PentadDecadeHelper:
         pentad_num = cls.calculate_pentad_ordinal_number_from_the_day_in_month(day)
         return cls.days_in_pentad[pentad_num - 1]
 
+    @classmethod
+    def calculate_pentad_date(cls, ordinal_number: int) -> datetime:
+        """
+        Construct a datetime object from a given ordinal number of a pentad in a year
+
+        :param ordinal_number:
+        integer representing the absolute ordinal number of the pentad in a year, ranged from 1 to 72
+        :return: datetime object for the given ordinal number
+        """
+        idx = (ordinal_number - 1) % 6
+        month_increment = (ordinal_number - 1) // 6
+
+        month = month_increment + 1
+        day = cls.days_in_pentad[idx]
+
+        return datetime(datetime.utcnow().year, month, day, 12, tzinfo=timezone.utc)
+
 
 class OperationalJournalDataTransformer:
     def __init__(
@@ -574,7 +591,13 @@ class OperationalJournalVirtualDataTransformer(OperationalJournalDataTransformer
 
 
 def create_norm_dataframe(norm_data: HydrologicalNormQuerySet | MeteorologicalNormQuerySet, norm_type: NormType):
-    decade_end = 36 if norm_type == norm_type.DECADAL else 12
+    if norm_type == NormType.DECADAL:
+        decade_end = 36  # 12 months × 3 decades per month
+    elif norm_type == NormType.PENTADAL:
+        decade_end = 72  # 12 months × 6 pentads per month
+    else:  # MONTHLY
+        decade_end = 12  # 12 months
+
     if norm_data.exists():
         df = pd.DataFrame(norm_data.values("ordinal_number", "value")).set_index("ordinal_number")
         df["value"] = df["value"].astype(float)
