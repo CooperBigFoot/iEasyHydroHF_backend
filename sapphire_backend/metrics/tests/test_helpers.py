@@ -100,16 +100,12 @@ class TestMetricsHelpers:
             PentadDecadeHelper.calculate_associated_pentad_day_from_the_day_int_month(32)
 
     def test_days_in_pentad(self):
-        assert PentadDecadeHelper.days_in_pentad == [5, 10, 15, 20, 25, 30]
+        assert PentadDecadeHelper.days_in_pentad == [3, 8, 13, 18, 23, 28]
 
-    def test_calculate_pentad_ordinal_number(self):
-        # Test first month pentads
-        assert PentadDecadeHelper.calculate_pentad_from_date(dt(2024, 1, 3)) == 1
-        assert PentadDecadeHelper.calculate_pentad_from_date(dt(2024, 1, 8)) == 2
-        assert PentadDecadeHelper.calculate_pentad_from_date(dt(2024, 1, 13)) == 3
-
-        # Test mid-year pentads
-        assert PentadDecadeHelper.calculate_pentad_from_date(dt(2024, 6, 18)) == 34
-
-        # Test last month pentads
-        assert PentadDecadeHelper.calculate_pentad_from_date(dt(2024, 12, 28)) == 72
+    def test_calculate_pentad_date(self):
+        assert PentadDecadeHelper.calculate_pentad_date(1) == dt(dt.now().year, 1, 3, 12, tzinfo=self.utc)
+        assert PentadDecadeHelper.calculate_pentad_date(2) == dt(dt.now().year, 1, 8, 12, tzinfo=self.utc)
+        assert PentadDecadeHelper.calculate_pentad_date(3) == dt(dt.now().year, 1, 13, 12, tzinfo=self.utc)
+        assert PentadDecadeHelper.calculate_pentad_date(7) == dt(dt.now().year, 2, 3, 12, tzinfo=self.utc)
+        assert PentadDecadeHelper.calculate_pentad_date(19) == dt(dt.now().year, 4, 3, 12, tzinfo=self.utc)
+        assert PentadDecadeHelper.calculate_pentad_date(72) == dt(dt.now().year, 12, 28, 12, tzinfo=self.utc)
