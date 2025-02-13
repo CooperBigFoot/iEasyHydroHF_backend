@@ -98,3 +98,18 @@ class TestMetricsHelpers:
             assert PentadDecadeHelper.calculate_associated_pentad_day_from_the_day_int_month(day) == 28
         with pytest.raises(ValueError, match="Day 32 is an invalid day"):
             PentadDecadeHelper.calculate_associated_pentad_day_from_the_day_int_month(32)
+
+    def test_days_in_pentad(self):
+        assert PentadDecadeHelper.days_in_pentad == [5, 10, 15, 20, 25, 30]
+
+    def test_calculate_pentad_ordinal_number(self):
+        # Test first month pentads
+        assert PentadDecadeHelper.calculate_pentad_from_date(dt(2024, 1, 3)) == 1
+        assert PentadDecadeHelper.calculate_pentad_from_date(dt(2024, 1, 8)) == 2
+        assert PentadDecadeHelper.calculate_pentad_from_date(dt(2024, 1, 13)) == 3
+
+        # Test mid-year pentads
+        assert PentadDecadeHelper.calculate_pentad_from_date(dt(2024, 6, 18)) == 34
+
+        # Test last month pentads
+        assert PentadDecadeHelper.calculate_pentad_from_date(dt(2024, 12, 28)) == 72
