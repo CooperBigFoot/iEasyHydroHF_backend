@@ -203,6 +203,8 @@ class DischargeCalculationPeriod(UUIDMixin, CreateLastModifiedDateMixin, models.
 
     reason = models.CharField(verbose_name=_("Reason"), max_length=20, choices=CalculationReason.choices)
 
+    is_active = models.BooleanField(verbose_name=_("Is Active"), default=True)
+
     comments = models.TextField(verbose_name=_("Comments"), blank=True)
 
     class Meta:
@@ -220,7 +222,11 @@ class DischargeCalculationPeriod(UUIDMixin, CreateLastModifiedDateMixin, models.
         return f"{self.station.name} - {self.get_state_display()} ({self.start_date_local})"
 
     @property
-    def is_active(self):
-        """Return True if this period is currently active."""
+    def is_current(self):
+        """Return True if this period is currently active and within its date range."""
         now = timezone.now()
-        return self.start_date_local <= now and (self.end_date_local is None or self.end_date_local >= now)
+        return (
+            self.is_active
+            and self.start_date_local <= now
+            and (self.end_date_local is None or self.end_date_local >= now)
+        )

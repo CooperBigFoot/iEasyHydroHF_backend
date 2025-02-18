@@ -13,8 +13,8 @@ class DischargeModelAdmin(admin.ModelAdmin):
 
 @admin.register(DischargeCalculationPeriod)
 class DischargeCalculationPeriodAdmin(admin.ModelAdmin):
-    list_display = ("station", "state", "reason", "start_date_local", "end_date_local", "user")
-    list_filter = ("state", "reason", "station__station_code")
+    list_display = ("station", "is_active", "state", "reason", "start_date_local", "end_date_local", "user")
+    list_filter = ("state", "reason", "station__station_code", "is_active")
     search_fields = ("station__station_code", "station__name", "comments")
     ordering = ("-start_date_local",)
     readonly_fields = ("created_date", "last_modified")

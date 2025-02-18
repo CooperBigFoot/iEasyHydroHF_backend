@@ -110,3 +110,4 @@ class DischargeCalculationPeriodUpdateSchema(ModelSchema):
 class DischargeCalculationPeriodOutputSchema(UUIDSchemaMixin, DischargeCalculationPeriodInputSchema):
     id: int
     user: str = Field(None, alias="user.username")
+    is_active: bool

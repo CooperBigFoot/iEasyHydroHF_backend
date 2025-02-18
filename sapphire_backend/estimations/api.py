@@ -254,11 +254,12 @@ class DischargeCalculationPeriodsAPIController:
         except DischargeCalculationPeriod.DoesNotExist:
             return 404, {"detail": "Calculation period not found.", "code": "not_found"}
 
-    @route.delete("{period_uuid}", response={200: Message, 404: Message})
-    def delete_period(self, organization_uuid: str, station_uuid: str, period_uuid: str):
+    @route.put("{period_uuid}/toggle-active", response={200: DischargeCalculationPeriodOutputSchema, 404: Message})
+    def toggle_period_active(self, organization_uuid: str, station_uuid: str, period_uuid: str):
         try:
             period = DischargeCalculationPeriod.objects.get(uuid=period_uuid, station__uuid=station_uuid)
-            period.delete()
-            return 200, {"detail": "Calculation period deleted successfully.", "code": "deleted"}
+            period.is_active = not period.is_active
+            period.save()
+            return 200, period
         except DischargeCalculationPeriod.DoesNotExist:
             return 404, {"detail": "Calculation period not found.", "code": "not_found"}
