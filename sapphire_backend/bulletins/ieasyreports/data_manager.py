@@ -170,9 +170,11 @@ class IEasyHydroDataManager(DefaultDataManager):
         if cache_key in cls.data_cache:
             return cls.data_cache[cache_key].get(station_id)
 
-        if norm_type == NormType.DECADAL:
+        if norm_type == NormType.PENTADAL:
+            ordinal_number = PentadDecadeHelper.calculate_pentad_from_the_date_in_year(target_date)
+        elif norm_type == NormType.DECADAL:
             ordinal_number = PentadDecadeHelper.calculate_decade_from_the_date_in_year(target_date)
-        else:
+        else:  # NormType.MONTHLY
             ordinal_number = target_date.month
 
         norm_data = HydrologicalNorm.objects.filter(
@@ -184,3 +186,11 @@ class IEasyHydroDataManager(DefaultDataManager):
         cls.data_cache[cache_key] = organized_norm_data
 
         return organized_norm_data.get(station_id)
+
+    @classmethod
+    def get_precipitation(cls, station_ids: list[int], station_id: int, target_date: datetime):
+        return cls.get_metric_value_for_tag("precipitation", station_ids, station_id, target_date, 0, None)
+
+    @classmethod
+    def get_ice_phenomena(cls, station_ids: list[int], station_id: int, target_date: datetime):
+        return cls.get_metric_value_for_tag("ice_phenomena", station_ids, station_id, target_date, 0, None)

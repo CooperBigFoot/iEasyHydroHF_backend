@@ -177,7 +177,18 @@ discharge_norm = Tag(
     lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_discharge_norm(
         kwargs["obj"].site.organization, kwargs["station_uuids"], kwargs["obj"].uuid, kwargs["target_date"]
     ),
-    description="Decadal or monthly norm, depending on the settings on the organization level.",
+    description="Discharge norm based on organization settings (pentad, decadal, or monthly)",
+    tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
+)
+
+pentad_discharge_norm = Tag(
+    "PENTAD_DISCHARGE_NORM",
+    lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_discharge_norm(
+        kwargs["obj"].site.organization, kwargs["station_uuids"], kwargs["obj"].uuid, kwargs["target_date"]
+    ),
+    description="Pentad (5-day period) discharge norm for the current date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
     custom_number_format_fn=hydrological_round,
     data=True,

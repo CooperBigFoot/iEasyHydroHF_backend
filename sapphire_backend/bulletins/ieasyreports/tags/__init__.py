@@ -17,8 +17,13 @@ from .discharge_tags import (
     discharge_morning_2,
     discharge_morning_trend,
     discharge_norm,
+    pentad_discharge_norm,
 )
 from .general_tags import date_tag, today_tag
+from .measurement_tags import (
+    ice_phenomena,
+    precipitation,
+)
 from .station_tags import (
     discharge_level_alarm,
     historical_maximum,
@@ -62,6 +67,7 @@ discharge_tags = [
     discharge_decade,
     discharge_decade_1,
     discharge_norm,
+    pentad_discharge_norm,
     discharge_measurement,
 ]
 
@@ -91,4 +97,9 @@ water_level_tags = [
     water_level_daily_2,
     water_level_daily_trend,
     water_level_decadal_measurement,
+]
+
+measurement_tags = [
+    ice_phenomena,
+    precipitation,
 ]
