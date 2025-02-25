@@ -61,6 +61,16 @@ class IEasyHydroDataManager(DefaultDataManager):
                 "value_type": HydrologicalMeasurementType.ESTIMATED,
                 "metric_name": HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE,
             },
+            "precipitation": {
+                "model": HydrologicalMetric,
+                "value_type": HydrologicalMeasurementType.MANUAL,
+                "metric_name": HydrologicalMetricName.PRECIPITATION_DAILY,
+            },
+            "ice_phenomena": {
+                "model": HydrologicalMetric,
+                "value_type": HydrologicalMeasurementType.MANUAL,
+                "metric_name": HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION,
+            },
         }
 
         return mapping[data_type]
@@ -98,6 +108,40 @@ class IEasyHydroDataManager(DefaultDataManager):
         return organized_data
 
     @classmethod
+    def get_metrics_data_with_code(
+        cls, data_type: str, station_ids: list[int], start_date: datetime, end_date: datetime, **kwargs
+    ) -> dict[int, Any]:
+        start_date_str = start_date.strftime("%Y-%m-%dT%H%M")
+        end_date_str = end_date.strftime("%Y-%m-%dT%H%M")
+
+        cache_key = f"{data_type}_with_code_{','.join(map(str, station_ids))}_{start_date_str}_{end_date_str}"
+        if cache_key in cls.data_cache:
+            return cls.data_cache[cache_key]
+
+        model_mapping = cls.resolve_model_mapping(data_type)
+
+        data = model_mapping["model"].objects.filter(
+            station_id__in=station_ids,
+            timestamp_local__range=[start_date, end_date],
+            value_type=model_mapping["value_type"],
+            metric_name=model_mapping["metric_name"],
+        )
+
+        organized_data = {}
+        fields = ["timestamp_local", "avg_value", "station_id", "value_code"]
+
+        for entry in data.values(*fields):
+            station_id = entry["station_id"]
+            timestamp = entry["timestamp_local"]
+            if station_id not in organized_data:
+                organized_data[station_id] = {}
+
+            organized_data[station_id][timestamp] = {"value": entry["avg_value"], "code": entry["value_code"]}
+
+        cls.data_cache[cache_key] = organized_data
+        return organized_data
+
+    @classmethod
     def get_metric_value_for_tag(
         cls,
         data_type: str,
@@ -123,6 +167,56 @@ class IEasyHydroDataManager(DefaultDataManager):
         station_data = data.get(station_id, {})
 
         return station_data.get(target_timestamp)
+
+    @classmethod
+    def get_metric_value_with_code_for_precipitation(
+        cls,
+        station_ids: list[int],
+        station_id: int,
+        target_date: datetime,
+        day_offset: int,
+    ) -> Any:
+        # Get data for target day and previous day
+        start_date = target_date - timedelta(days=1)
+        end_date = target_date + timedelta(days=1)
+        data = cls.get_metrics_data_with_code("precipitation", station_ids, start_date, end_date)
+
+        # Get previous day's evening record (20:00)
+        target_day = datetime(
+            target_date.year, target_date.month, target_date.day, tzinfo=ZoneInfo("UTC")
+        ) - timedelta(days=day_offset)
+
+        evening_timestamp = target_day.replace(hour=20, minute=0, second=0, microsecond=0)
+
+        station_data = data.get(station_id, {})
+        return station_data.get(evening_timestamp)
+
+    @classmethod
+    def get_metric_value_with_code_for_ice_phenomena(
+        cls,
+        station_ids: list[int],
+        station_id: int,
+        target_date: datetime,
+        day_offset: int,
+    ) -> Any:
+        start_date = target_date - timedelta(days=2)
+        end_date = target_date + timedelta(days=1)
+        data = cls.get_metrics_data_with_code("ice_phenomena", station_ids, start_date, end_date)
+
+        target_day = datetime(
+            target_date.year, target_date.month, target_date.day, tzinfo=ZoneInfo("UTC")
+        ) - timedelta(days=day_offset)
+
+        station_data = data.get(station_id, {})
+
+        # Get all records for the target day
+        day_start = target_day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+
+        day_records = {ts: val for ts, val in station_data.items() if day_start <= ts < day_end}
+
+        # Return all records for the day
+        return list(day_records.values()) if day_records else None
 
     @classmethod
     def get_trend_value(
@@ -157,28 +251,34 @@ class IEasyHydroDataManager(DefaultDataManager):
         )
 
     @classmethod
-    def get_discharge_norm(cls, organization, station_uuids: list[int], station_id, target_date: datetime):
+    def get_discharge_norm(
+        cls,
+        organization,
+        station_uuids: list[int],
+        station_id: int,
+        target_date: datetime,
+        norm_type: str | None = None,
+    ) -> Any:
         from sapphire_backend.metrics.choices import NormType
         from sapphire_backend.metrics.models import HydrologicalNorm
         from sapphire_backend.metrics.utils.helpers import PentadDecadeHelper
 
-        norm_type = organization.discharge_norm_type
+        # Use provided norm_type if available, otherwise fall back to organization setting
+        selected_norm_type = norm_type if norm_type is not None else organization.discharge_norm_type
 
-        cache_key = (
-            f"discharge_norm_{norm_type}_{','.join(map(str, station_uuids))}_{target_date.strftime('%Y-%m-%dT%H%M')}"
-        )
+        cache_key = f"discharge_norm_{selected_norm_type}_{','.join(map(str, station_uuids))}_{target_date.strftime('%Y-%m-%dT%H%M')}"
         if cache_key in cls.data_cache:
             return cls.data_cache[cache_key].get(station_id)
 
-        if norm_type == NormType.PENTADAL:
+        if selected_norm_type == NormType.PENTADAL:
             ordinal_number = PentadDecadeHelper.calculate_pentad_from_the_date_in_year(target_date)
-        elif norm_type == NormType.DECADAL:
+        elif selected_norm_type == NormType.DECADAL:
             ordinal_number = PentadDecadeHelper.calculate_decade_from_the_date_in_year(target_date)
         else:  # NormType.MONTHLY
             ordinal_number = target_date.month
 
         norm_data = HydrologicalNorm.objects.filter(
-            station_id__in=station_uuids, norm_type=organization.discharge_norm_type, ordinal_number=ordinal_number
+            station_id__in=station_uuids, norm_type=selected_norm_type, ordinal_number=ordinal_number
         )
 
         organized_norm_data = {norm.station_id: norm.value for norm in norm_data}
@@ -189,8 +289,8 @@ class IEasyHydroDataManager(DefaultDataManager):
 
     @classmethod
     def get_precipitation(cls, station_ids: list[int], station_id: int, target_date: datetime):
-        return cls.get_metric_value_for_tag("precipitation", station_ids, station_id, target_date, 0, None)
+        return cls.get_metric_value_with_code_for_precipitation(station_ids, station_id, target_date, 0)
 
     @classmethod
     def get_ice_phenomena(cls, station_ids: list[int], station_id: int, target_date: datetime):
-        return cls.get_metric_value_for_tag("ice_phenomena", station_ids, station_id, target_date, 0, None)
+        return cls.get_metric_value_with_code_for_ice_phenomena(station_ids, station_id, target_date, 0)

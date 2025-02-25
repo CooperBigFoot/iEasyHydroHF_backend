@@ -1,6 +1,7 @@
 from django.conf import settings
 from ieasyreports.core.tags import Tag
 
+from sapphire_backend.metrics.choices import NormType
 from sapphire_backend.utils.rounding import hydrological_round
 
 from .utils import get_trend, get_value
@@ -186,9 +187,43 @@ discharge_norm = Tag(
 pentad_discharge_norm = Tag(
     "PENTAD_DISCHARGE_NORM",
     lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_discharge_norm(
-        kwargs["obj"].site.organization, kwargs["station_uuids"], kwargs["obj"].uuid, kwargs["target_date"]
+        kwargs["obj"].site.organization,
+        kwargs["station_uuids"],
+        kwargs["obj"].uuid,
+        kwargs["target_date"],
+        norm_type=NormType.PENTADAL,
     ),
     description="Pentad (5-day period) discharge norm for the current date",
+    tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
+)
+
+decade_discharge_norm = Tag(
+    "DECADE_DISCHARGE_NORM",
+    lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_discharge_norm(
+        kwargs["obj"].site.organization,
+        kwargs["station_uuids"],
+        kwargs["obj"].uuid,
+        kwargs["target_date"],
+        norm_type=NormType.DECADAL,
+    ),
+    description="Decade (10-day period) discharge norm for the current date",
+    tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=hydrological_round,
+    data=True,
+)
+
+monthly_discharge_norm = Tag(
+    "MONTHLY_DISCHARGE_NORM",
+    lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_discharge_norm(
+        kwargs["obj"].site.organization,
+        kwargs["station_uuids"],
+        kwargs["obj"].uuid,
+        kwargs["target_date"],
+        norm_type=NormType.MONTHLY,
+    ),
+    description="Monthly discharge norm for the current date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
     custom_number_format_fn=hydrological_round,
     data=True,
