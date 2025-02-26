@@ -29,9 +29,12 @@ from .station_tags import (
     historical_maximum,
     historical_minimum,
     station_basin,
+    station_basin_national,
     station_code,
     station_name,
+    station_national_name,
     station_region,
+    station_region_national,
 )
 from .water_level_tags import (
     water_level_daily,
@@ -78,6 +81,9 @@ station_tags = [
     station_code,
     station_region,
     station_basin,
+    station_national_name,
+    station_region_national,
+    station_basin_national,
     discharge_level_alarm,
     historical_minimum,
     historical_maximum,
