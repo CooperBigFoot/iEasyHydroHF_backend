@@ -1,4 +1,5 @@
 from .discharge_tags import (
+    decade_discharge_norm,
     discharge_daily,
     discharge_daily_1,
     discharge_daily_2,
@@ -17,6 +18,7 @@ from .discharge_tags import (
     discharge_morning_2,
     discharge_morning_trend,
     discharge_norm,
+    monthly_discharge_norm,
     pentad_discharge_norm,
 )
 from .general_tags import date_tag, today_tag
@@ -71,6 +73,8 @@ discharge_tags = [
     discharge_decade_1,
     discharge_norm,
     pentad_discharge_norm,
+    monthly_discharge_norm,
+    decade_discharge_norm,
     discharge_measurement,
 ]
 

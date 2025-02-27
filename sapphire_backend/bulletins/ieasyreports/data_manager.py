@@ -109,8 +109,8 @@ class IEasyHydroDataManager(DefaultDataManager):
 
     @classmethod
     def get_metrics_data_with_code(
-        cls, data_type: str, station_ids: list[int], start_date: datetime, end_date: datetime, **kwargs
-    ) -> dict[int, Any]:
+        cls, data_type: str, station_ids: list[int], start_date: datetime, end_date: datetime
+    ) -> dict[int, dict[datetime, list[dict]]]:
         start_date_str = start_date.strftime("%Y-%m-%dT%H%M")
         end_date_str = end_date.strftime("%Y-%m-%dT%H%M")
 
@@ -128,15 +128,17 @@ class IEasyHydroDataManager(DefaultDataManager):
         )
 
         organized_data = {}
-        fields = ["timestamp_local", "avg_value", "station_id", "value_code"]
-
-        for entry in data.values(*fields):
+        for entry in data.values("timestamp_local", "avg_value", "value_code", "station_id"):
             station_id = entry["station_id"]
             timestamp = entry["timestamp_local"]
             if station_id not in organized_data:
                 organized_data[station_id] = {}
+            if timestamp not in organized_data[station_id]:
+                organized_data[station_id][timestamp] = []
 
-            organized_data[station_id][timestamp] = {"value": entry["avg_value"], "code": entry["value_code"]}
+            organized_data[station_id][timestamp].append(
+                {"avg_value": entry["avg_value"], "value_code": entry["value_code"]}
+            )
 
         cls.data_cache[cache_key] = organized_data
         return organized_data
@@ -176,20 +178,27 @@ class IEasyHydroDataManager(DefaultDataManager):
         target_date: datetime,
         day_offset: int,
     ) -> Any:
-        # Get data for target day and previous day
-        start_date = target_date - timedelta(days=1)
+        start_date = target_date - timedelta(days=2)
         end_date = target_date + timedelta(days=1)
         data = cls.get_metrics_data_with_code("precipitation", station_ids, start_date, end_date)
 
-        # Get previous day's evening record (20:00)
         target_day = datetime(
             target_date.year, target_date.month, target_date.day, tzinfo=ZoneInfo("UTC")
         ) - timedelta(days=day_offset)
 
-        evening_timestamp = target_day.replace(hour=20, minute=0, second=0, microsecond=0)
-
         station_data = data.get(station_id, {})
-        return station_data.get(evening_timestamp)
+
+        # Get all records for the target day
+        day_start = target_day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+
+        day_records = []
+        for ts, values in station_data.items():
+            if day_start <= ts < day_end:
+                for value in values:
+                    day_records.append({"value": value["avg_value"], "code": value["value_code"]})
+
+        return day_records if day_records else None
 
     @classmethod
     def get_metric_value_with_code_for_ice_phenomena(
@@ -213,10 +222,13 @@ class IEasyHydroDataManager(DefaultDataManager):
         day_start = target_day.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
 
-        day_records = {ts: val for ts, val in station_data.items() if day_start <= ts < day_end}
+        day_records = []
+        for ts, values in station_data.items():
+            if day_start <= ts < day_end:
+                for value in values:
+                    day_records.append({"value": value["avg_value"], "code": value["value_code"]})
 
-        # Return all records for the day
-        return list(day_records.values()) if day_records else None
+        return day_records if day_records else None
 
     @classmethod
     def get_trend_value(
