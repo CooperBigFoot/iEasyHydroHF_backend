@@ -15,7 +15,7 @@ from sapphire_backend.utils.permissions import (
     regular_permissions,
 )
 
-from .ieasyreports.tags import discharge_tags, general_tags, station_tags, water_level_tags
+from .ieasyreports.tags import discharge_tags, general_tags, measurement_tags, station_tags, water_level_tags
 from .models import BulletinTemplate
 from .schema import (
     BulletinGenerateSchema,
@@ -61,7 +61,7 @@ class BulletinsAPIController:
         if templates.count() == 1:
             template = templates.first()
             template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
-                tags=discharge_tags + general_tags + station_tags + water_level_tags,
+                tags=discharge_tags + general_tags + station_tags + water_level_tags + measurement_tags,
                 # already a full path so the templates directory path will basically be ignored
                 template=template.filename.path,
                 templates_directory_path=settings.IEASYREPORTS_CONF.templates_directory_path,
@@ -77,7 +77,7 @@ class BulletinsAPIController:
             with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zip_file:
                 for template in templates:
                     template_generator = settings.IEASYREPORTS_CONF.template_generator_class(
-                        tags=discharge_tags + general_tags + station_tags + water_level_tags,
+                        tags=discharge_tags + general_tags + station_tags + water_level_tags + measurement_tags,
                         template=template.filename.path,
                         templates_directory_path=settings.IEASYREPORTS_CONF.templates_directory_path,
                         reports_directory_path=settings.IEASYREPORTS_CONF.report_output_path,
@@ -98,7 +98,7 @@ class BulletinsAPIController:
 
     @route.get("tags", response={200: BulletinTemplateTagOutputSchema})
     def get_bulletin_tags(self, organization_uuid: str):
-        tags = general_tags + discharge_tags + station_tags + water_level_tags
+        tags = general_tags + discharge_tags + station_tags + water_level_tags + measurement_tags
         response_data = {"general": [], "header": [], "data": []}
 
         for tag in tags:
