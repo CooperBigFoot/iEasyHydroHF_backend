@@ -47,24 +47,22 @@ def format_precipitation(value):
 
 ice_phenomena = Tag(
     "ICE_PHENOMENA",
-    lambda **kwargs: format_ice_phenomena(
-        settings.IEASYREPORTS_CONF.data_manager_class.get_ice_phenomena(
-            kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"]
-        )
+    lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_ice_phenomena(
+        kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"]
     ),
     description="Ice phenomena observation for the current date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=format_ice_phenomena,
     data=True,
 )
 
 precipitation = Tag(
     "PRECIPITATION",
-    lambda **kwargs: format_precipitation(
-        settings.IEASYREPORTS_CONF.data_manager_class.get_precipitation(
-            kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"]
-        )
+    lambda **kwargs: settings.IEASYREPORTS_CONF.data_manager_class.get_precipitation(
+        kwargs["station_ids"], kwargs["obj"].id, kwargs["target_date"]
     ),
     description="Precipitation measurement for the current date",
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    custom_number_format_fn=format_precipitation,
     data=True,
 )
