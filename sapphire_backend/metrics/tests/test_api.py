@@ -96,6 +96,8 @@ class TestHydroMetricsAPI:
                 "sensor_identifier": water_level_manual.sensor_identifier,
                 "station_id": manual_hydro_station.id,
                 "value_code": None,
+                "station_code": manual_hydro_station.station_code,
+                "station_uuid": str(manual_hydro_station.uuid),
             },
         ]
 

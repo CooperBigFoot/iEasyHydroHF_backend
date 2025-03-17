@@ -309,20 +309,20 @@ class HydroMetricsAPIController:
                 for record in qs.values("timestamp_local").annotate(**self._prepare_annotations(filter_dict))
             ]
         else:  # raw or daily
-            return [
-                HydrologicalMetricOutputSchema(**record)
-                for record in qs.values(
-                    "timestamp_local",
-                    "station_id",
-                    "station__station_code",
-                    "station__uuid",
-                    "avg_value",
-                    "metric_name",
-                    "value_type",
-                    "sensor_identifier",
-                    "value_code",
-                )
+            fields_to_retrieve = [
+                "timestamp_local",
+                "station_id",
+                "station__station_code",
+                "station__uuid",
+                "avg_value",
+                "metric_name",
+                "sensor_identifier",
+                "value_type",
             ]
+            if "value_code" in qs.model._meta.fields:
+                fields_to_retrieve.append("value_code")
+
+            return [HydrologicalMetricOutputSchema(**record) for record in qs.values(*fields_to_retrieve)]
 
     @route.get("detailed-daily", response={200: list[DetailedDailyHydroMetricSchema]})
     def get_detailed_daily_hydro_metrics(
