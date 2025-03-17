@@ -61,7 +61,13 @@ class HydrologicalMetricOutputSchema(Schema):
     value_type: str
     sensor_identifier: str
     station_id: int
+    station_code: str = Field(..., alias="station__station_code")
+    station_uuid: str
     value_code: int | None = None
+
+    @staticmethod
+    def resolve_station_uuid(obj):
+        return str(obj.get("station__uuid"))
 
 
 class TimestampGroupedHydroMetricSchema(Schema):
@@ -174,6 +180,12 @@ class MeteorologicalMetricOutputSchema(Schema):
     timestamp_local: datetime
     metric_name: MeteorologicalMetricName
     station_id: int
+    station_code: str = Field(..., alias="station__station_code")
+    station_uuid: str
+
+    @staticmethod
+    def resolve_station_uuid(obj):
+        return str(obj.get("station__uuid"))
 
 
 class MeteorologicalManualInputSchema(Schema):
