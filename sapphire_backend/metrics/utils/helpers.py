@@ -117,6 +117,22 @@ class PentadDecadeHelper:
 
         return datetime(datetime.utcnow().year, month, day, 12, tzinfo=timezone.utc)
 
+    @classmethod
+    def calculate_pentad_from_the_date_in_year(cls, date: datetime) -> int:
+        """
+        Calculates the absolute pentad number in a year from a given datetime object
+
+        :param date: datetime object for which to find the pentad
+        :return: integer representing the pentad in a year, ranged from 1 to 72
+        """
+        month, day = date.month, date.day
+        pentad = cls.calculate_pentad_ordinal_number_from_the_day_in_month(day)
+
+        month_decrement = month - 1
+        ordinal_number = month_decrement * 6 + pentad
+
+        return ordinal_number
+
 
 class OperationalJournalDataTransformer:
     def __init__(

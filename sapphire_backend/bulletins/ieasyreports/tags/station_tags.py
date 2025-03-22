@@ -52,3 +52,26 @@ historical_maximum = Tag(
     tag_settings=settings.IEASYREPORTS_TAG_CONF,
     data=True,
 )
+station_national_name = Tag(
+    "SITE_NATIONAL_NAME",
+    lambda obj, **kwargs: obj.secondary_name,
+    description="Site name in national language",
+    tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    data=True,
+)
+station_region_national = Tag(
+    "SITE_REGION_NATIONAL",
+    lambda obj, **kwargs: obj.site.region.secondary_name,
+    description="Site region in national language",
+    tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    data=True,
+    header=True,
+)
+station_basin_national = Tag(
+    "SITE_BASIN_NATIONAL",
+    lambda obj, **kwargs: obj.site.basin.secondary_name,
+    description="Site basin in national language",
+    tag_settings=settings.IEASYREPORTS_TAG_CONF,
+    data=True,
+    header=True,
+)

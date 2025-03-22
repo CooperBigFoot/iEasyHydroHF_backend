@@ -171,8 +171,10 @@ class HydroMetricsAPIController:
             return qs.order_by(f"{'-' if order_direction.lower() == 'desc' else ''}{order_param}")
 
         # For raw/grouped views
-        return HydrologicalMetric.objects.filter(**filter_dict).order_by(
-            f"{'-' if order_direction.lower() == 'desc' else ''}{order_param}"
+        return (
+            HydrologicalMetric.objects.select_related("station")
+            .filter(**filter_dict)
+            .order_by(f"{'-' if order_direction.lower() == 'desc' else ''}{order_param}")
         )
 
     def _prepare_annotations(self, filter_dict: dict) -> dict:
@@ -307,7 +309,20 @@ class HydroMetricsAPIController:
                 for record in qs.values("timestamp_local").annotate(**self._prepare_annotations(filter_dict))
             ]
         else:  # raw or daily
-            return [HydrologicalMetricOutputSchema(**record) for record in qs.values()]
+            fields_to_retrieve = [
+                "timestamp_local",
+                "station_id",
+                "station__station_code",
+                "station__uuid",
+                "avg_value",
+                "metric_name",
+                "sensor_identifier",
+                "value_type",
+            ]
+            if "value_code" in qs.model._meta.fields:
+                fields_to_retrieve.append("value_code")
+
+            return [HydrologicalMetricOutputSchema(**record) for record in qs.values(*fields_to_retrieve)]
 
     @route.get("detailed-daily", response={200: list[DetailedDailyHydroMetricSchema]})
     def get_detailed_daily_hydro_metrics(
@@ -425,12 +440,32 @@ class MeteoMetricsAPIController:
         filter_dict = filters.dict(exclude_none=True)
         filter_dict["station__site__organization"] = organization_uuid
         order_param, order_direction = order.order_param, order.order_direction
-        return TimeseriesQueryManager(
+
+        query_manager = TimeseriesQueryManager(
             model=MeteorologicalMetric,
             order_param=order_param,
             order_direction=order_direction,
             filter_dict=filter_dict,
-        ).execute_query()[:limit]
+        )
+
+        # Execute query with specific fields included
+        queryset = (
+            query_manager.model.objects.filter(**query_manager.filter_dict)
+            .select_related("station")
+            .order_by(query_manager.order)
+            .values(
+                "timestamp_local",
+                "station_id",
+                "station__station_code",
+                "station__uuid",
+                "value",
+                "metric_name",
+                "value_type",
+                "unit",
+            )[:limit]
+        )
+
+        return queryset
 
     @route.get("metric-count", response={200: list[MetricCountSchema] | MetricTotalCountSchema})
     def get_meteo_metric_count(
