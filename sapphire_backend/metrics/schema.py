@@ -243,6 +243,27 @@ class HydrologicalNormOutputSchema(ModelSchema):
         else:
             return PentadDecadeHelper.calculate_decade_date(obj.ordinal_number)
 
+    @staticmethod
+    def resolve_value(obj):
+        if obj.value is None:
+            return None
+
+        number = obj.value
+        if number == 0:
+            return "0.000"
+        elif number < 1:
+            # For values < 1, show 3 decimal places
+            return format(number, ".3f")
+        elif number < 10:
+            # For values >= 1 and < 10, show 2 decimal places
+            return format(number, ".2f")
+        elif number < 100:
+            # For values >= 10 and < 100, show 1 decimal place
+            return format(number, ".1f")
+        else:
+            # For values >= 100, show no decimal places
+            return str(int(number))
+
 
 class MeteorologicalNormOutputSchema(HydrologicalNormOutputSchema):
     class Meta(HydrologicalNormOutputSchema.Meta):

@@ -563,7 +563,7 @@ class HydrologicalNormsAPIController:
             [
                 HydrologicalNorm(
                     station_id=station_uuid,
-                    value=point["value"],
+                    value=hydrological_round(point["value"]),
                     ordinal_number=point["ordinal_number"],
                     norm_type=norm_type.norm_type.value,
                 )
