@@ -795,15 +795,15 @@ class TestDischargeNormsAPI:
 
         current_year = dt.datetime.now().year
         assert response.json() == [
-            {"timestamp_local": f"{current_year}-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.0"},
-            {"timestamp_local": f"{current_year}-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.0"},
-            {"timestamp_local": f"{current_year}-03-01T12:00:00Z", "ordinal_number": 3, "value": "3.0"},
-            {"timestamp_local": f"{current_year}-04-01T12:00:00Z", "ordinal_number": 4, "value": "4.0"},
-            {"timestamp_local": f"{current_year}-05-01T12:00:00Z", "ordinal_number": 5, "value": "5.0"},
-            {"timestamp_local": f"{current_year}-06-01T12:00:00Z", "ordinal_number": 6, "value": "6.0"},
-            {"timestamp_local": f"{current_year}-07-01T12:00:00Z", "ordinal_number": 7, "value": "7.0"},
-            {"timestamp_local": f"{current_year}-08-01T12:00:00Z", "ordinal_number": 8, "value": "8.0"},
-            {"timestamp_local": f"{current_year}-09-01T12:00:00Z", "ordinal_number": 9, "value": "9.0"},
+            {"timestamp_local": f"{current_year}-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
+            {"timestamp_local": f"{current_year}-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
+            {"timestamp_local": f"{current_year}-03-01T12:00:00Z", "ordinal_number": 3, "value": "3.00"},
+            {"timestamp_local": f"{current_year}-04-01T12:00:00Z", "ordinal_number": 4, "value": "4.00"},
+            {"timestamp_local": f"{current_year}-05-01T12:00:00Z", "ordinal_number": 5, "value": "5.00"},
+            {"timestamp_local": f"{current_year}-06-01T12:00:00Z", "ordinal_number": 6, "value": "6.00"},
+            {"timestamp_local": f"{current_year}-07-01T12:00:00Z", "ordinal_number": 7, "value": "7.00"},
+            {"timestamp_local": f"{current_year}-08-01T12:00:00Z", "ordinal_number": 8, "value": "8.00"},
+            {"timestamp_local": f"{current_year}-09-01T12:00:00Z", "ordinal_number": 9, "value": "9.00"},
             {"timestamp_local": f"{current_year}-10-01T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
             {"timestamp_local": f"{current_year}-11-01T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
             {"timestamp_local": f"{current_year}-12-01T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
@@ -819,15 +819,15 @@ class TestDischargeNormsAPI:
 
         current_year = dt.datetime.now().year
         assert response.json()[:12] == [
-            {"timestamp_local": f"{current_year}-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.0"},
-            {"timestamp_local": f"{current_year}-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.0"},
-            {"timestamp_local": f"{current_year}-01-25T12:00:00Z", "ordinal_number": 3, "value": "3.0"},
-            {"timestamp_local": f"{current_year}-02-05T12:00:00Z", "ordinal_number": 4, "value": "4.0"},
-            {"timestamp_local": f"{current_year}-02-15T12:00:00Z", "ordinal_number": 5, "value": "5.0"},
-            {"timestamp_local": f"{current_year}-02-25T12:00:00Z", "ordinal_number": 6, "value": "6.0"},
-            {"timestamp_local": f"{current_year}-03-05T12:00:00Z", "ordinal_number": 7, "value": "7.0"},
-            {"timestamp_local": f"{current_year}-03-15T12:00:00Z", "ordinal_number": 8, "value": "8.0"},
-            {"timestamp_local": f"{current_year}-03-25T12:00:00Z", "ordinal_number": 9, "value": "9.0"},
+            {"timestamp_local": f"{current_year}-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
+            {"timestamp_local": f"{current_year}-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
+            {"timestamp_local": f"{current_year}-01-25T12:00:00Z", "ordinal_number": 3, "value": "3.00"},
+            {"timestamp_local": f"{current_year}-02-05T12:00:00Z", "ordinal_number": 4, "value": "4.00"},
+            {"timestamp_local": f"{current_year}-02-15T12:00:00Z", "ordinal_number": 5, "value": "5.00"},
+            {"timestamp_local": f"{current_year}-02-25T12:00:00Z", "ordinal_number": 6, "value": "6.00"},
+            {"timestamp_local": f"{current_year}-03-05T12:00:00Z", "ordinal_number": 7, "value": "7.00"},
+            {"timestamp_local": f"{current_year}-03-15T12:00:00Z", "ordinal_number": 8, "value": "8.00"},
+            {"timestamp_local": f"{current_year}-03-25T12:00:00Z", "ordinal_number": 9, "value": "9.00"},
             {"timestamp_local": f"{current_year}-04-05T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
             {"timestamp_local": f"{current_year}-04-15T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
             {"timestamp_local": f"{current_year}-04-25T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
@@ -843,18 +843,18 @@ class TestDischargeNormsAPI:
 
         current_year = dt.datetime.now().year
         assert response.json()[:12] == [
-            {"timestamp_local": f"{current_year}-01-03T12:00:00Z", "ordinal_number": 1, "value": "1.0"},
-            {"timestamp_local": f"{current_year}-01-08T12:00:00Z", "ordinal_number": 2, "value": "2.0"},
-            {"timestamp_local": f"{current_year}-01-13T12:00:00Z", "ordinal_number": 3, "value": "3.0"},
-            {"timestamp_local": f"{current_year}-01-18T12:00:00Z", "ordinal_number": 4, "value": "4.0"},
-            {"timestamp_local": f"{current_year}-01-23T12:00:00Z", "ordinal_number": 5, "value": "5.0"},
-            {"timestamp_local": f"{current_year}-01-28T12:00:00Z", "ordinal_number": 6, "value": "6.0"},
-            {"timestamp_local": f"{current_year}-02-03T12:00:00Z", "ordinal_number": 7, "value": "7.0"},
-            {"timestamp_local": f"{current_year}-02-08T12:00:00Z", "ordinal_number": 8, "value": "8.0"},
-            {"timestamp_local": f"{current_year}-02-13T12:00:00Z", "ordinal_number": 9, "value": "9.0"},
-            {"timestamp_local": f"{current_year}-02-18T12:00:00Z", "ordinal_number": 10, "value": "1.0"},
-            {"timestamp_local": f"{current_year}-02-23T12:00:00Z", "ordinal_number": 11, "value": "2.0"},
-            {"timestamp_local": f"{current_year}-02-28T12:00:00Z", "ordinal_number": 12, "value": "3.0"},
+            {"timestamp_local": f"{current_year}-01-03T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
+            {"timestamp_local": f"{current_year}-01-08T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
+            {"timestamp_local": f"{current_year}-01-13T12:00:00Z", "ordinal_number": 3, "value": "3.00"},
+            {"timestamp_local": f"{current_year}-01-18T12:00:00Z", "ordinal_number": 4, "value": "4.00"},
+            {"timestamp_local": f"{current_year}-01-23T12:00:00Z", "ordinal_number": 5, "value": "5.00"},
+            {"timestamp_local": f"{current_year}-01-28T12:00:00Z", "ordinal_number": 6, "value": "6.00"},
+            {"timestamp_local": f"{current_year}-02-03T12:00:00Z", "ordinal_number": 7, "value": "7.00"},
+            {"timestamp_local": f"{current_year}-02-08T12:00:00Z", "ordinal_number": 8, "value": "8.00"},
+            {"timestamp_local": f"{current_year}-02-13T12:00:00Z", "ordinal_number": 9, "value": "9.00"},
+            {"timestamp_local": f"{current_year}-02-18T12:00:00Z", "ordinal_number": 10, "value": "1.00"},
+            {"timestamp_local": f"{current_year}-02-23T12:00:00Z", "ordinal_number": 11, "value": "2.00"},
+            {"timestamp_local": f"{current_year}-02-28T12:00:00Z", "ordinal_number": 12, "value": "3.00"},
         ]
 
     def test_upload_norm_overwrites_existing_records(
@@ -943,8 +943,8 @@ class TestDischargeNormsAPI:
             f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d"
         )
         assert response.json() == [
-            {"timestamp_local": f"{current_year}-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.00000"},
-            {"timestamp_local": f"{current_year}-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.00000"},
+            {"timestamp_local": f"{current_year}-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
+            {"timestamp_local": f"{current_year}-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
         ]
 
     def test_get_monthly_norm(
@@ -963,8 +963,8 @@ class TestDischargeNormsAPI:
             f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m"
         )
         assert response.json() == [
-            {"timestamp_local": f"{current_year}-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.00000"},
-            {"timestamp_local": f"{current_year}-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.00000"},
+            {"timestamp_local": f"{current_year}-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
+            {"timestamp_local": f"{current_year}-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
         ]
 
     def test_get_pentadal_norm(
@@ -983,6 +983,6 @@ class TestDischargeNormsAPI:
             f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=p"
         )
         assert response.json() == [
-            {"timestamp_local": f"{current_year}-01-03T12:00:00Z", "ordinal_number": 1, "value": "1.00000"},
-            {"timestamp_local": f"{current_year}-01-08T12:00:00Z", "ordinal_number": 2, "value": "2.00000"},
+            {"timestamp_local": f"{current_year}-01-03T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
+            {"timestamp_local": f"{current_year}-01-08T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
         ]
