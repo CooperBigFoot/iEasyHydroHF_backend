@@ -476,6 +476,33 @@ class TestKN15TelegramParserSectionOne:
             "date": "2024-04-14",
         }
 
+    def test_parse_with_partial_water_temperature(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 4//17=", organization.uuid
+        )
+        decoded_data = parser.parse()
+
+        assert decoded_data["section_one"]["water_temperature"] is None
+        assert decoded_data["section_one"]["air_temperature"] == 17
+
+    def test_parse_with_partial_air_temperature(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 450//=", organization.uuid
+        )
+        decoded_data = parser.parse()
+
+        assert decoded_data["section_one"]["water_temperature"] == 5.0
+        assert decoded_data["section_one"]["air_temperature"] is None
+
+    def test_parse_with_both_partial_temperatures(self, datetime_mock, organization, manual_hydro_station):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14081 10417 20021 30410 4////=", organization.uuid
+        )
+        decoded_data = parser.parse()
+
+        assert decoded_data["section_one"]["water_temperature"] is None
+        assert decoded_data["section_one"]["air_temperature"] is None
+
 
 class TestKN15TelegramParserSectionTwo:
     def test_parse_single_section_two(self, datetime_mock, organization, manual_hydro_station):

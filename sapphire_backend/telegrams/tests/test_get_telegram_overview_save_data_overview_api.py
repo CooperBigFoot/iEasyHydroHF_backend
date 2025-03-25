@@ -205,6 +205,46 @@ class TestGetTelegramOverviewSaveDataOverviewSectionOneAPI:
             )
             assert entry["section_one_two"][0]["date"] == decoded_data["section_one"]["date"]
 
+    def test_get_telegram_overview_save_data_overview_section_one_partial_airtemperatures(
+        self,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        regular_user_kyrgyz_api_client,
+    ):
+        endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
+        station_code = manual_hydro_station_kyrgyz.station_code
+        telegram = {"raw": f"{station_code} 14081 10417 20021 30410 4//17="}
+
+        response = regular_user_kyrgyz_api_client.post(
+            endpoint,
+            data={"telegrams": [telegram]},
+            content_type="application/json",
+        )
+
+        res = response.json()
+        assert res["save_data_overview"][0]["section_one_two"][0]["water_temperature"] is None
+        assert res["save_data_overview"][0]["section_one_two"][0]["air_temperature"] == 17
+
+    def test_get_telegram_overview_save_data_overview_section_one_partial_water_temperatures(
+        self,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        regular_user_kyrgyz_api_client,
+    ):
+        endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
+        station_code = manual_hydro_station_kyrgyz.station_code
+        telegram = {"raw": f"{station_code} 14081 10417 20021 30410 450//="}
+
+        response = regular_user_kyrgyz_api_client.post(
+            endpoint,
+            data={"telegrams": [telegram]},
+            content_type="application/json",
+        )
+
+        res = response.json()
+        assert res["save_data_overview"][0]["section_one_two"][0]["water_temperature"] == 5.0
+        assert res["save_data_overview"][0]["section_one_two"][0]["air_temperature"] is None
+
 
 class TestGetTelegramOverviewSaveDataOverviewSectionOneIcePhenomenaAPI:
     def test_get_telegram_overview_save_data_overview_section_one_ice_phenomena(

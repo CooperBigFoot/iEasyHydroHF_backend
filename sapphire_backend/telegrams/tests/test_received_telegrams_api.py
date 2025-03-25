@@ -79,7 +79,10 @@ class TestListTelegramsReceivedAPI:
             .values()
         )
         for telegram_response, telegram_expected in zip(res, queryset_expected):
-            assert datetime.fromisoformat(telegram_response["created_date"]) == telegram_expected["created_date"]
+            assert (
+                datetime.fromisoformat(telegram_response["created_date"].replace("Z", "+00:00"))
+                == telegram_expected["created_date"]
+            )
             assert telegram_response["telegram"] == telegram_expected["telegram"]
             assert telegram_response["id"] == telegram_expected["id"]
 

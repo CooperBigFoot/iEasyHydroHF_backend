@@ -410,13 +410,21 @@ class KN15TelegramParser(BaseTelegramParser):
 
             return trend
 
-        def extract_water_and_air_temperatures(token: str) -> tuple[float, int]:
-            water_temp = int(token[1:3]) / 10
-            air_temp = int(token[3:])
+        def extract_water_and_air_temperatures(token: str) -> tuple[float | None, int | None]:
+            if token[1:] == "////":
+                return None, None
 
-            if air_temp > 50:
-                air_temp = air_temp - 50
-                air_temp = -air_temp
+            water_temp = None
+            air_temp = None
+
+            if token[1:3] != "//" and token[1:3].isdigit():
+                water_temp = int(token[1:3]) / 10
+
+            if token[3:] != "//" and token[3:].isdigit():
+                air_temp = int(token[3:])
+                if air_temp > 50:
+                    air_temp = air_temp - 50
+                    air_temp = -air_temp
 
             return water_temp, air_temp
 
