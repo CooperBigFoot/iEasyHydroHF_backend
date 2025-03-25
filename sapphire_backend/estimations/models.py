@@ -183,7 +183,6 @@ class DischargeCalculationPeriod(UUIDMixin, CreateLastModifiedDateMixin, models.
     station = models.ForeignKey(
         "stations.HydrologicalStation",
         verbose_name=_("Station"),
-        to_field="uuid",
         on_delete=models.PROTECT,
         related_name="discharge_calculation_periods",
     )
@@ -205,7 +204,7 @@ class DischargeCalculationPeriod(UUIDMixin, CreateLastModifiedDateMixin, models.
 
     is_active = models.BooleanField(verbose_name=_("Is Active"), default=True)
 
-    comments = models.TextField(verbose_name=_("Comments"), blank=True)
+    comment = models.TextField(verbose_name=_("Comment"), blank=True)
 
     class Meta:
         verbose_name = _("Discharge Calculation Period")
@@ -222,11 +221,92 @@ class DischargeCalculationPeriod(UUIDMixin, CreateLastModifiedDateMixin, models.
         return f"{self.station.name} - {self.get_state_display()} ({self.start_date_local})"
 
     @property
+    def is_expired(self):
+        """Return True if this period is expired."""
+        now = timezone.now()
+        return self.end_date_local and self.end_date_local < now
+
+    @property
     def is_current(self):
         """Return True if this period is currently active and within its date range."""
         now = timezone.now()
+        return self.is_active and self.start_date_local <= now and not self.is_expired
+
+    @classmethod
+    def get_active_period(cls, station_id, timestamp=None):
+        """
+        Get the active calculation period for a station at a specific timestamp.
+
+        Args:
+            station_id: The ID of the hydrological station
+            timestamp: The timestamp to check (defaults to current time)
+
+        Returns:
+            The active DischargeCalculationPeriod or None if no active period exists
+        """
+        if timestamp is None:
+            timestamp = timezone.now()
+
         return (
-            self.is_active
-            and self.start_date_local <= now
-            and (self.end_date_local is None or self.end_date_local >= now)
+            cls.objects.filter(
+                station_id=station_id,
+                is_active=True,
+                start_date_local__lte=timestamp,
+            )
+            .filter(Q(end_date_local__isnull=True) | Q(end_date_local__gte=timestamp))
+            .order_by("-start_date_local")
+            .first()
         )
+
+    @classmethod
+    def should_skip_calculation(cls, station_id, timestamp=None):
+        """
+        Determine if discharge calculation should be skipped for a station at a specific timestamp.
+
+        Args:
+            station_id: The ID of the hydrological station
+            timestamp: The timestamp to check (defaults to current time)
+
+        Returns:
+            bool: True if calculation should be skipped, False otherwise
+        """
+        period = cls.get_active_period(station_id, timestamp)
+
+        if not period:
+            return False
+
+        # Skip calculation for SUSPENDED periods
+        if period.state == cls.CalculationState.SUSPENDED:
+            return True
+
+        # Skip calculation for MANUAL periods with specific reasons
+        if period.state == cls.CalculationState.MANUAL and period.reason in [
+            cls.CalculationReason.PRIVODKA,
+            cls.CalculationReason.STATION_CLOSED,
+        ]:
+            return True
+
+        return False
+
+    @classmethod
+    def is_manual_calculation(cls, station_id, timestamp=None):
+        """
+        Determine if discharge values should be manually calculated for a station at a specific timestamp.
+
+        Args:
+            station_id: The ID of the hydrological station
+            timestamp: The timestamp to check (defaults to current time)
+
+        Returns:
+            bool: True if manual calculation should be used, False otherwise
+        """
+        period = cls.get_active_period(station_id, timestamp)
+
+        if not period:
+            return False
+
+        # For MANUAL state (except for PRIVODKA and STATION_CLOSED which skip calculation entirely)
+        return period.state == cls.CalculationState.MANUAL and period.reason not in [
+            cls.CalculationReason.PRIVODKA,
+            cls.CalculationReason.STATION_CLOSED,
+        ]

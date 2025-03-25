@@ -15,6 +15,6 @@ class DischargeModelAdmin(admin.ModelAdmin):
 class DischargeCalculationPeriodAdmin(admin.ModelAdmin):
     list_display = ("station", "is_active", "state", "reason", "start_date_local", "end_date_local", "user")
     list_filter = ("state", "reason", "station__station_code", "is_active")
-    search_fields = ("station__station_code", "station__name", "comments")
+    search_fields = ("station__station_code", "station__name", "comment")
     ordering = ("-start_date_local",)
     readonly_fields = ("created_date", "last_modified")

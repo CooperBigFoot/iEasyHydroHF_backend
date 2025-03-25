@@ -97,13 +97,13 @@ class DischargeCalculationSchema(Schema):
 class DischargeCalculationPeriodInputSchema(ModelSchema):
     class Meta:
         model = DischargeCalculationPeriod
-        fields = ["start_date_local", "end_date_local", "state", "reason", "comments"]
+        fields = ["start_date_local", "end_date_local", "state", "reason", "comment"]
 
 
 class DischargeCalculationPeriodUpdateSchema(ModelSchema):
     class Meta:
         model = DischargeCalculationPeriod
-        fields = ["start_date_local", "end_date_local", "state", "reason", "comments"]
+        fields = ["start_date_local", "end_date_local", "state", "reason", "comment"]
         optional_fields = "__all__"
 
 
