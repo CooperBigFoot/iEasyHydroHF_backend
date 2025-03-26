@@ -32,7 +32,6 @@ from sapphire_backend.utils.permissions import (
 from sapphire_backend.utils.rounding import custom_ceil, hydrological_round
 
 from ..estimations.models import (
-    DischargeCalculationPeriod,
     EstimationsAirTemperatureDaily,
     EstimationsWaterDischargeDaily,
     EstimationsWaterDischargeDailyAverage,
@@ -269,40 +268,7 @@ class HydroMetricsAPIController:
         if view_type.view_type == ViewType.DAILY:
             results = defaultdict(dict)
 
-            # Apply calculation periods to the data
             for record in qs:
-                # Check if this is a discharge or water level value that might be affected by calculation periods
-                if record.metric_name in [
-                    HydrologicalMetricName.WATER_DISCHARGE_DAILY,
-                    HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
-                    HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
-                ]:
-                    # Check if calculation should be skipped
-                    if DischargeCalculationPeriod.should_skip_calculation(record.station_id, record.timestamp_local):
-                        # Skip this value or set to null for chart
-                        results[record.timestamp_local][record.metric_name] = None
-                        continue
-
-                    # Check for manual calculation with override values
-                    if DischargeCalculationPeriod.is_manual_calculation(
-                        record.station_id, record.timestamp_local
-                    ) and record.metric_name in [
-                        HydrologicalMetricName.WATER_DISCHARGE_DAILY,
-                        HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
-                    ]:
-                        # Look for override values
-                        override = HydrologicalMetric.objects.filter(
-                            station_id=record.station_id,
-                            timestamp_local=record.timestamp_local,
-                            metric_name=record.metric_name,
-                            value_type="O",  # Override value type
-                        ).first()
-
-                        if override:
-                            results[record.timestamp_local][record.metric_name] = override.avg_value
-                            continue
-
-                # Default case - use the original value
                 results[record.timestamp_local][record.metric_name] = record.avg_value
 
             return [HFChartSchema(timestamp_local=ts, **values) for ts, values in results.items()]
@@ -358,41 +324,7 @@ class HydroMetricsAPIController:
             if "value_code" in qs.model._meta.fields:
                 fields_to_retrieve.append("value_code")
 
-            # Apply calculation period logic if applicable
-            result = []
-            for record in qs.values(*fields_to_retrieve):
-                # Calculate specific discharge metrics
-                if record["metric_name"] in [
-                    HydrologicalMetricName.WATER_DISCHARGE_DAILY,
-                    HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
-                    HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE,
-                ]:
-                    # Check if calculation should be skipped
-                    if DischargeCalculationPeriod.should_skip_calculation(
-                        record["station_id"], record["timestamp_local"]
-                    ):
-                        record["avg_value"] = None
-                    # Handle manual calculation periods
-                    elif DischargeCalculationPeriod.is_manual_calculation(
-                        record["station_id"], record["timestamp_local"]
-                    ) and record["metric_name"] in [
-                        HydrologicalMetricName.WATER_DISCHARGE_DAILY,
-                        HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE,
-                    ]:
-                        # Look for override values
-                        override = HydrologicalMetric.objects.filter(
-                            station_id=record["station_id"],
-                            timestamp_local=record["timestamp_local"],
-                            metric_name=record["metric_name"],
-                            value_type="O",  # Override value type
-                        ).first()
-
-                        if override:
-                            record["avg_value"] = override.avg_value
-
-                result.append(HydrologicalMetricOutputSchema(**record))
-
-            return result
+            return [HydrologicalMetricOutputSchema(**record) for record in qs.values(*fields_to_retrieve)]
 
     @route.get("detailed-daily", response={200: list[DetailedDailyHydroMetricSchema]})
     def get_detailed_daily_hydro_metrics(
@@ -809,46 +741,14 @@ class OperationalJournalAPIController:
 
         for cls in cls_estimations_views:
             estimation_data = cls.objects.filter(**estimations_filter_dict).order_by("timestamp_local")
-
-            for d in estimation_data:
-                # For water level data, we only skip when MANUAL with special reasons or SUSPENDED
-                if cls == EstimationsWaterLevelDailyAverage and DischargeCalculationPeriod.should_skip_calculation(
-                    station.id, d.timestamp_local
-                ):
-                    # Skip this water level or set to null
-                    continue
-
-                # For discharge data, check if we should skip or use manual values
-                if cls in [EstimationsWaterDischargeDaily, EstimationsWaterDischargeDailyAverage]:
-                    if DischargeCalculationPeriod.should_skip_calculation(station.id, d.timestamp_local):
-                        # Skip this discharge data or set to null
-                        avg_value = None
-                    else:
-                        # Use original value
-                        avg_value = d.avg_value
-
-                        # Check for manual override (for MANUAL periods)
-                        if DischargeCalculationPeriod.is_manual_calculation(station.id, d.timestamp_local):
-                            # Look for override values with 'O' value_type
-                            override = HydrologicalMetric.objects.filter(
-                                station_id=station.id,
-                                timestamp_local=d.timestamp_local,
-                                metric_name=d.metric_name,
-                                value_type="O",  # Override value type
-                            ).first()
-
-                            if override:
-                                avg_value = override.avg_value
-                else:
-                    avg_value = d.avg_value
-
-                operational_journal_data.append(
-                    {
-                        "timestamp_local": d.timestamp_local.replace(tzinfo=ZoneInfo("UTC")),
-                        "avg_value": avg_value,
-                        "metric_name": d.metric_name,
-                    }
-                )
+            operational_journal_data.extend(
+                {
+                    "timestamp_local": d.timestamp_local.replace(tzinfo=ZoneInfo("UTC")),
+                    "avg_value": d.avg_value,
+                    "metric_name": d.metric_name,
+                }
+                for d in estimation_data
+            )
 
         prepared_data = OperationalJournalDataTransformer(operational_journal_data, month, station).get_daily_data()
         return prepared_data
@@ -906,34 +806,8 @@ class OperationalJournalAPIController:
             include_history=True,
         ).execute_query()
 
-        # Apply calculation period logic for discharge values
-        filtered_data = []
-        for entry in discharge_data.values(
-            "timestamp_local", "avg_value", "metric_name", "sensor_identifier", "has_history"
-        ):
-            # For discharge data specifically, apply calculation period logic
-            if entry["metric_name"] == HydrologicalMetricName.WATER_DISCHARGE_DAILY:
-                if DischargeCalculationPeriod.should_skip_calculation(station.id, entry["timestamp_local"]):
-                    # Skip this entry for SUSPENDED periods
-                    continue
-
-                # For MANUAL periods, check if there are overrides (handled in transformer)
-                if DischargeCalculationPeriod.is_manual_calculation(station.id, entry["timestamp_local"]):
-                    # Look for override values
-                    override = HydrologicalMetric.objects.filter(
-                        station_id=station.id,
-                        timestamp_local=entry["timestamp_local"],
-                        metric_name=entry["metric_name"],
-                        value_type="O",  # Override value type
-                    ).first()
-
-                    if override:
-                        entry["avg_value"] = override.avg_value
-
-            filtered_data.append(entry)
-
         prepared_data = OperationalJournalDataTransformer(
-            filtered_data,
+            discharge_data.values("timestamp_local", "avg_value", "metric_name", "sensor_identifier", "has_history"),
             month,
             station,
         ).get_discharge_data()
@@ -984,39 +858,15 @@ class OperationalJournalAPIController:
                 station=station,
             ).order_by("timestamp_local")
 
-            for d in view_data:
-                # Apply calculation period logic based on the view type
-                if cls == EstimationsWaterDischargeDecadeAverage:
-                    # For discharge data, check for calculation periods
-                    if DischargeCalculationPeriod.should_skip_calculation(station.id, d.timestamp_local):
-                        # Skip or set to null for SUSPENDED periods
-                        avg_value = None
-                    else:
-                        avg_value = d.avg_value
-
-                        # For MANUAL periods, check if the entire decade should use manual values
-                        # Note: For decade averages, this is a bit more complex since a decade might
-                        # span multiple periods. We'll check if this specific date has a manual override.
-                        if DischargeCalculationPeriod.is_manual_calculation(station.id, d.timestamp_local):
-                            # Look for override values with 'O' value_type that fall within this decade
-                            # This would require additional logic to aggregate all overrides within a decade
-                            # For simplicity, we'll just use the calculated value for now
-                            pass
-                else:
-                    # For water level decade averages, apply calculation period rules
-                    if DischargeCalculationPeriod.should_skip_calculation(station.id, d.timestamp_local):
-                        # Skip this water level decade average for SUSPENDED periods or special MANUAL periods
-                        continue
-                    avg_value = d.avg_value
-
-                decadal_data.append(
-                    {
-                        "timestamp_local": d.timestamp_local.replace(tzinfo=ZoneInfo("UTC")),
-                        "avg_value": avg_value,
-                        "metric_name": d.metric_name,
-                        "sensor_identifier": d.sensor_identifier,
-                    }
-                )
+            decadal_data.extend(
+                {
+                    "timestamp_local": d.timestamp_local.replace(tzinfo=ZoneInfo("UTC")),
+                    "avg_value": d.avg_value,
+                    "metric_name": d.metric_name,
+                    "sensor_identifier": d.sensor_identifier,
+                }
+                for d in view_data
+            )
 
         prepared_data = OperationalJournalDataTransformer(decadal_data, month, station).get_hydro_decadal_data()
         return prepared_data
