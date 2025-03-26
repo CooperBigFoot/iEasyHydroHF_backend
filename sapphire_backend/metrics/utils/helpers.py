@@ -191,7 +191,7 @@ class OperationalJournalDataTransformer:
             ]:
                 value = hydrological_round(metric_value.iloc[0])
             else:
-                value = round(metric_value.iloc[0], 1)
+                value = round(metric_value.iloc[0], 1) if metric_value.iloc[0] is not None else "--"
 
             if not include_metadata:
                 return {"value": value}
