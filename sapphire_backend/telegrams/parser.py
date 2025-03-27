@@ -637,9 +637,7 @@ class KN15TelegramParser(BaseTelegramParser):
 
         def extract_precipitation(token: str) -> int:
             if not token.startswith("2"):
-                self.save_parsing_error(
-                    "Expected precipitation section starting with '2', got", token, MissingSectionException
-                )
+                return None
             precipitation_value = int(token[1:4])
             check_digit = token[-1]
             digit_sum = sum(int(char) for char in token[:4])
@@ -651,9 +649,7 @@ class KN15TelegramParser(BaseTelegramParser):
 
         def extract_temperature(token: str) -> float:
             if not token.startswith("3"):
-                self.save_parsing_error(
-                    "Expected temperature section starting with '3', got", token, MissingSectionException
-                )
+                return None
             match token[1]:
                 case "0":
                     sign = 1
@@ -692,13 +688,22 @@ class KN15TelegramParser(BaseTelegramParser):
         input_token = self.get_next_token()
         decade = extract_decade_number(input_token)
 
-        # subgroup 2pppc
-        input_token = self.get_next_token()
-        precipitation = extract_precipitation(input_token)
+        precipitation = None
+        temperature = None
 
-        # subgroup 3sttt
-        input_token = self.get_next_token()
-        temperature = extract_temperature(input_token)
+        while self.tokens and self.tokens[0].startswith(("2", "3")):
+            input_token = self.get_next_token()
+            if input_token.startswith("2"):
+                precipitation = extract_precipitation(input_token)
+            elif input_token.startswith("3"):
+                temperature = extract_temperature(input_token)
+
+        if precipitation is None and temperature is None:
+            self.save_parsing_error(
+                "Section 8 must contain at least precipitation or temperature measurement",
+                input_token,
+                MissingSectionException,
+            )
 
         day_in_month = get_day_in_month_for_decade(decade)
         timestamp = dt(year=dt.now().year, month=month, day=day_in_month, hour=12, tzinfo=self.site_timezone)

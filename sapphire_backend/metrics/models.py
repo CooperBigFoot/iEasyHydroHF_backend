@@ -274,13 +274,11 @@ class MeteorologicalMetric(SourceTypeMixin, models.Model):
         log_entry_values = {
             "previous_source_type": old.source_type,
             "previous_source_id": old.source_id,
-            "previous_value_code": old.value_code,
             "previous_value": old.value,
             "description": description,
             "new_value": self.value,
             "new_source_type": self.source_type,
             "new_source_id": self.source_id,
-            "new_value_code": self.value_code,
             "station_type": HistoryLogStationType.METEO,
         }
         return HistoryLogEntry.objects.create(**self.pk_fields, **log_entry_values)

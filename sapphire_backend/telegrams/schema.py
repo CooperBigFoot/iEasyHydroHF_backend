@@ -68,8 +68,8 @@ class TelegramSectionSixSingleSchema(Schema):
 class TelegramSectionEightSchema(Schema):
     decade: int
     timestamp: str
-    precipitation: int
-    temperature: float
+    precipitation: int | None
+    temperature: float | None
 
 
 class NewOldMetrics(Schema):

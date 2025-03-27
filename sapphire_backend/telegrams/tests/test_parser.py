@@ -862,13 +862,43 @@ class TestKN15TelegramParserSectionEight:
         ):
             parser.parse()
 
-    def test_parse_for_missing_section(self, datetime_mock, organization, manual_hydro_station, manual_meteo_station):
+    def test_parse_for_missing_precipitation_section(
+        self, datetime_mock, organization, manual_hydro_station, manual_meteo_station
+    ):
         parser = KN15TelegramParser(
             f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 133// 31023=", organization.uuid
         )
+        decoded_data = parser.parse()
+        assert decoded_data["section_eight"] == {
+            "decade": 3,
+            "timestamp": "2024-03-25T12:00:00+00:00",
+            "precipitation": None,
+            "temperature": -2.3,
+        }
+
+    def test_parse_for_missing_temperature_section(
+        self, datetime_mock, organization, manual_hydro_station, manual_meteo_station
+    ):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 133// 21238=", organization.uuid
+        )
+        decoded_data = parser.parse()
+        assert decoded_data["section_eight"] == {
+            "decade": 3,
+            "timestamp": "2024-03-25T12:00:00+00:00",
+            "precipitation": 123,
+            "temperature": None,
+        }
+
+    def test_parse_for_missing_both_sections(
+        self, datetime_mock, organization, manual_hydro_station, manual_meteo_station
+    ):
+        parser = KN15TelegramParser(
+            f"{manual_hydro_station.station_code} 14082 10417 20021 30410 00000 98803 133//=", organization.uuid
+        )
         with pytest.raises(
             MissingSectionException,
-            match="Expected precipitation section starting with '2', got: 31023",
+            match="Section 8 must contain at least precipitation or temperature measurement",
         ):
             parser.parse()
 

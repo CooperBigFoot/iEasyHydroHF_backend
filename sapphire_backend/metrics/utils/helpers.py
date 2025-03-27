@@ -139,7 +139,7 @@ class OperationalJournalDataTransformer:
         self,
         data: list[dict[str, float | None]],
         target_month: int,
-        station: HydrologicalStation | MeteorologicalStation,
+        station: HydrologicalStation | MeteorologicalStation | VirtualStation,
     ):
         self.original_data = data
         self.df = self._convert_data_to_dataframe()
@@ -200,8 +200,8 @@ class OperationalJournalDataTransformer:
             return {
                 "value": value,
                 "timestamp_local": metric_data.iloc[0]["timestamp_local"],
-                "sensor_identifier": metric_data.iloc[0]["sensor_identifier"] or "",
-                "has_history": metric_data.iloc[0]["has_history"] or False,
+                "sensor_identifier": metric_data.iloc[0].get("sensor_identifier", ""),
+                "has_history": metric_data.iloc[0].get("has_history", False),
             }
 
         return {"value": "--"}
@@ -303,17 +303,13 @@ class OperationalJournalDataTransformer:
     @staticmethod
     def _get_meteo_decade_aggregation_data(decadal_data: list[dict[int | str, int | float | str]]):
         avg_row = {"id": "agg", "decade": "values"}
-        temperature_values = [
-            row["temperature"]["value"] for row in decadal_data if row["temperature"]["value"] != "--"
-        ]
+        temperature_values = [row["temperature"] for row in decadal_data if row["temperature"] != "--"]
         if temperature_values:
             avg_value = sum(temperature_values) / len(temperature_values)
             avg_row["temperature"] = round(avg_value, 1)
         else:
             avg_row["temperature"] = "--"
-        precipitation_values = [
-            row["precipitation"]["value"] for row in decadal_data if row["precipitation"]["value"] != "--"
-        ]
+        precipitation_values = [row["precipitation"] for row in decadal_data if row["precipitation"] != "--"]
         if precipitation_values:
             sum_value = sum(precipitation_values)
             avg_row["precipitation"] = round(sum_value, 1)
@@ -448,14 +444,23 @@ class OperationalJournalDataTransformer:
         for date in df["date"].unique():
             decade_dict = {}
             decade_data = df[df["date"] == date]
-            for metric_name, metric_code in {
-                "temperature": MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
-                "precipitation": MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE,
-            }.items():
-                decade_dict[metric_name] = self._get_metric_value(decade_data, metric_code, True)
+            temperature_data = self._get_metric_value(
+                decade_data,
+                MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE,
+                True,
+            )
+            precipitation_data = self._get_metric_value(
+                decade_data,
+                MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE,
+                True,
+            )
 
-            decade_dict["decade"] = PentadDecadeHelper.calculate_decade_from_the_day_in_month(date.day)
-            decade_dict["id"] = date.strftime("%Y-%m-%d")
+            decade_dict = {
+                "decade": PentadDecadeHelper.calculate_decade_from_the_day_in_month(date.day),
+                "id": date.strftime("%Y-%m-%d"),
+                "temperature": temperature_data["value"],
+                "precipitation": precipitation_data["value"],
+            }
             results.append(decade_dict)
 
         results.append(self._get_meteo_decade_aggregation_data(results))
@@ -503,38 +508,38 @@ class OperationalJournalVirtualDataTransformer(OperationalJournalDataTransformer
 
         return df
 
-    @staticmethod
-    def _get_daily_data_extremes(daily_data: list[dict[str, str | float | int]]) -> list[dict[str, str | float]]:
+    def _get_daily_data_extremes(self, daily_data: list[dict[str, str | float | int]]) -> list[dict[str, str | float]]:
         relevant_metrics = [
             "water_discharge_morning",
             "water_discharge_evening",
             "water_discharge_average",
         ]
 
-        min_row = {"id": "min", "date": "minimum"}
-        max_row = {"id": "max", "date": "maximum"}
+        min_row = {"id": "min", "date": "minimum", "station_id": self.station.id}
+        max_row = {"id": "max", "date": "maximum", "station_id": self.station.id}
 
         for metric in relevant_metrics:
-            valid_values = [row[metric] for row in daily_data if row[metric] != "--"]
+            valid_values = [row[metric]["value"] for row in daily_data if row[metric]["value"] != "--"]
             if valid_values:
-                min_row[metric] = min(valid_values)
-                max_row[metric] = max(valid_values)
+                min_row[metric] = {"value": min(valid_values)}
+                max_row[metric] = {"value": max(valid_values)}
             else:
-                min_row[metric] = "--"
-                max_row[metric] = "--"
+                min_row[metric] = {"value": "--"}
+                max_row[metric] = {"value": "--"}
 
         return [min_row, max_row]
 
-    @staticmethod
-    def _get_monthly_averages_from_decadal_data(decadal_data: list[dict[int | str, int | float | str]]):
-        avg_row = {"id": "avg", "decade": "average"}
-        valid_values = [row["water_discharge"] for row in decadal_data if row["water_discharge"] != "--"]
+    def _get_monthly_averages_from_decadal_data(self, decadal_data: list[dict[int | str, int | float | str]]):
+        avg_row = {"id": "avg", "decade": "average", "station_id": self.station.id}
+        valid_values = [
+            row["water_discharge"]["value"] for row in decadal_data if row["water_discharge"]["value"] != "--"
+        ]
 
         if valid_values:
             avg_value = sum(valid_values) / len(valid_values)
-            avg_row["water_discharge"] = hydrological_round(avg_value)
+            avg_row["water_discharge"] = {"value": hydrological_round(avg_value)}
         else:
-            avg_row["water_discharge"] = "--"
+            avg_row["water_discharge"] = {"value": "--"}
 
         return avg_row
 
@@ -557,7 +562,7 @@ class OperationalJournalVirtualDataTransformer(OperationalJournalDataTransformer
                 )
                 day_dict["water_discharge_morning"] = water_discharge_morning
             else:
-                day_dict["water_discharge_morning"] = "--"
+                day_dict["water_discharge_morning"] = {"value": "--"}
 
             # get evening data next
             evening_data = self._get_evening_data(daily_data)
@@ -567,7 +572,7 @@ class OperationalJournalVirtualDataTransformer(OperationalJournalDataTransformer
                 )
                 day_dict["water_discharge_evening"] = water_discharge_evening
             else:
-                day_dict["water_discharge_evening"] = "--"
+                day_dict["water_discharge_evening"] = {"value": "--"}
 
             day_dict["water_discharge_average"] = self._get_metric_value(
                 daily_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE
@@ -575,6 +580,7 @@ class OperationalJournalVirtualDataTransformer(OperationalJournalDataTransformer
 
             day_dict["date"] = date.strftime("%Y-%m-%d")
             day_dict["id"] = date.strftime("%Y-%m-%d")
+            day_dict["station_id"] = self.station.id
 
             results.append(day_dict)
 
