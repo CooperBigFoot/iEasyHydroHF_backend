@@ -8,6 +8,7 @@ from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
+from sapphire_backend.utils.exceptions import InsufficientDataVariationException
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
@@ -48,12 +49,16 @@ class DischargeModelsAPIController:
         return 200, [queryset.order_by("-valid_from_local").first()]
 
     @route.post(
-        "discharge-models/{station_uuid}/create-points", response={200: DischargeModelBaseSchema, 404: Message}
+        "discharge-models/{station_uuid}/create-points",
+        response={200: DischargeModelBaseSchema, 404: Message, 400: Message},
     )
     def create_discharge_model_from_points(
         self, request, station_uuid: str, input_data: DischargeModelCreateInputPointsSchema
     ):
-        fit_params = least_squares_fit(input_data.points)
+        try:
+            fit_params = least_squares_fit(input_data.points)
+        except InsufficientDataVariationException as e:
+            return 400, {"detail": str(e.message), "code": "insufficient_variation"}
 
         hydro_station = HydrologicalStation.objects.get(uuid=station_uuid)
         valid_from_local = datetime.fromisoformat(input_data.valid_from_local).replace(

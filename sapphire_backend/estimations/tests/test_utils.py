@@ -1,5 +1,8 @@
+import pytest
+
 from sapphire_backend.estimations.schema import DischargeModelPointsPair
 from sapphire_backend.estimations.utils import least_squares_fit
+from sapphire_backend.utils.exceptions import InsufficientDataVariationException
 from sapphire_backend.utils.rounding import custom_round
 
 
@@ -56,3 +59,16 @@ class TestFuncLeastSquaresFitAPI:
         assert custom_round(calculated["param_a"], 10) == custom_round(expected["param_a"], 10)
         assert custom_round(calculated["param_b"], 10) == custom_round(expected["param_b"], 10)
         assert custom_round(calculated["param_c"], 10) == custom_round(expected["param_c"], 10)
+
+    def test_least_squares_fit_func_three_points_with_same_water_level(self):
+        points_raw = [{"q": 10, "h": 20}, {"q": 10, "h": 21}, {"q": 10, "h": 19}]
+
+        input_points = [DischargeModelPointsPair(**kwargs) for kwargs in points_raw]
+
+        with pytest.raises(InsufficientDataVariationException) as exc_info:
+            least_squares_fit(input_points)
+
+        assert (
+            str(exc_info.value.message)
+            == "Insufficient variation in water levels for reliable discharge calculation. Measurements need to be taken at different water levels."
+        )

@@ -3,6 +3,7 @@ from datetime import datetime
 from sapphire_backend.estimations.models import DischargeModel
 from sapphire_backend.estimations.schema import DischargeModelPointsPair
 from sapphire_backend.stations.models import HydrologicalStation
+from sapphire_backend.utils.exceptions import InsufficientDataVariationException
 
 
 def least_squares_fit(points: list[DischargeModelPointsPair]) -> dict[str, float]:
@@ -12,6 +13,11 @@ def least_squares_fit(points: list[DischargeModelPointsPair]) -> dict[str, float
     mean_y = sum(y_values) / len(y_values)
 
     ssxx = sum((u - mean_x) ** 2 for u in x_values)
+
+    # Add validation for numerical stability
+    if ssxx < 1e-10:  # threshold for "too close to zero"
+        raise InsufficientDataVariationException()
+
     ssxy = sum((a - mean_x) * (b - mean_y) for a, b in zip(x_values, y_values))
 
     a = mean_y - (ssxy * mean_x / ssxx)
