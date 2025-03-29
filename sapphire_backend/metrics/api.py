@@ -565,7 +565,7 @@ class HydrologicalNormsAPIController:
             [
                 HydrologicalNorm(
                     station_id=station_uuid,
-                    value=point["value"],
+                    value=hydrological_round(point["value"]),
                     ordinal_number=point["ordinal_number"],
                     norm_type=norm_type.norm_type.value,
                 )
@@ -776,7 +776,9 @@ class OperationalJournalAPIController:
         operational_journal_data.extend(
             daily_average_discharge_data.values("timestamp_local", "avg_value", "metric_name")
         )
-        prepared_data = OperationalJournalVirtualDataTransformer(operational_journal_data, month).get_daily_data()
+        prepared_data = OperationalJournalVirtualDataTransformer(
+            operational_journal_data, month, virtual_station
+        ).get_daily_data()
 
         return prepared_data
 
@@ -835,8 +837,7 @@ class OperationalJournalAPIController:
             }
             for d in view_data
         ]
-        prepared_data = OperationalJournalVirtualDataTransformer(decadal_data, month).get_hydro_decadal_data()
-
+        prepared_data = OperationalJournalVirtualDataTransformer(decadal_data, month, station).get_hydro_decadal_data()
         return prepared_data
 
     @route.get(
