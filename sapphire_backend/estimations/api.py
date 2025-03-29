@@ -8,7 +8,10 @@ from ninja_extra import api_controller, route
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.utils.exceptions import InsufficientDataVariationException
+from sapphire_backend.utils.exceptions import (
+    InsufficientDischargeVariationException,
+    InsufficientWaterLevelVariationException,
+)
 from sapphire_backend.utils.mixins.schemas import Message
 from sapphire_backend.utils.permissions import (
     regular_permissions,
@@ -57,8 +60,10 @@ class DischargeModelsAPIController:
     ):
         try:
             fit_params = least_squares_fit(input_data.points)
-        except InsufficientDataVariationException as e:
-            return 400, {"detail": str(e.message), "code": "insufficient_variation"}
+        except InsufficientWaterLevelVariationException as e:
+            return 400, {"detail": str(e.message), "code": "insufficient_water_level_variation"}
+        except InsufficientDischargeVariationException as e:
+            return 400, {"detail": str(e.message), "code": "insufficient_discharge_variation"}
 
         hydro_station = HydrologicalStation.objects.get(uuid=station_uuid)
         valid_from_local = datetime.fromisoformat(input_data.valid_from_local).replace(
