@@ -278,33 +278,35 @@ def save_section_eight_metrics(
 ) -> None:
     timestamp = meteo_data["timestamp"]
     decade = meteo_data["decade"]
-    precipitation_metric = MeteorologicalMetric(
-        timestamp=timestamp,
-        value=meteo_data["precipitation"],
-        value_type=MeteorologicalMeasurementType.MANUAL,
-        metric_name=MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE
-        if decade != 4
-        else MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE,
-        unit=MetricUnit.PRECIPITATION,
-        station=meteo_station,
-        source_type=SourceTypeMixin.SourceType.TELEGRAM,
-        source_id=source_telegram.id if source_telegram else 0,
-    )
-    save_metric_and_create_log(precipitation_metric)
+    if meteo_data["precipitation"] is not None:
+        precipitation_metric = MeteorologicalMetric(
+            timestamp=timestamp,
+            value=meteo_data["precipitation"],
+            value_type=MeteorologicalMeasurementType.MANUAL,
+            metric_name=MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE
+            if decade != 4
+            else MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE,
+            unit=MetricUnit.PRECIPITATION,
+            station=meteo_station,
+            source_type=SourceTypeMixin.SourceType.TELEGRAM,
+            source_id=source_telegram.id if source_telegram else 0,
+        )
+        save_metric_and_create_log(precipitation_metric)
 
-    temperature_metric = MeteorologicalMetric(
-        timestamp=timestamp,
-        value=meteo_data["temperature"],
-        value_type=MeteorologicalMeasurementType.MANUAL,
-        metric_name=MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE
-        if decade != 4
-        else MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE,
-        unit=MetricUnit.TEMPERATURE,
-        station=meteo_station,
-        source_type=SourceTypeMixin.SourceType.TELEGRAM,
-        source_id=source_telegram.id if source_telegram else 0,
-    )
-    save_metric_and_create_log(temperature_metric)
+    if meteo_data["temperature"] is not None:
+        temperature_metric = MeteorologicalMetric(
+            timestamp=timestamp,
+            value=meteo_data["temperature"],
+            value_type=MeteorologicalMeasurementType.MANUAL,
+            metric_name=MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE
+            if decade != 4
+            else MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE,
+            unit=MetricUnit.TEMPERATURE,
+            station=meteo_station,
+            source_type=SourceTypeMixin.SourceType.TELEGRAM,
+            source_id=source_telegram.id if source_telegram else 0,
+        )
+        save_metric_and_create_log(temperature_metric)
 
 
 def fill_template_with_old_metrics(init_struct: dict, parsed_data: dict) -> dict:

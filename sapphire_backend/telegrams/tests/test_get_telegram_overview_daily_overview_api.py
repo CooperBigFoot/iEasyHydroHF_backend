@@ -447,6 +447,48 @@ class TestGetTelegramOverviewDailyOverviewSectionOneAPI:
                 == decoded_data["section_one"]["daily_precipitation"]["duration_code"]
             )
 
+    def test_get_telegram_overview_daily_overview_section_one_partial_air_temperatures(
+        self,
+        datetime_kyrgyz_mock,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        regular_user_kyrgyz_api_client,
+    ):
+        endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
+        station_code = manual_hydro_station_kyrgyz.station_code
+        telegram = {"raw": f"{station_code} 14081 10417 20021 30410 4//17="}
+
+        response = regular_user_kyrgyz_api_client.post(
+            endpoint,
+            data={"telegrams": [telegram]},
+            content_type="application/json",
+        )
+
+        res = response.json()
+        assert res["daily_overview"][0]["section_one"]["water_temperature"] is None
+        assert res["daily_overview"][0]["section_one"]["air_temperature"] == 17
+
+    def test_get_telegram_overview_daily_overview_section_one_partial_water_temperatures(
+        self,
+        datetime_kyrgyz_mock,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        regular_user_kyrgyz_api_client,
+    ):
+        endpoint = f"/api/v1/telegrams/{organization_kyrgyz.uuid}/get-telegram-overview"
+        station_code = manual_hydro_station_kyrgyz.station_code
+        telegram = {"raw": f"{station_code} 14081 10417 20021 30410 450//="}
+
+        response = regular_user_kyrgyz_api_client.post(
+            endpoint,
+            data={"telegrams": [telegram]},
+            content_type="application/json",
+        )
+
+        res = response.json()
+        assert res["daily_overview"][0]["section_one"]["water_temperature"] == 5.0
+        assert res["daily_overview"][0]["section_one"]["air_temperature"] is None
+
 
 class TestGetTelegramOverviewDailyOverviewSectionOneIcePhenomenaAPI:
     def test_get_telegram_overview_daily_overview_section_one_ice_phenomena(
