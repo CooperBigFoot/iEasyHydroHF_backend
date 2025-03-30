@@ -455,7 +455,7 @@ class Migration(migrations.Migration):
         ),
         migrations.RunSQL(
             """
-            CREATE MATERIALIZED VIEW estimations_water_level_daily_average WITH (timescaledb.continuous)
+           CREATE MATERIALIZED VIEW estimations_water_level_daily_average WITH (timescaledb.continuous)
             AS
             SELECT
                 time_bucket('1 day', hm.timestamp_local) AT TIME ZONE 'UTC' + '12 hours' AS timestamp_local,
@@ -476,14 +476,17 @@ class Migration(migrations.Migration):
                 ON hm.station_id = edp.station_id
                 AND hm.timestamp_local >= edp.start_date_local
                 AND (edp.end_date_local IS NULL OR hm.timestamp_local < edp.end_date_local)
+                AND (
+                    -- Skip calculation if suspended
+                    edp.state = 'SUSPENDED'
+                    -- Skip calculation if manual with privodka only on the first day
+                    OR (edp.state = 'MANUAL' AND edp.reason = 'PRIVODKA' AND DATE(hm.timestamp_local) = DATE(edp.start_date_local))
+                )
             WHERE hm.metric_name = 'WLD'
-                -- Skip calculation if suspended
-                AND (edp.id IS NULL OR edp.state != 'SUSPENDED')
-                -- Skip calculation if manual and reason is privodka
-                AND (edp.id IS NULL OR edp.state != 'MANUAL' OR edp.reason != 'PRIVODKA')
+                AND edp.id IS NULL  -- Only include rows where no calculation period applies
             GROUP BY time_bucket('1 day', hm.timestamp_local), hm.station_id, hm.value_type
             HAVING COUNT(hm.avg_value) > 1
-            WITH NO DATA;            
+            WITH NO DATA;
             """,
             reverse_sql="DROP MATERIALIZED VIEW IF EXISTS estimations_water_level_daily_average;"
         ),
