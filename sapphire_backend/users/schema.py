@@ -79,3 +79,9 @@ class UserAssignedStationInputSchema(Schema):
     hydro_station_id: str | None = None
     meteo_station_id: str | None = None
     virtual_station_id: str | None = None
+
+
+class ChangePasswordSchema(Schema):
+    old_password: str
+    new_password: str
+    confirm_new_password: str
