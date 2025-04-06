@@ -130,6 +130,80 @@ class TestUserAPIController:
 
         assert regular_user.user_role == User.UserRoles.ORGANIZATION_ADMIN
 
+    def test_change_password_success(self, authenticated_regular_user_api_client, regular_user):
+        # Test case 1: Valid password change
+        payload = {"old_password": "password123", "new_password": "newpass123", "confirm_new_password": "newpass123"}
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/me/change-password",
+            data=payload,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+        assert response.json()["detail"] == "Password successfully updated"
+        assert response.json()["code"] == "passwordChanged"
+
+        # Verify the password was actually changed
+        regular_user.refresh_from_db()
+        assert regular_user.check_password("newpass123")
+
+    def test_change_password_wrong_old_password(self, authenticated_regular_user_api_client):
+        # Test case 2: Wrong old password
+        payload = {"old_password": "wrongpass", "new_password": "newpass123", "confirm_new_password": "newpass123"}
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/me/change-password",
+            data=payload,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Old Password is incorrect"
+
+    def test_change_password_invalid_new_password(self, authenticated_regular_user_api_client):
+        # Test case 3: New password too short
+        payload = {"old_password": "password123", "new_password": "short", "confirm_new_password": "short"}
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/me/change-password",
+            data=payload,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Password must be at least 6 characters"
+
+    def test_change_password_same_as_old(self, authenticated_regular_user_api_client):
+        # Test case 4: New password same as old password
+        payload = {"old_password": "password123", "new_password": "password123", "confirm_new_password": "password123"}
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/me/change-password",
+            data=payload,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "New password must be different than old password"
+
+    def test_change_password_mismatch_confirmation(self, authenticated_regular_user_api_client):
+        # Test case 5: Confirmation password doesn't match
+        payload = {
+            "old_password": "password123",
+            "new_password": "newpass123",
+            "confirm_new_password": "differentpass",
+        }
+
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/me/change-password",
+            data=payload,
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Passwords must match"
+
 
 class TestUserAssignedStationsAPIController:
     endpoint = "/api/v1/users"
