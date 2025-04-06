@@ -13,6 +13,7 @@ from sapphire_backend.utils.permissions import IsInTheSameOrganization, IsOrgani
 
 from .models import UserAssignedStation
 from .schema import (
+    ChangePasswordSchema,
     UserAssignedStationInputSchema,
     UserAssignedStationOutputSchema,
     UserOutputDetailSchema,
@@ -153,3 +154,38 @@ class UsersAPIController:
             user.soft_delete()
 
         return 200, {"detail": _("Users successfully deleted"), "code": "delete_success"}
+
+    @route.post(
+        "me/change-password",
+        response={200: Message, 400: Message},
+        url_name="users-me-change-password",
+    )
+    def change_password(self, request, data: ChangePasswordSchema):
+        if not request.user.check_password(data.old_password):
+            return 400, {
+                "detail": _("Old Password is incorrect"),
+                "code": "incorrectPassword",
+            }
+
+        if data.new_password != data.confirm_new_password:
+            return 400, {
+                "detail": _("Passwords must match"),
+                "code": "passwordMismatch",
+            }
+
+        if len(data.new_password) < 6:
+            return 400, {
+                "detail": _("Password must be at least 6 characters"),
+                "code": "passwordLength",
+            }
+
+        if data.new_password == data.old_password:
+            return 400, {
+                "detail": _("New password must be different than old password"),
+                "code": "passwordDifferent",
+            }
+
+        request.user.set_password(data.new_password)
+        request.user.save()
+
+        return 200, {"detail": _("Password successfully updated"), "code": "passwordChanged"}
