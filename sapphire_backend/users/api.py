@@ -163,29 +163,29 @@ class UsersAPIController:
     def change_password(self, request, data: ChangePasswordSchema):
         if not request.user.check_password(data.old_password):
             return 400, {
-                "detail": _("Old Password is required"),
-                "code": "incorrect_password",
+                "detail": _("Old Password is incorrect"),
+                "code": "incorrectPassword",
             }
 
         if data.new_password != data.confirm_new_password:
             return 400, {
                 "detail": _("Passwords must match"),
-                "code": "password_mismatch",
+                "code": "passwordMismatch",
             }
 
         if len(data.new_password) < 6:
             return 400, {
                 "detail": _("Password must be at least 6 characters"),
-                "code": "password_length",
+                "code": "passwordLength",
             }
 
         if data.new_password == data.old_password:
             return 400, {
                 "detail": _("New password must be different than old password"),
-                "code": "password_different",
+                "code": "passwordDifferent",
             }
 
         request.user.set_password(data.new_password)
         request.user.save()
 
-        return 200, {"detail": _("Password successfully updated"), "code": "password_changed"}
+        return 200, {"detail": _("Password successfully updated"), "code": "passwordChanged"}

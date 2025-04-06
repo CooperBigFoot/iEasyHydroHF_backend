@@ -142,7 +142,7 @@ class TestUserAPIController:
 
         assert response.status_code == 200
         assert response.json()["detail"] == "Password successfully updated"
-        assert response.json()["code"] == "password_changed"
+        assert response.json()["code"] == "passwordChanged"
 
         # Verify the password was actually changed
         regular_user.refresh_from_db()
@@ -159,7 +159,7 @@ class TestUserAPIController:
         )
 
         assert response.status_code == 400
-        assert response.json()["detail"] == "Old Password is required"
+        assert response.json()["detail"] == "Old Password is incorrect"
 
     def test_change_password_invalid_new_password(self, authenticated_regular_user_api_client):
         # Test case 3: New password too short
