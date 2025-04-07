@@ -40,6 +40,7 @@ from ..estimations.models import (
     EstimationsWaterDischargeDecadeAverage,
     EstimationsWaterDischargeDecadeAverageVirtual,
     EstimationsWaterLevelDailyAverage,
+    EstimationsWaterLevelDailyAverageWithPeriods,
     EstimationsWaterLevelDecadeAverage,
     EstimationsWaterTemperatureDaily,
     HydrologicalNormVirtual,
@@ -735,7 +736,7 @@ class OperationalJournalAPIController:
 
         cls_estimations_views = [
             EstimationsWaterDischargeDaily,
-            EstimationsWaterLevelDailyAverage,
+            EstimationsWaterLevelDailyAverageWithPeriods,
             EstimationsWaterDischargeDailyAverage,
         ]
 

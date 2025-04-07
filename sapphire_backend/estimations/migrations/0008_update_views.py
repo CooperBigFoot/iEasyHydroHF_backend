@@ -24,36 +24,8 @@ class Migration(migrations.Migration):
             DROP VIEW IF EXISTS estimations_water_discharge_daily_average;
             DROP VIEW IF EXISTS estimations_water_discharge_daily;
             DROP VIEW IF EXISTS estimations_water_level_decade_average;
-            DROP MATERIALIZED VIEW IF EXISTS estimations_water_level_daily_average;
             """,
             reverse_sql="""
-            CREATE MATERIALIZED VIEW estimations_water_level_daily_average WITH (timescaledb.continuous)
-                AS
-                SELECT
-                    time_bucket('1 day',  hm.timestamp_local) at time zone 'UTC' + '12 hours' as timestamp_local,
-                                    CAST(NULL AS NUMERIC) as min_value,
-                                    CASE 
-                                        WHEN hm.value_type = 'A' THEN ROUND(AVG(hm.avg_value), 1)
-                                        ELSE CEIL(AVG(hm.avg_value))
-                                    END AS avg_value,
-                                    CAST(NULL AS NUMERIC) as max_value,
-                                    'cm' as unit,
-                                    'E' as value_type,
-                                    'WLDA'  as metric_name,
-                                    ''  as sensor_identifier,
-                                    '' as sensor_type,
-                                    hm.station_id
-                FROM
-                    public.metrics_hydrologicalmetric hm
-                WHERE
-                     hm.metric_name = 'WLD'
-                GROUP BY
-                    time_bucket('1 day', hm.timestamp_local),
-                    hm.station_id,
-                    hm.value_type
-                HAVING COUNT(hm.avg_value) > 1
-                WITH NO DATA;
-
             CREATE OR REPLACE VIEW estimations_water_level_decade_average AS
                 WITH data_ranges AS (
                     SELECT wlda.timestamp_local,
@@ -455,40 +427,33 @@ class Migration(migrations.Migration):
         ),
         migrations.RunSQL(
             """
-           CREATE MATERIALIZED VIEW estimations_water_level_daily_average WITH (timescaledb.continuous)
-            AS
+            CREATE OR REPLACE VIEW estimations_water_level_daily_average_with_periods AS
             SELECT
-                time_bucket('1 day', hm.timestamp_local) AT TIME ZONE 'UTC' + '12 hours' AS timestamp_local,
-                CAST(NULL AS NUMERIC) AS min_value,
-                CASE
-                    WHEN hm.value_type = 'A' THEN ROUND(AVG(hm.avg_value), 1)
-                    ELSE CEIL(AVG(hm.avg_value))
-                END AS avg_value,
-                CAST(NULL AS NUMERIC) AS max_value,
-                'cm' AS unit,
-                'E' AS value_type,
-                'WLDA' AS metric_name,
-                '' AS sensor_identifier,
-                '' AS sensor_type,
-                hm.station_id
-            FROM public.metrics_hydrologicalmetric hm
+                wlda.timestamp_local,
+                wlda.min_value,
+                wlda.avg_value,
+                wlda.max_value,
+                wlda.unit,
+                wlda.value_type,
+                wlda.metric_name,
+                wlda.sensor_identifier,
+                wlda.sensor_type,
+                wlda.station_id
+            FROM estimations_water_level_daily_average wlda
             LEFT JOIN public.estimations_dischargecalculationperiod edp
-                ON hm.station_id = edp.station_id
-                AND hm.timestamp_local >= edp.start_date_local
-                AND (edp.end_date_local IS NULL OR hm.timestamp_local < edp.end_date_local)
+                ON wlda.station_id = edp.station_id
+                AND wlda.timestamp_local >= edp.start_date_local
+                AND (edp.end_date_local IS NULL OR wlda.timestamp_local < edp.end_date_local)
+                AND edp.is_active = TRUE
                 AND (
                     -- Skip calculation if suspended
                     edp.state = 'SUSPENDED'
                     -- Skip calculation if manual with privodka only on the first day
-                    OR (edp.state = 'MANUAL' AND edp.reason = 'PRIVODKA' AND DATE(hm.timestamp_local) = DATE(edp.start_date_local))
+                    OR (edp.state = 'MANUAL' AND edp.reason = 'PRIVODKA' AND DATE(wlda.timestamp_local) = DATE(edp.start_date_local))
                 )
-            WHERE hm.metric_name = 'WLD'
-                AND edp.id IS NULL  -- Only include rows where no calculation period applies
-            GROUP BY time_bucket('1 day', hm.timestamp_local), hm.station_id, hm.value_type
-            HAVING COUNT(hm.avg_value) > 1
-            WITH NO DATA;
+            WHERE edp.id IS NULL;  -- Only include rows where no calculation period applies
             """,
-            reverse_sql="DROP MATERIALIZED VIEW IF EXISTS estimations_water_level_daily_average;"
+            reverse_sql="DROP VIEW IF EXISTS estimations_water_level_daily_average_with_periods;"
         ),
         migrations.RunSQL(
             """
@@ -515,6 +480,7 @@ class Migration(migrations.Migration):
                 ON wld.station_id = edp.station_id
                 AND wld.timestamp_local >= edp.start_date_local
                 AND (edp.end_date_local IS NULL OR wld.timestamp_local < edp.end_date_local)
+                AND edp.is_active = TRUE
             JOIN (
                 SELECT
                     dm.*,
@@ -535,29 +501,30 @@ class Migration(migrations.Migration):
             """
             CREATE OR REPLACE VIEW estimations_water_discharge_daily_average AS
             SELECT
-                wlda.timestamp_local,
+                wldawp.timestamp_local,
                 CAST(NULL AS NUMERIC) AS min_value,
-                hydrological_round(dm.param_c * POWER((wlda.avg_value + dm.param_a), dm.param_b)) AS avg_value,
+                hydrological_round(dm.param_c * POWER((wldawp.avg_value + dm.param_a), dm.param_b)) AS avg_value,
                 CAST(NULL AS NUMERIC) AS max_value,
                 'm^3/s' AS unit,
                 'E' AS value_type,
                 'WDDA' AS metric_name,
                 '' AS sensor_identifier,
                 '' AS sensor_type,
-                wlda.station_id
-            FROM estimations_water_level_daily_average wlda
+                wldawp.station_id
+            FROM estimations_water_level_daily_average_with_periods wldawp
             LEFT JOIN public.estimations_dischargecalculationperiod edp
-                ON wlda.station_id = edp.station_id
-                AND wlda.timestamp_local >= edp.start_date_local
-                AND (edp.end_date_local IS NULL OR wlda.timestamp_local < edp.end_date_local)
+                ON wldawp.station_id = edp.station_id
+                AND wldawp.timestamp_local >= edp.start_date_local
+                AND (edp.end_date_local IS NULL OR wldawp.timestamp_local < edp.end_date_local)
+                AND edp.is_active = TRUE
             JOIN (
                 SELECT
                     dm.*,
                     LEAD(valid_from_local) OVER (PARTITION BY station_id ORDER BY valid_from_local) AS next_valid_from_local
                 FROM estimations_dischargemodel dm
-            ) dm ON wlda.timestamp_local >= dm.valid_from_local
-                AND (wlda.timestamp_local < dm.next_valid_from_local OR dm.next_valid_from_local IS NULL)
-                AND wlda.station_id = dm.station_id
+            ) dm ON wldawp.timestamp_local >= dm.valid_from_local
+                AND (wldawp.timestamp_local < dm.next_valid_from_local OR dm.next_valid_from_local IS NULL)
+                AND wldawp.station_id = dm.station_id
             WHERE
                 -- Skip calculation if suspended
                 (edp.id IS NULL OR edp.state != 'SUSPENDED');
@@ -684,16 +651,16 @@ class Migration(migrations.Migration):
             """
             CREATE OR REPLACE VIEW estimations_water_level_decade_average AS
                 WITH data_ranges AS (
-                    SELECT wlda.timestamp_local,
-                           wlda.station_id,
-                           wlda.value_type,
+                    SELECT wldawp.timestamp_local,
+                           wldawp.station_id,
+                           wldawp.value_type,
                            CASE
-                               WHEN EXTRACT(DAY FROM wlda.timestamp_local) BETWEEN 1 AND 10 THEN 'first_decade'
-                               WHEN EXTRACT(DAY FROM wlda.timestamp_local) BETWEEN 11 AND 20 THEN 'second_decade'
+                               WHEN EXTRACT(DAY FROM wldawp.timestamp_local) BETWEEN 1 AND 10 THEN 'first_decade'
+                               WHEN EXTRACT(DAY FROM wldawp.timestamp_local) BETWEEN 11 AND 20 THEN 'second_decade'
                                ELSE 'third_decade'
                            END AS decade,
-                           wlda.avg_value
-                    FROM public.estimations_water_level_daily_average wlda
+                           wldawp.avg_value
+                    FROM public.estimations_water_level_daily_average_with_periods wldawp
                 ),
                 decade_averages AS (
                     SELECT station_id,
@@ -881,7 +848,7 @@ class Migration(migrations.Migration):
                       FROM estimations_water_discharge_daily
                       UNION ALL
                       SELECT station_id, timestamp_local, metric_name, value_type, avg_value, NULL as value_code
-                      FROM estimations_water_level_daily_average
+                      FROM estimations_water_level_daily_average_with_periods
                       UNION ALL
                       SELECT station_id, timestamp_local, metric_name, value_type, avg_value, NULL as value_code
                       FROM estimations_water_discharge_daily_average

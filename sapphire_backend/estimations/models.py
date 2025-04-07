@@ -41,6 +41,18 @@ class EstimationsWaterLevelDailyAverage(BaseHydroMetricMixin, MinMaxValueMixin, 
         db_table = "estimations_water_level_daily_average"
 
 
+class EstimationsWaterLevelDailyAverageWithPeriods(
+    BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model
+):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_level_daily_average_with_periods"
+
+
 class EstimationsWaterLevelDecadeAverage(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
     station = models.ForeignKey(
         "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
