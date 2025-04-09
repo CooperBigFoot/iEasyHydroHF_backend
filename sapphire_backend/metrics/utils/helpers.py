@@ -4,6 +4,7 @@ from typing import Any
 
 import pandas as pd
 
+from sapphire_backend.estimations.models import DischargeCalculationPeriod
 from sapphire_backend.metrics.choices import NormType
 from sapphire_backend.metrics.managers import HydrologicalNormQuerySet, MeteorologicalNormQuerySet
 from sapphire_backend.organizations.models import Organization
@@ -349,6 +350,10 @@ class OperationalJournalDataTransformer:
             # get morning data first
             morning_data = self._get_morning_data(daily_data)
             if not morning_data.empty:
+                morning_manual_calculation = DischargeCalculationPeriod.is_manual_calculation(
+                    self.station.id, morning_data.iloc[0]["timestamp_local"]
+                )
+
                 water_level_morning = self._get_metric_value(
                     morning_data, HydrologicalMetricName.WATER_LEVEL_DAILY, True
                 )
@@ -357,6 +362,7 @@ class OperationalJournalDataTransformer:
                 )
                 day_dict["water_level_morning"] = water_level_morning
                 day_dict["water_discharge_morning"] = water_discharge_morning
+                day_dict["water_discharge_morning"]["allow_manual_override"] = morning_manual_calculation
                 if (
                     previous_day_water_level
                     and previous_day_water_level["value"] != "--"
@@ -368,11 +374,14 @@ class OperationalJournalDataTransformer:
             else:
                 previous_day_water_level = None
                 day_dict["water_level_morning"] = {"value": "--"}
-                day_dict["water_discharge_morning"] = {"value": "--"}
 
             # get evening data next
             evening_data = self._get_evening_data(daily_data)
             if not evening_data.empty:
+                evening_manual_calculation = DischargeCalculationPeriod.is_manual_calculation(
+                    self.station.id, evening_data.iloc[0]["timestamp_local"]
+                )
+
                 water_level_evening = self._get_metric_value(
                     evening_data, HydrologicalMetricName.WATER_LEVEL_DAILY, True
                 )
@@ -381,6 +390,7 @@ class OperationalJournalDataTransformer:
                 )
                 day_dict["water_level_evening"] = water_level_evening
                 day_dict["water_discharge_evening"] = water_discharge_evening
+                day_dict["water_discharge_evening"]["allow_manual_override"] = evening_manual_calculation
             else:
                 day_dict["water_level_evening"] = {"value": "--"}
                 day_dict["water_discharge_evening"] = {"value": "--"}

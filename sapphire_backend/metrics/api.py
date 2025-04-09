@@ -22,6 +22,7 @@ from ninja_extra.pagination import PageNumberPaginationExtra, paginate
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
+from sapphire_backend.estimations.models import DischargeCalculationPeriod
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.mixins.models import SourceTypeMixin
@@ -423,6 +424,49 @@ class HydroMetricsAPIController:
             raise ValidationError("Metric not found")
         except Exception as e:
             raise ValidationError(f"Failed to update metric: {str(e)}")
+
+    @route.post(
+        "discharge-override", response={200: UpdateHydrologicalMetricResponseSchema, 404: Message, 400: Message}
+    )
+    def create_discharge_override(self, request, payload: UpdateHydrologicalMetricSchema) -> dict:
+        try:
+            with transaction.atomic():
+                if (
+                    payload.metric_name != HydrologicalMetricName.WATER_DISCHARGE_DAILY
+                    and payload.value_type != HydrologicalMeasurementType.OVERRIDE
+                ):
+                    raise ValidationError("This endpoint can only be used for override discharge metrics")
+
+                manual_calculation_period = DischargeCalculationPeriod.is_manual_calculation(
+                    payload.station_id, payload.timestamp_local
+                )
+
+                if not manual_calculation_period:
+                    raise ValidationError("No active manual calculation period found for this date")
+
+                # Create the override metric
+                metric = HydrologicalMetric(
+                    timestamp_local=payload.timestamp_local,
+                    station_id=payload.station_id,
+                    metric_name=payload.metric_name,
+                    value_type=HydrologicalMeasurementType.OVERRIDE,
+                    sensor_identifier="",
+                    avg_value=payload.new_value,
+                    value_code=payload.value_code,
+                    unit=MetricUnit.WATER_DISCHARGE,
+                    source_type=SourceTypeMixin.SourceType.USER,
+                    source_id=request.user.id,
+                )
+
+                # Save and create log entry
+                save_metric_and_create_log(metric, description=payload.comment)
+
+                return {"success": True, "message": "Discharge override created successfully"}
+
+        except ValidationError as e:
+            raise ValidationError(str(e))
+        except Exception as e:
+            raise ValidationError(f"Failed to create discharge override: {str(e)}")
 
 
 @api_controller(

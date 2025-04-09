@@ -271,36 +271,6 @@ class DischargeCalculationPeriod(UUIDMixin, CreateLastModifiedDateMixin, models.
         )
 
     @classmethod
-    def should_skip_calculation(cls, station_id, timestamp=None):
-        """
-        Determine if discharge calculation should be skipped for a station at a specific timestamp.
-
-        Args:
-            station_id: The ID of the hydrological station
-            timestamp: The timestamp to check (defaults to current time)
-
-        Returns:
-            bool: True if calculation should be skipped, False otherwise
-        """
-        period = cls.get_active_period(station_id, timestamp)
-
-        if not period:
-            return False
-
-        # Skip calculation for SUSPENDED periods
-        if period.state == cls.CalculationState.SUSPENDED:
-            return True
-
-        # Skip calculation for MANUAL periods with specific reasons
-        if period.state == cls.CalculationState.MANUAL and period.reason in [
-            cls.CalculationReason.PRIVODKA,
-            cls.CalculationReason.STATION_CLOSED,
-        ]:
-            return True
-
-        return False
-
-    @classmethod
     def is_manual_calculation(cls, station_id, timestamp=None):
         """
         Determine if discharge values should be manually calculated for a station at a specific timestamp.
@@ -317,8 +287,4 @@ class DischargeCalculationPeriod(UUIDMixin, CreateLastModifiedDateMixin, models.
         if not period:
             return False
 
-        # For MANUAL state (except for PRIVODKA and STATION_CLOSED which skip calculation entirely)
-        return period.state == cls.CalculationState.MANUAL and period.reason not in [
-            cls.CalculationReason.PRIVODKA,
-            cls.CalculationReason.STATION_CLOSED,
-        ]
+        return period.state == cls.CalculationState.MANUAL
