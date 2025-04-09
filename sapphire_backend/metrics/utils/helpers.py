@@ -176,7 +176,7 @@ class OperationalJournalDataTransformer:
                 metric_value = metric_data["value"]
 
             if metric_value.empty:
-                return {"value": "--"}
+                return {"value": "--", "timestamp_local": data.iloc[0]["timestamp_local"]}
 
             # Get the value based on metric type
             if metric in [
@@ -198,11 +198,20 @@ class OperationalJournalDataTransformer:
                 return {"value": value}
 
             # Include metadata if requested
+            sensor_identifier = metric_data.iloc[0].get("sensor_identifier", "")
+            has_history = metric_data.iloc[0].get("has_history", False)
+
+            # Handle NaN values
+            if pd.isna(sensor_identifier):
+                sensor_identifier = ""
+            if pd.isna(has_history):
+                has_history = False
+
             return {
                 "value": value,
                 "timestamp_local": metric_data.iloc[0]["timestamp_local"],
-                "sensor_identifier": metric_data.iloc[0].get("sensor_identifier", ""),
-                "has_history": metric_data.iloc[0].get("has_history", False),
+                "sensor_identifier": sensor_identifier,
+                "has_history": has_history,
             }
 
         return {"value": "--"}
@@ -358,7 +367,7 @@ class OperationalJournalDataTransformer:
                     morning_data, HydrologicalMetricName.WATER_LEVEL_DAILY, True
                 )
                 water_discharge_morning = self._get_metric_value(
-                    morning_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY
+                    morning_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY, True
                 )
                 day_dict["water_level_morning"] = water_level_morning
                 day_dict["water_discharge_morning"] = water_discharge_morning
@@ -386,7 +395,7 @@ class OperationalJournalDataTransformer:
                     evening_data, HydrologicalMetricName.WATER_LEVEL_DAILY, True
                 )
                 water_discharge_evening = self._get_metric_value(
-                    evening_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY
+                    evening_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY, True
                 )
                 day_dict["water_level_evening"] = water_level_evening
                 day_dict["water_discharge_evening"] = water_discharge_evening
