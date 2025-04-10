@@ -146,7 +146,6 @@ class HydroMetricsAPIController:
         else:  # ViewType.DAILY
             self._validate_datetime_range(filter_dict, allowed_days=365)  # 365 days for daily data
 
-        # For chart views, only return water level data
         if view_type == "daily":
             model_mapping = {
                 HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: EstimationsWaterLevelDailyAverage,
