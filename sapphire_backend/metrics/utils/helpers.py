@@ -4,6 +4,15 @@ from typing import Any
 
 import pandas as pd
 
+from sapphire_backend.estimations.models import (
+    EstimationsAirTemperatureDaily,
+    EstimationsWaterDischargeDailyAverage,
+    EstimationsWaterDischargeDecadeAverage,
+    EstimationsWaterDischargeFivedayAverage,
+    EstimationsWaterLevelDailyAverage,
+    EstimationsWaterLevelDecadeAverage,
+    EstimationsWaterTemperatureDaily,
+)
 from sapphire_backend.metrics.choices import NormType
 from sapphire_backend.metrics.managers import HydrologicalNormQuerySet, MeteorologicalNormQuerySet
 from sapphire_backend.organizations.models import Organization
@@ -704,3 +713,48 @@ def save_metric_and_create_log(
         log = None
 
     return metric_instance, log
+
+
+class SDKDataHelper:
+    def __init__(self, organization: Organization, filters: dict):
+        self.organization = organization
+        self.filters = filters
+        self.metrics_mapping = self._resolve_metrics_to_models()
+
+    def _validate_filters(self):
+        pass
+
+    def _resolve_metrics_to_models(self):
+        hydro_metrics_mapping = {
+            # water levels
+            HydrologicalMetricName.WATER_LEVEL_DAILY: HydrologicalMetric,
+            HydrologicalMetricName.WATER_LEVEL_DECADAL: HydrologicalMetric,
+            HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: EstimationsWaterLevelDailyAverage,
+            HydrologicalMetricName.WATER_LEVEL_DECADAL_AVERAGE: EstimationsWaterLevelDecadeAverage,
+            # water discharges
+            HydrologicalMetricName.WATER_DISCHARGE_DAILY: HydrologicalMetric,
+            HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: EstimationsWaterDischargeDailyAverage,
+            HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: EstimationsWaterDischargeFivedayAverage,
+            HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: EstimationsWaterDischargeDecadeAverage,
+            # temperatures
+            HydrologicalMetricName.WATER_TEMPERATURE: HydrologicalMetric,
+            HydrologicalMetricName.AIR_TEMPERATURE: HydrologicalMetric,
+            HydrologicalMetricName.WATER_TEMPERATURE_DAILY_AVERAGE: EstimationsWaterTemperatureDaily,
+            HydrologicalMetricName.AIR_TEMPERATURE_DAILY_AVERAGE: EstimationsAirTemperatureDaily,
+            # precipitation
+            HydrologicalMetricName.PRECIPITATION_DAILY: HydrologicalMetric,
+            # ice phenomena
+            HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION: HydrologicalMetric,
+        }
+
+        meteometric_metrics_mapping = {
+            MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE: MeteorologicalMetric,
+            MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE: MeteorologicalMetric,
+            MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE: MeteorologicalMetric,
+            MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE: MeteorologicalMetric,
+        }
+
+        return {
+            **hydro_metrics_mapping,
+            **meteometric_metrics_mapping,
+        }

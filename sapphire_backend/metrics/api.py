@@ -81,6 +81,7 @@ from .schema import (
     OperationalJournalDecadalMeteoDataSchema,
     OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
+    SDKOutputSchema,
     TimeBucketQueryParams,
     TimestampGroupedHydroMetricSchema,
     UpdateHydrologicalMetricResponseSchema,
@@ -420,6 +421,10 @@ class HydroMetricsAPIController:
             raise ValidationError("Metric not found")
         except Exception as e:
             raise ValidationError(f"Failed to update metric: {str(e)}")
+
+    @route.get("sdk-data-values", response={200: list[SDKOutputSchema]})
+    def get_sdk_data(self, organization_uuid: str, filters: Query[HydroMetricFilterSchema]):
+        pass
 
 
 @api_controller(
