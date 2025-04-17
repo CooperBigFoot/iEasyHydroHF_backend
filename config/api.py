@@ -18,6 +18,7 @@ from sapphire_backend.metrics.api import (
     MeteoMetricsAPIController,
     MeteorologicalNormsAPIController,
     OperationalJournalAPIController,
+    SDKDataValuesAPIController,
 )
 from sapphire_backend.metrics.exceptions import DischargeNormParserException
 from sapphire_backend.organizations.api import BasinsAPIController, OrganizationsAPIController, RegionsAPIController
@@ -62,6 +63,7 @@ api.register_controllers(UsersAPIController)
 api.register_controllers(DischargeModelsAPIController)
 api.register_controllers(EstimationsAPIController)
 api.register_controllers(VirtualStationsAPIController)
+api.register_controllers(SDKDataValuesAPIController)
 
 
 @api.exception_handler(NinjaValidationError)

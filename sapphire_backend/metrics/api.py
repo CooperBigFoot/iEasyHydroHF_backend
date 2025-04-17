@@ -81,6 +81,7 @@ from .schema import (
     OperationalJournalDecadalMeteoDataSchema,
     OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
+    SDKDataFiltersSchema,
     SDKOutputSchema,
     TimeBucketQueryParams,
     TimestampGroupedHydroMetricSchema,
@@ -422,9 +423,37 @@ class HydroMetricsAPIController:
         except Exception as e:
             raise ValidationError(f"Failed to update metric: {str(e)}")
 
-    @route.get("sdk-data-values", response={200: list[SDKOutputSchema]})
-    def get_sdk_data(self, organization_uuid: str, filters: Query[HydroMetricFilterSchema]):
-        pass
+
+@api_controller("metrics/sdk-data-values", tags=["SDK Data Values"], auth=JWTAuth(), permissions=regular_permissions)
+class SDKDataValuesAPIController:
+    @route.get("{organization_uuid}", response={200: list[SDKOutputSchema]})
+    def get_sdk_data(self, organization_uuid: str, filters: Query[SDKDataFiltersSchema]):
+        """
+        Get SDK data values for the specified organization and filters.
+
+        Args:
+            organization_uuid (str): The UUID of the organization.
+            filters (Query[SDKDataFiltersSchema]): The filters to apply.
+
+        Returns:
+            list[SDKOutputSchema]: A list of SDK output schemas.
+        """
+        from sapphire_backend.metrics.utils.helpers import SDKDataHelper
+        from sapphire_backend.organizations.models import Organization
+
+        # Get the organization
+        organization = Organization.objects.get(uuid=organization_uuid)
+
+        # Convert the filters to a dictionary
+        filters_dict = filters.dict(exclude_none=True)
+
+        # Create the SDK data helper
+        sdk_helper = SDKDataHelper(organization, filters_dict)
+
+        # Get the data
+        data = sdk_helper.get_data()
+
+        return data
 
 
 @api_controller(

@@ -6,6 +6,7 @@ import pandas as pd
 
 from sapphire_backend.estimations.models import (
     EstimationsAirTemperatureDaily,
+    EstimationsWaterDischargeDaily,
     EstimationsWaterDischargeDailyAverage,
     EstimationsWaterDischargeDecadeAverage,
     EstimationsWaterDischargeFivedayAverage,
@@ -720,41 +721,408 @@ class SDKDataHelper:
         self.organization = organization
         self.filters = filters
         self.metrics_mapping = self._resolve_metrics_to_models()
+        self._validate_filters()
 
     def _validate_filters(self):
-        pass
+        """
+        Ensures:
+        1. At least one timestamp filter is present
+        2. The metric name is present in the mapping
+
+        Raises:
+            ValueError: If the filters are invalid.
+        """
+        # Check if at least one timestamp filter is present
+        timestamp_fields = [
+            "timestamp_local",
+            "timestamp_local__gt",
+            "timestamp_local__gte",
+            "timestamp_local__lt",
+            "timestamp_local__lte",
+            "timestamp",
+            "timestamp__gt",
+            "timestamp__gte",
+            "timestamp__lt",
+            "timestamp__lte",
+        ]
+
+        has_timestamp_filter = any(
+            field in self.filters and self.filters[field] is not None for field in timestamp_fields
+        )
+
+        if not has_timestamp_filter:
+            raise ValueError("At least one timestamp filter must be present")
+
+        # Check if metric_name__in is present and contains valid metric names
+        if "metric_name__in" in self.filters and self.filters["metric_name__in"] is not None:
+            valid_metric_names = set(self.metrics_mapping.keys())
+            invalid_metric_names = [
+                metric_name for metric_name in self.filters["metric_name__in"] if metric_name not in valid_metric_names
+            ]
+
+            if invalid_metric_names:
+                raise ValueError(f"Invalid metric names: {invalid_metric_names}")
+        else:
+            raise ValueError("metric_name__in filter is required")
 
     def _resolve_metrics_to_models(self):
         hydro_metrics_mapping = {
             # water levels
-            HydrologicalMetricName.WATER_LEVEL_DAILY: HydrologicalMetric,
-            HydrologicalMetricName.WATER_LEVEL_DECADAL: HydrologicalMetric,
-            HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: EstimationsWaterLevelDailyAverage,
-            HydrologicalMetricName.WATER_LEVEL_DECADAL_AVERAGE: EstimationsWaterLevelDecadeAverage,
+            HydrologicalMetricName.WATER_LEVEL_DAILY: [HydrologicalMetric],
+            HydrologicalMetricName.WATER_LEVEL_DECADAL: [HydrologicalMetric],
+            HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: [EstimationsWaterLevelDailyAverage],
+            HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE: [EstimationsWaterLevelDecadeAverage],
             # water discharges
-            HydrologicalMetricName.WATER_DISCHARGE_DAILY: HydrologicalMetric,
-            HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: EstimationsWaterDischargeDailyAverage,
-            HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: EstimationsWaterDischargeFivedayAverage,
-            HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: EstimationsWaterDischargeDecadeAverage,
+            HydrologicalMetricName.WATER_DISCHARGE_DAILY: [HydrologicalMetric, EstimationsWaterDischargeDaily],
+            HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: [EstimationsWaterDischargeDailyAverage],
+            HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: [EstimationsWaterDischargeFivedayAverage],
+            HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: [EstimationsWaterDischargeDecadeAverage],
             # temperatures
-            HydrologicalMetricName.WATER_TEMPERATURE: HydrologicalMetric,
-            HydrologicalMetricName.AIR_TEMPERATURE: HydrologicalMetric,
-            HydrologicalMetricName.WATER_TEMPERATURE_DAILY_AVERAGE: EstimationsWaterTemperatureDaily,
-            HydrologicalMetricName.AIR_TEMPERATURE_DAILY_AVERAGE: EstimationsAirTemperatureDaily,
+            HydrologicalMetricName.WATER_TEMPERATURE: [HydrologicalMetric],
+            HydrologicalMetricName.AIR_TEMPERATURE: [HydrologicalMetric],
+            HydrologicalMetricName.WATER_TEMPERATURE_DAILY_AVERAGE: [EstimationsWaterTemperatureDaily],
+            HydrologicalMetricName.AIR_TEMPERATURE_DAILY_AVERAGE: [EstimationsAirTemperatureDaily],
             # precipitation
-            HydrologicalMetricName.PRECIPITATION_DAILY: HydrologicalMetric,
+            HydrologicalMetricName.PRECIPITATION_DAILY: [HydrologicalMetric],
             # ice phenomena
-            HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION: HydrologicalMetric,
+            HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION: [HydrologicalMetric],
         }
 
         meteometric_metrics_mapping = {
-            MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE: MeteorologicalMetric,
-            MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE: MeteorologicalMetric,
-            MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE: MeteorologicalMetric,
-            MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE: MeteorologicalMetric,
+            MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE: [MeteorologicalMetric],
+            MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE: [MeteorologicalMetric],
+            MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE: [MeteorologicalMetric],
+            MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE: [MeteorologicalMetric],
         }
 
         return {
             **hydro_metrics_mapping,
             **meteometric_metrics_mapping,
         }
+
+    def _get_stations_info(self):
+        """
+        Gets all stations information based on the filters.
+
+        Returns:
+            list: A list of dictionaries containing station information.
+            Each dictionary contains:
+                - id: The station ID
+                - uuid: The station UUID
+                - station_code: The station code
+                - station_type: The station type ('hydro' or 'meteo')
+        """
+        stations_info = []
+
+        # If station is specified, get that specific station
+        if "station" in self.filters and self.filters["station"] is not None:
+            station_id = self.filters["station"]
+
+            # Try to get the hydro station
+            hydro_station = HydrologicalStation.objects.filter(
+                id=station_id, station_type=HydrologicalStation.StationType.MANUAL
+            ).first()
+            if hydro_station:
+                stations_info.append(
+                    {
+                        "id": hydro_station.id,
+                        "uuid": str(hydro_station.uuid),
+                        "name": hydro_station.name,
+                        "station_code": hydro_station.station_code,
+                        "station_type": "hydro",
+                    }
+                )
+                return stations_info
+
+            # Try to get the meteo station
+            meteo_station = MeteorologicalStation.objects.filter(id=station_id).first()
+            if meteo_station:
+                stations_info.append(
+                    {
+                        "id": meteo_station.id,
+                        "uuid": str(meteo_station.uuid),
+                        "name": meteo_station.name,
+                        "station_code": meteo_station.station_code,
+                        "station_type": "meteo",
+                    }
+                )
+                return stations_info
+
+        # If station__in is specified, get those specific stations
+        if "station__in" in self.filters and self.filters["station__in"] is not None:
+            station_ids = self.filters["station__in"]
+
+            # Get hydro stations
+            hydro_stations = HydrologicalStation.objects.filter(
+                id__in=station_ids, station_type=HydrologicalStation.StationType.MANUAL
+            )
+            for station in hydro_stations:
+                stations_info.append(
+                    {
+                        "id": station.id,
+                        "uuid": str(station.uuid),
+                        "name": station.name,
+                        "station_code": station.station_code,
+                        "station_type": "hydro",
+                    }
+                )
+
+            # Get meteo stations
+            meteo_stations = MeteorologicalStation.objects.filter(id__in=station_ids)
+            for station in meteo_stations:
+                stations_info.append(
+                    {
+                        "id": station.id,
+                        "uuid": str(station.uuid),
+                        "name": station.name,
+                        "station_code": station.station_code,
+                        "station_type": "meteo",
+                    }
+                )
+
+            return stations_info
+
+        # If station__station_code is specified, get stations by code
+        if "station__station_code" in self.filters and self.filters["station__station_code"] is not None:
+            station_code = self.filters["station__station_code"]
+
+            # Get hydro stations
+            hydro_stations = HydrologicalStation.objects.filter(
+                station_code=station_code, station_type=HydrologicalStation.StationType.MANUAL
+            )
+            for station in hydro_stations:
+                stations_info.append(
+                    {
+                        "id": station.id,
+                        "uuid": str(station.uuid),
+                        "name": station.name,
+                        "station_code": station.station_code,
+                        "station_type": "hydro",
+                    }
+                )
+
+            # Get meteo stations
+            meteo_stations = MeteorologicalStation.objects.filter(station_code=station_code)
+            for station in meteo_stations:
+                stations_info.append(
+                    {
+                        "id": station.id,
+                        "uuid": str(station.uuid),
+                        "name": station.name,
+                        "station_code": station.station_code,
+                        "station_type": "meteo",
+                    }
+                )
+
+            return stations_info
+
+        # If station__station_code__in is specified, get stations by codes
+        if "station__station_code__in" in self.filters and self.filters["station__station_code__in"] is not None:
+            station_codes = self.filters["station__station_code__in"]
+
+            # Get hydro stations
+            hydro_stations = HydrologicalStation.objects.filter(
+                station_code__in=station_codes, station_type=HydrologicalStation.StationType.MANUAL
+            )
+            for station in hydro_stations:
+                stations_info.append(
+                    {
+                        "id": station.id,
+                        "uuid": str(station.uuid),
+                        "name": station.name,
+                        "station_code": station.station_code,
+                        "station_type": "hydro",
+                    }
+                )
+
+            # Get meteo stations
+            meteo_stations = MeteorologicalStation.objects.filter(station_code__in=station_codes)
+            for station in meteo_stations:
+                stations_info.append(
+                    {
+                        "id": station.id,
+                        "uuid": str(station.uuid),
+                        "name": station.name,
+                        "station_code": station.station_code,
+                        "station_type": "meteo",
+                    }
+                )
+
+            return stations_info
+
+        # If no station filter is specified, get all stations for the organization
+        hydro_stations = HydrologicalStation.objects.filter(
+            site__organization=self.organization, station_type=HydrologicalStation.StationType.MANUAL
+        )
+        for station in hydro_stations:
+            stations_info.append(
+                {
+                    "id": station.id,
+                    "uuid": str(station.uuid),
+                    "name": station.name,
+                    "station_code": station.station_code,
+                    "station_type": "hydro",
+                }
+            )
+
+        meteo_stations = MeteorologicalStation.objects.filter(site__organization=self.organization)
+        for station in meteo_stations:
+            stations_info.append(
+                {
+                    "id": station.id,
+                    "uuid": str(station.uuid),
+                    "name": station.name,
+                    "station_code": station.station_code,
+                    "station_type": "meteo",
+                }
+            )
+
+        return stations_info
+
+    def get_data(self):
+        """
+        Queries the data from the models and formats it according to the SDK output schema.
+
+        Returns:
+            list: A list of SDKOutputSchema objects.
+        """
+        # Get the metric names from the filters
+        metric_names = self.filters.get("metric_name__in", [])
+
+        # Get all stations info
+        stations_info = self._get_stations_info()
+
+        # Initialize the result
+        result = []
+
+        # For each station, query the data for each metric name
+        for station_info in stations_info:
+            station_data = []
+
+            # For each metric name, query the data from each model
+            for metric_name in metric_names:
+                models = self.metrics_mapping.get(metric_name, [])
+                metric_data = []
+
+                # Query each model for the metric name
+                for model in models:
+                    model_data = self._query_model(model, metric_name, station_info["id"])
+                    metric_data.extend(model_data)
+
+                # sort the metric data by timestamp_local
+                metric_data.sort(key=lambda x: x["timestamp_local"], reverse=True)
+
+                unit = self._get_metric_unit(metric_name)
+                variable = {"variable_code": metric_name, "unit": unit, "values": metric_data if metric_data else []}
+                station_data.append(variable)
+
+            # If we have data for this station, add it to the result
+            if station_data:
+                output = {
+                    "station_id": station_info["id"],
+                    "station_uuid": station_info["uuid"],
+                    "station_code": station_info["station_code"],
+                    "station_type": station_info["station_type"],
+                    "station_name": station_info["name"],
+                    "data": station_data,
+                }
+
+                result.append(output)
+
+        return result
+
+    def _query_model(self, model, metric_name, station_id):
+        """
+        Queries a model for a given metric name and station ID.
+
+        Args:
+            model: The model to query.
+            metric_name (str): The metric name.
+            station_id (int): The station ID.
+
+        Returns:
+            list: A list of SDKDataValueSchema objects.
+        """
+        # Create a copy of the filters
+        filters = self.filters.copy()
+
+        # Add the station ID to the filters
+        filters["station"] = station_id
+
+        # Add the metric name to the filters
+        filters["metric_name"] = metric_name
+
+        # Query the model
+        queryset = model.objects.filter(**filters).order_by("-timestamp_local")
+
+        # Convert the queryset to a list of SDKDataValueSchema objects
+        result = []
+
+        for obj in queryset:
+            # Get the value
+            if hasattr(obj, "avg_value"):
+                value = obj.avg_value
+            elif hasattr(obj, "value"):
+                value = obj.value
+            else:
+                continue
+
+            local_timestamp = obj.timestamp_local.replace(tzinfo=self.organization.timezone)
+            utc_timestamp = getattr(
+                obj, "timestamp", local_timestamp.replace(tzinfo=self.organization.timezone).astimezone(timezone.utc)
+            )
+
+            # Create the value schema
+            value_schema = {
+                "value_type": getattr(obj, "value_type", None),
+                "value": value,
+                "timestamp_local": local_timestamp,
+                "timestamp_utc": utc_timestamp,
+                "value_code": getattr(obj, "value_code", None),
+            }
+
+            result.append(value_schema)
+
+        return result
+
+    def _get_metric_unit(self, metric_name):
+        """
+        Gets the unit for a given metric name.
+
+        Args:
+            metric_name (str): The metric name.
+
+        Returns:
+            str: The unit.
+        """
+        from sapphire_backend.metrics.choices import MetricUnit
+
+        # Map metric names to units
+        metric_units = {
+            # Water levels
+            HydrologicalMetricName.WATER_LEVEL_DAILY: MetricUnit.WATER_LEVEL,
+            HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: MetricUnit.WATER_LEVEL,
+            HydrologicalMetricName.WATER_LEVEL_DECADAL: MetricUnit.WATER_LEVEL,
+            HydrologicalMetricName.WATER_LEVEL_DECADE_AVERAGE: MetricUnit.WATER_LEVEL,
+            # Water discharges
+            HydrologicalMetricName.WATER_DISCHARGE_DAILY: MetricUnit.WATER_DISCHARGE,
+            HydrologicalMetricName.WATER_DISCHARGE_DAILY_AVERAGE: MetricUnit.WATER_DISCHARGE,
+            HydrologicalMetricName.WATER_DISCHARGE_FIVEDAY_AVERAGE: MetricUnit.WATER_DISCHARGE,
+            HydrologicalMetricName.WATER_DISCHARGE_DECADE_AVERAGE: MetricUnit.WATER_DISCHARGE,
+            # Temperatures
+            HydrologicalMetricName.WATER_TEMPERATURE: MetricUnit.TEMPERATURE,
+            HydrologicalMetricName.AIR_TEMPERATURE: MetricUnit.TEMPERATURE,
+            HydrologicalMetricName.WATER_TEMPERATURE_DAILY_AVERAGE: MetricUnit.TEMPERATURE,
+            HydrologicalMetricName.AIR_TEMPERATURE_DAILY_AVERAGE: MetricUnit.TEMPERATURE,
+            # Precipitation
+            HydrologicalMetricName.PRECIPITATION_DAILY: MetricUnit.PRECIPITATION,
+            # Ice phenomena
+            HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION: MetricUnit.ICE_PHENOMENA_OBSERVATION,
+            # Meteorological metrics
+            MeteorologicalMetricName.AIR_TEMPERATURE_DECADE_AVERAGE: MetricUnit.TEMPERATURE,
+            MeteorologicalMetricName.AIR_TEMPERATURE_MONTH_AVERAGE: MetricUnit.TEMPERATURE,
+            MeteorologicalMetricName.PRECIPITATION_DECADE_AVERAGE: MetricUnit.PRECIPITATION,
+            MeteorologicalMetricName.PRECIPITATION_MONTH_AVERAGE: MetricUnit.PRECIPITATION,
+        }
+
+        return metric_units.get(metric_name, "")

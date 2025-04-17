@@ -356,21 +356,17 @@ class UpdateHydrologicalMetricResponseSchema(Schema):
     message: str
 
 
-class SDKDataVariableSchema(Schema):
-    code: str
-    type: str
-    unit: str
-
-
 class SDKDataValueSchema(Schema):
     value: float
-    local_timestamp: datetime
-    utc_timestamp: datetime
-    code: str | None = None
+    value_type: str
+    timestamp_local: datetime
+    timestamp_utc: datetime
+    value_code: int | None = None
 
 
-class SDKDataSchema(Schema):
-    variable: SDKDataVariableSchema
+class SDKDataVariableSchema(Schema):
+    variable_code: str
+    unit: str
     values: list[SDKDataValueSchema]
 
 
@@ -378,12 +374,9 @@ class SDKOutputSchema(Schema):
     station_id: int
     station_uuid: str
     station_code: str
+    station_name: str
     station_type: Literal["hydro", "meteo"]
-    data: list[SDKDataSchema]
-
-    @staticmethod
-    def resolve_station_uuid(obj):
-        return str(obj.get("station__uuid"))
+    data: list[SDKDataVariableSchema]
 
 
 class SDKDataFiltersSchema(FilterSchema):
@@ -402,4 +395,3 @@ class SDKDataFiltersSchema(FilterSchema):
     station__station_code: str = None
     station__station_code__in: list[str] = None
     metric_name__in: list[HydrologicalMetricName] = None
-    value_type__in: list[HydrologicalMeasurementType] = None

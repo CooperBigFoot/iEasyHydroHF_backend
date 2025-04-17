@@ -666,6 +666,32 @@ def precipitation_meteo_station_kyrgyz(db, manual_meteo_station_kyrgyz):
 
 
 @pytest.fixture
+def daily_precipitation_manual_station_kyrgyz(db, manual_hydro_station_kyrgyz):
+    return HydrologicalMetricFactory(
+        timestamp=datetime(2024, 9, 1, 8, 0, 0, tzinfo=ZoneInfo("UTC")),
+        station=manual_hydro_station_kyrgyz,
+        avg_value=100.0,
+        value_code=3,
+        value_type=HydrologicalMeasurementType.MANUAL,
+        metric_name=HydrologicalMetricName.PRECIPITATION_DAILY,
+        unit=MetricUnit.PRECIPITATION,
+    )
+
+
+@pytest.fixture
+def ice_phenomena_manual_station_kyrgyz(db, manual_hydro_station_kyrgyz):
+    return HydrologicalMetricFactory(
+        timestamp=datetime(2024, 9, 1, 20, 0, 0, tzinfo=ZoneInfo("UTC")),
+        station=manual_hydro_station_kyrgyz,
+        avg_value=1.0,
+        value_type=HydrologicalMeasurementType.MANUAL,
+        value_code=12,
+        metric_name=HydrologicalMetricName.ICE_PHENOMENA_OBSERVATION,
+        unit=MetricUnit.ICE_PHENOMENA_OBSERVATION,
+    )
+
+
+@pytest.fixture
 def temperature_meteo_station_uzbek(db, manual_meteo_station_uzbek):
     return MeteorologicalMetricFactory(
         timestamp=datetime(2024, 9, 1, 8, 0, 0, tzinfo=ZoneInfo("UTC")),
