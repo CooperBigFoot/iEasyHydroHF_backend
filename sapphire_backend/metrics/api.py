@@ -22,6 +22,7 @@ from ninja_extra.pagination import PageNumberPaginationExtra, paginate
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
+from sapphire_backend.organizations.models import Organization
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.mixins.models import SourceTypeMixin
@@ -100,6 +101,7 @@ from .utils.helpers import (
     HydrologicalYearResolver,
     OperationalJournalDataTransformer,
     OperationalJournalVirtualDataTransformer,
+    SDKDataHelper,
     create_norm_dataframe,
     hydro_station_uuids_belong_to_organization_uuid,
     meteo_station_uuids_belong_to_organization_uuid,
@@ -439,19 +441,10 @@ class SDKDataValuesAPIController:
         Returns:
             PaginatedSDKOutputSchema: A paginated SDK output schema.
         """
-        from sapphire_backend.metrics.utils.helpers import SDKDataHelper
-        from sapphire_backend.organizations.models import Organization
-
-        # Get the organization
         organization = Organization.objects.get(uuid=organization_uuid)
 
-        # Convert the filters to a dictionary
         filters_dict = filters.dict(exclude_none=True)
-
-        # Create the SDK data helper
         sdk_helper = SDKDataHelper(organization, filters_dict)
-
-        # Get the data
         data = sdk_helper.get_data()
 
         return data

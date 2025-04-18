@@ -56,3 +56,14 @@ class InvalidFileStructureException(DischargeNormParserException):
     ):
         logger.error(f"{message}")
         super().__init__(f"{message}")
+
+
+class SDKDataError(Exception):
+    """
+    Raised when an error occurs while getting SDK data.
+    """
+
+    def __init__(self, message: str):
+        self.message = message
+        logger.error(f"{message}")
+        super().__init__(f"{message}")

@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from sapphire_backend.estimations.models import EstimationsWaterDischargeDailyAverage
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, NormType
-from sapphire_backend.metrics.exceptions import FileTooBigException
+from sapphire_backend.metrics.exceptions import FileTooBigException, SDKDataError
 from sapphire_backend.metrics.models import HydrologicalNorm
 from sapphire_backend.utils.rounding import custom_round
 
@@ -1095,6 +1095,39 @@ class TestSDKDataValuesAPIController:
             },
         )
         assert response.status_code == 422
+
+    def test_get_sdk_data_with_unspecified_metric_param(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+    ):
+        """Test getting SDK data with unspecified metric param."""
+        with pytest.raises(SDKDataError, match="You must specify at least one metric name"):
+            _ = regular_user_kyrgyz_api_client.get(
+                self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+                {
+                    "station": manual_hydro_station_kyrgyz.id,
+                    "timestamp_local__gte": "2020-01-01T00:00:00Z",
+                    "timestamp_local__lte": "2020-12-31T23:59:59Z",
+                },
+            )
+
+    def test_get_sdk_data_with_unspecified_timestamp_range(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+    ):
+        """Test getting SDK data with unspecified timestamp range."""
+        with pytest.raises(SDKDataError, match="At least one timestamp filter must be present"):
+            _ = regular_user_kyrgyz_api_client.get(
+                self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+                {
+                    "station": manual_hydro_station_kyrgyz.id,
+                    "metric_name__in": ["WLD"],
+                },
+            )
 
     @pytest.mark.django_db(transaction=True)
     @pytest.mark.parametrize("water_level_metrics_daily_generator", [(start_date, end_date)], indirect=True)

@@ -15,6 +15,7 @@ from sapphire_backend.estimations.models import (
     EstimationsWaterTemperatureDaily,
 )
 from sapphire_backend.metrics.choices import NormType
+from sapphire_backend.metrics.exceptions import SDKDataError
 from sapphire_backend.metrics.managers import HydrologicalNormQuerySet, MeteorologicalNormQuerySet
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.utils.datetime_helper import SmartDatetime
@@ -751,7 +752,7 @@ class SDKDataHelper:
         )
 
         if not has_timestamp_filter:
-            raise ValueError("At least one timestamp filter must be present")
+            raise SDKDataError("At least one timestamp filter must be present")
 
         # Check if metric_name__in is present and contains valid metric names
         if "metric_name__in" in self.filters and self.filters["metric_name__in"] is not None:
@@ -761,9 +762,9 @@ class SDKDataHelper:
             ]
 
             if invalid_metric_names:
-                raise ValueError(f"Invalid metric names: {invalid_metric_names}")
+                raise SDKDataError(f"Invalid metric names: {invalid_metric_names}")
         else:
-            raise ValueError("metric_name__in filter is required")
+            raise SDKDataError("You must specify at least one metric name")
 
     def _resolve_metrics_to_models(self):
         hydro_metrics_mapping = {
