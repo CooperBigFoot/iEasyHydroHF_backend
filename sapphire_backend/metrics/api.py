@@ -424,7 +424,7 @@ class HydroMetricsAPIController:
             raise ValidationError(f"Failed to update metric: {str(e)}")
 
 
-@api_controller("metrics/sdk-data-values", tags=["SDK Data Values"], auth=JWTAuth(), permissions=regular_permissions)
+@api_controller("sdk-data-values", tags=["SDK Data Values"], auth=JWTAuth(), permissions=regular_permissions)
 class SDKDataValuesAPIController:
     @route.get("{organization_uuid}", response={200: PaginatedSDKOutputSchema})
     @paginate(PageNumberPaginationExtra, page_size=10, max_page_size=11)

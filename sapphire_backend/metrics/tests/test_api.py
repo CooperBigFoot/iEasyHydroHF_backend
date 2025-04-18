@@ -989,7 +989,7 @@ class TestDischargeNormsAPI:
 
 
 class TestSDKDataValuesAPIController:
-    endpoint = "/api/v1/metrics/sdk-data-values/{organization_uuid}"
+    endpoint = "/api/v1/sdk-data-values/{organization_uuid}"
     start_date = dt.date(2025, 4, 1)
     end_date = dt.date(2025, 4, 5)
 
