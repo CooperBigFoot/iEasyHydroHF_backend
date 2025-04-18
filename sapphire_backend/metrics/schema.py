@@ -379,6 +379,13 @@ class SDKOutputSchema(Schema):
     data: list[SDKDataVariableSchema]
 
 
+class PaginatedSDKOutputSchema(Schema):
+    count: int
+    next: str | None = None
+    previous: str | None = None
+    results: list[SDKOutputSchema]
+
+
 class SDKDataFiltersSchema(FilterSchema):
     timestamp_local: datetime = None
     timestamp_local__gt: datetime = None

@@ -81,8 +81,8 @@ from .schema import (
     OperationalJournalDecadalMeteoDataSchema,
     OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
+    PaginatedSDKOutputSchema,
     SDKDataFiltersSchema,
-    SDKOutputSchema,
     TimeBucketQueryParams,
     TimestampGroupedHydroMetricSchema,
     UpdateHydrologicalMetricResponseSchema,
@@ -426,7 +426,8 @@ class HydroMetricsAPIController:
 
 @api_controller("metrics/sdk-data-values", tags=["SDK Data Values"], auth=JWTAuth(), permissions=regular_permissions)
 class SDKDataValuesAPIController:
-    @route.get("{organization_uuid}", response={200: list[SDKOutputSchema]})
+    @route.get("{organization_uuid}", response={200: PaginatedSDKOutputSchema})
+    @paginate(PageNumberPaginationExtra, page_size=10, max_page_size=11)
     def get_sdk_data(self, organization_uuid: str, filters: Query[SDKDataFiltersSchema]):
         """
         Get SDK data values for the specified organization and filters.
@@ -436,7 +437,7 @@ class SDKDataValuesAPIController:
             filters (Query[SDKDataFiltersSchema]): The filters to apply.
 
         Returns:
-            list[SDKOutputSchema]: A list of SDK output schemas.
+            PaginatedSDKOutputSchema: A paginated SDK output schema.
         """
         from sapphire_backend.metrics.utils.helpers import SDKDataHelper
         from sapphire_backend.organizations.models import Organization

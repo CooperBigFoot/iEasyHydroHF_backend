@@ -1012,7 +1012,7 @@ class TestSDKDataValuesAPIController:
         assert response.status_code == 200
         data = response.json()
 
-        assert data == [
+        assert data["results"] == [
             {
                 "station_name": manual_hydro_station_kyrgyz.name,
                 "station_code": manual_hydro_station_kyrgyz.station_code,
@@ -1046,7 +1046,7 @@ class TestSDKDataValuesAPIController:
         assert response.status_code == 200
         data = response.json()
 
-        assert data == []
+        assert data["results"] == []
 
     def test_get_sdk_data_with_existing_and_non_existing_stations(
         self,
@@ -1067,7 +1067,7 @@ class TestSDKDataValuesAPIController:
         assert response.status_code == 200
         data = response.json()
 
-        assert data == [
+        assert data["results"] == [
             {
                 "station_name": manual_hydro_station_kyrgyz.name,
                 "station_code": manual_hydro_station_kyrgyz.station_code,
@@ -1118,15 +1118,15 @@ class TestSDKDataValuesAPIController:
         assert response.status_code == 200
         data = response.json()
 
-        assert len(data) == 1
-        assert data[0]["station_name"] == manual_hydro_station_kyrgyz.name
-        assert data[0]["station_code"] == manual_hydro_station_kyrgyz.station_code
-        assert data[0]["station_type"] == "hydro"
-        assert data[0]["station_id"] == manual_hydro_station_kyrgyz.id
-        assert data[0]["station_uuid"] == str(manual_hydro_station_kyrgyz.uuid)
+        assert data["count"] == 1
+        assert data["results"][0]["station_name"] == manual_hydro_station_kyrgyz.name
+        assert data["results"][0]["station_code"] == manual_hydro_station_kyrgyz.station_code
+        assert data["results"][0]["station_type"] == "hydro"
+        assert data["results"][0]["station_id"] == manual_hydro_station_kyrgyz.id
+        assert data["results"][0]["station_uuid"] == str(manual_hydro_station_kyrgyz.uuid)
 
         # check values for first station
-        first_station_data = data[0]["data"]
+        first_station_data = data["results"][0]["data"]
         assert first_station_data[0]["variable_code"] == "WLD"
         assert first_station_data[0]["unit"] == "cm"
         assert len(first_station_data[0]["values"]) == 10  # 5 days, 2 values per day
@@ -1139,6 +1139,45 @@ class TestSDKDataValuesAPIController:
         assert first_station_data[3]["variable_code"] == "WDDA"
         assert first_station_data[3]["unit"] == "m^3/s"
         assert len(first_station_data[3]["values"]) == 0  # no discharges because no discharge model
+
+    def test_get_sdk_data_with_for_multiple_pages(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        manual_second_hydro_station_kyrgyz,
+    ):
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station__station_code__in": [
+                    manual_hydro_station_kyrgyz.station_code,
+                    manual_second_hydro_station_kyrgyz.station_code,
+                ],
+                "metric_name__in": ["WLD", "WLDA", "WDD", "WDDA"],
+                "timestamp_local__gte": "2025-04-01T00:00:00Z",
+                "timestamp_local__lte": "2025-04-05T23:59:59Z",
+                "page_size": 1,
+                "page": 1,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        metric_name_query_params = "metric_name__in=WLD&metric_name__in=WLDA&metric_name__in=WDD&metric_name__in=WDDA"
+        station_query_params = f"station__station_code__in={manual_hydro_station_kyrgyz.station_code}&station__station_code__in={manual_second_hydro_station_kyrgyz.station_code}"
+        timestamp_query_params = (
+            "timestamp_local__gte=2025-04-01T00%3A00%3A00Z&timestamp_local__lte=2025-04-05T23%3A59%3A59Z"
+        )
+        page_query_params = "page=2&page_size=1"
+
+        assert data["count"] == 2
+        assert metric_name_query_params in data["next"]
+        assert station_query_params in data["next"]
+        assert timestamp_query_params in data["next"]
+        assert page_query_params in data["next"]
+        assert data["previous"] is None
+        assert len(data["results"]) == 1
 
     @pytest.mark.django_db(transaction=True)
     @pytest.mark.parametrize("water_level_metrics_daily_generator", [(start_date, end_date)], indirect=True)
@@ -1168,14 +1207,14 @@ class TestSDKDataValuesAPIController:
         data = response.json()
 
         # Check that we have data for both stations
-        assert len(data) == 2  # two stations
-        assert data[0]["station_name"] == manual_hydro_station_kyrgyz.name
-        assert data[1]["station_name"] == manual_second_hydro_station_kyrgyz.name
-        assert len(data[0]["data"]) == 4  # four variables
-        assert len(data[1]["data"]) == 4  # four variables
+        assert data["count"] == 2  # two stations
+        assert data["results"][0]["station_name"] == manual_hydro_station_kyrgyz.name
+        assert data["results"][1]["station_name"] == manual_second_hydro_station_kyrgyz.name
+        assert len(data["results"][0]["data"]) == 4  # four variables
+        assert len(data["results"][1]["data"]) == 4  # four variables
 
         # check values for first station
-        first_station_data = data[0]["data"]
+        first_station_data = data["results"][0]["data"]
         assert first_station_data[0]["variable_code"] == "WLD"
         assert first_station_data[0]["unit"] == "cm"
         assert len(first_station_data[0]["values"]) == 10  # 5 days, 2 values per day
@@ -1190,7 +1229,7 @@ class TestSDKDataValuesAPIController:
         assert len(first_station_data[3]["values"]) == 5  # 5 days, 1 daily average
 
         # check values for second station
-        second_station_data = data[1]["data"]
+        second_station_data = data["results"][1]["data"]
         assert second_station_data[0]["variable_code"] == "WLD"
         assert second_station_data[0]["unit"] == "cm"
         assert len(second_station_data[0]["values"]) == 0  # doesnt' have values, but still shown in the response
@@ -1228,7 +1267,7 @@ class TestSDKDataValuesAPIController:
         data = response.json()
 
         assert (
-            data
+            data["results"]
             == [
                 {
                     "station_name": manual_hydro_station_kyrgyz.name,
@@ -1340,17 +1379,17 @@ class TestSDKDataValuesAPIController:
         assert response.status_code == 200
         data = response.json()
 
-        assert len(data) == 1
-        assert data[0]["station_name"] == manual_meteo_station_kyrgyz.name
-        assert data[0]["station_code"] == manual_meteo_station_kyrgyz.station_code
-        assert data[0]["station_type"] == "meteo"
-        assert data[0]["station_id"] == manual_meteo_station_kyrgyz.id
-        assert data[0]["station_uuid"] == str(manual_meteo_station_kyrgyz.uuid)
+        assert data["count"] == 1
+        assert data["results"][0]["station_name"] == manual_meteo_station_kyrgyz.name
+        assert data["results"][0]["station_code"] == manual_meteo_station_kyrgyz.station_code
+        assert data["results"][0]["station_type"] == "meteo"
+        assert data["results"][0]["station_id"] == manual_meteo_station_kyrgyz.id
+        assert data["results"][0]["station_uuid"] == str(manual_meteo_station_kyrgyz.uuid)
 
-        assert len(data[0]["data"]) == 2  # two variables
+        assert len(data["results"][0]["data"]) == 2  # two variables
 
         # check values for first station
-        station_data = data[0]["data"]
+        station_data = data["results"][0]["data"]
         assert station_data[0]["variable_code"] == "WLD"
         assert station_data[0]["unit"] == "cm"
         assert len(station_data[0]["values"]) == 0  # no water levels because it's a meteo station
@@ -1378,17 +1417,17 @@ class TestSDKDataValuesAPIController:
         assert response.status_code == 200
         data = response.json()
 
-        assert len(data) == 1
-        assert data[0]["station_name"] == manual_meteo_station_kyrgyz.name
-        assert data[0]["station_code"] == manual_meteo_station_kyrgyz.station_code
-        assert data[0]["station_type"] == "meteo"
-        assert data[0]["station_id"] == manual_meteo_station_kyrgyz.id
-        assert data[0]["station_uuid"] == str(manual_meteo_station_kyrgyz.uuid)
+        assert data["count"] == 1
+        assert data["results"][0]["station_name"] == manual_meteo_station_kyrgyz.name
+        assert data["results"][0]["station_code"] == manual_meteo_station_kyrgyz.station_code
+        assert data["results"][0]["station_type"] == "meteo"
+        assert data["results"][0]["station_id"] == manual_meteo_station_kyrgyz.id
+        assert data["results"][0]["station_uuid"] == str(manual_meteo_station_kyrgyz.uuid)
 
-        assert len(data[0]["data"]) == 2  # two variables
+        assert len(data["results"][0]["data"]) == 2  # two variables
 
         # check values for first station
-        station_data = data[0]["data"]
+        station_data = data["results"][0]["data"]
         assert station_data[0]["variable_code"] == "PDCA"
         assert station_data[0]["unit"] == "mm/day"
         assert station_data[0]["values"] == [
