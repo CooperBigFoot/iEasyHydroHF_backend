@@ -1320,3 +1320,88 @@ class TestSDKDataValuesAPIController:
                 }
             ]
         )
+
+    def test_get_sdk_data_with_hydro_metric_for_meteo_station(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_meteo_station_kyrgyz,
+    ):
+        """Test getting SDK data for a single station with complex values."""
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station__station_code__in": [manual_meteo_station_kyrgyz.station_code],
+                "metric_name__in": ["WLD", "WLDA"],
+                "timestamp_local__gte": "2024-09-01T00:00:00Z",
+                "timestamp_local__lte": "2024-09-03T23:59:59Z",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert len(data) == 1
+        assert data[0]["station_name"] == manual_meteo_station_kyrgyz.name
+        assert data[0]["station_code"] == manual_meteo_station_kyrgyz.station_code
+        assert data[0]["station_type"] == "meteo"
+        assert data[0]["station_id"] == manual_meteo_station_kyrgyz.id
+        assert data[0]["station_uuid"] == str(manual_meteo_station_kyrgyz.uuid)
+
+        assert len(data[0]["data"]) == 2  # two variables
+
+        # check values for first station
+        station_data = data[0]["data"]
+        assert station_data[0]["variable_code"] == "WLD"
+        assert station_data[0]["unit"] == "cm"
+        assert len(station_data[0]["values"]) == 0  # no water levels because it's a meteo station
+        assert station_data[1]["variable_code"] == "WLDA"
+        assert station_data[1]["unit"] == "cm"
+        assert len(station_data[1]["values"]) == 0  # no water levels because it's a meteo station
+
+    def test_get_sdk_data_for_meteo_metric(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_meteo_station_kyrgyz,
+        precipitation_meteo_station_kyrgyz,
+    ):
+        """Test getting SDK data for a single station with complex values."""
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station__station_code__in": [manual_meteo_station_kyrgyz.station_code],
+                "metric_name__in": ["PDCA", "PD"],
+                "timestamp_local__gte": "2024-09-01T00:00:00Z",
+                "timestamp_local__lte": "2024-09-03T23:59:59Z",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert len(data) == 1
+        assert data[0]["station_name"] == manual_meteo_station_kyrgyz.name
+        assert data[0]["station_code"] == manual_meteo_station_kyrgyz.station_code
+        assert data[0]["station_type"] == "meteo"
+        assert data[0]["station_id"] == manual_meteo_station_kyrgyz.id
+        assert data[0]["station_uuid"] == str(manual_meteo_station_kyrgyz.uuid)
+
+        assert len(data[0]["data"]) == 2  # two variables
+
+        # check values for first station
+        station_data = data[0]["data"]
+        assert station_data[0]["variable_code"] == "PDCA"
+        assert station_data[0]["unit"] == "mm/day"
+        assert station_data[0]["values"] == [
+            {
+                "timestamp_local": precipitation_meteo_station_kyrgyz.timestamp_local.replace(
+                    tzinfo=organization_kyrgyz.timezone
+                ).isoformat(),
+                "timestamp_utc": precipitation_meteo_station_kyrgyz.timestamp.isoformat().replace("+00:00", "Z"),
+                "value": precipitation_meteo_station_kyrgyz.value,
+                "value_type": "M",
+                "value_code": None,
+            }
+        ]
+        assert station_data[1]["variable_code"] == "PD"
+        assert station_data[1]["unit"] == "mm/day"
+        assert len(station_data[1]["values"]) == 0  # no precipitation because it's a meteo station

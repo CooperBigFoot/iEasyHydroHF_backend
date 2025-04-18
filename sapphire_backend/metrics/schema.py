@@ -394,4 +394,4 @@ class SDKDataFiltersSchema(FilterSchema):
     station__in: list[int] = None
     station__station_code: str = None
     station__station_code__in: list[str] = None
-    metric_name__in: list[HydrologicalMetricName] = None
+    metric_name__in: list[HydrologicalMetricName | MeteorologicalMetricName] = None
