@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from sapphire_backend.estimations.models import EstimationsWaterDischargeDailyAverage
 from sapphire_backend.metrics.choices import HydrologicalMeasurementType, HydrologicalMetricName, NormType
-from sapphire_backend.metrics.exceptions import FileTooBigException
+from sapphire_backend.metrics.exceptions import FileTooBigException, SDKDataError
 from sapphire_backend.metrics.models import HydrologicalNorm
 from sapphire_backend.utils.rounding import custom_round
 
@@ -986,3 +986,494 @@ class TestDischargeNormsAPI:
             {"timestamp_local": f"{current_year}-01-03T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
             {"timestamp_local": f"{current_year}-01-08T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
         ]
+
+
+class TestSDKDataValuesAPIController:
+    endpoint = "/api/v1/sdk-data-values/{organization_uuid}"
+    start_date = dt.date(2025, 4, 1)
+    end_date = dt.date(2025, 4, 5)
+
+    def test_get_sdk_data_with_valid_station_and_no_data(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+    ):
+        """Test getting SDK data for a valid station with data."""
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station": manual_hydro_station_kyrgyz.id,
+                "metric_name__in": ["WLD", "WLDA", "WDD", "WDDA"],
+                "timestamp_local__gte": "2020-01-01T00:00:00Z",
+                "timestamp_local__lte": "2020-12-31T23:59:59Z",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["results"] == [
+            {
+                "station_name": manual_hydro_station_kyrgyz.name,
+                "station_code": manual_hydro_station_kyrgyz.station_code,
+                "station_type": "hydro",
+                "station_id": manual_hydro_station_kyrgyz.id,
+                "station_uuid": str(manual_hydro_station_kyrgyz.uuid),
+                "data": [
+                    {"variable_code": "WLD", "unit": "cm", "values": []},
+                    {"variable_code": "WLDA", "unit": "cm", "values": []},
+                    {"variable_code": "WDD", "unit": "m^3/s", "values": []},
+                    {"variable_code": "WDDA", "unit": "m^3/s", "values": []},
+                ],
+            }
+        ]
+
+    def test_get_sdk_data_with_invalid_station(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+    ):
+        """Test getting SDK data for an invalid station ID."""
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station": 99999,  # Non-existent station ID
+                "metric_name__in": ["WLD"],
+                "timestamp_local__gte": "2020-01-01T00:00:00Z",
+                "timestamp_local__lte": "2020-12-31T23:59:59Z",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["results"] == []
+
+    def test_get_sdk_data_with_existing_and_non_existing_stations(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+    ):
+        """Test getting SDK data for existing and non-existing stations."""
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station": [manual_hydro_station_kyrgyz.id, 99999],
+                "metric_name__in": ["WLD"],
+                "timestamp_local__gte": "2020-01-01T00:00:00Z",
+                "timestamp_local__lte": "2020-12-31T23:59:59Z",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["results"] == [
+            {
+                "station_name": manual_hydro_station_kyrgyz.name,
+                "station_code": manual_hydro_station_kyrgyz.station_code,
+                "station_type": "hydro",
+                "station_id": manual_hydro_station_kyrgyz.id,
+                "station_uuid": str(manual_hydro_station_kyrgyz.uuid),
+                "data": [{"variable_code": "WLD", "unit": "cm", "values": []}],
+            }
+        ]
+
+    def test_get_sdk_data_with_invalid_metric_name(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+    ):
+        """Test getting SDK data for an invalid metric name."""
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station": manual_hydro_station_kyrgyz.id,
+                "metric_name__in": ["WLD", "INVALID"],
+                "timestamp_local__gte": "2020-01-01T00:00:00Z",
+                "timestamp_local__lte": "2020-12-31T23:59:59Z",
+            },
+        )
+        assert response.status_code == 422
+
+    def test_get_sdk_data_with_unspecified_metric_param(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+    ):
+        """Test getting SDK data with unspecified metric param."""
+        with pytest.raises(SDKDataError, match="You must specify at least one metric name"):
+            _ = regular_user_kyrgyz_api_client.get(
+                self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+                {
+                    "station": manual_hydro_station_kyrgyz.id,
+                    "timestamp_local__gte": "2020-01-01T00:00:00Z",
+                    "timestamp_local__lte": "2020-12-31T23:59:59Z",
+                },
+            )
+
+    def test_get_sdk_data_with_unspecified_timestamp_range(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+    ):
+        """Test getting SDK data with unspecified timestamp range."""
+        with pytest.raises(SDKDataError, match="At least one timestamp filter must be present"):
+            _ = regular_user_kyrgyz_api_client.get(
+                self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+                {
+                    "station": manual_hydro_station_kyrgyz.id,
+                    "metric_name__in": ["WLD"],
+                },
+            )
+
+    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.parametrize("water_level_metrics_daily_generator", [(start_date, end_date)], indirect=True)
+    def test_get_sdk_data_with_data_for_single_station(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        water_level_metrics_daily_generator,
+    ):
+        """Test getting SDK data for a single station with data."""
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station": manual_hydro_station_kyrgyz.id,
+                "metric_name__in": ["WLD", "WLDA", "WDD", "WDDA"],
+                "timestamp_local__gte": "2025-04-01T00:00:00Z",
+                "timestamp_local__lte": "2025-04-05T23:59:59Z",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["count"] == 1
+        assert data["results"][0]["station_name"] == manual_hydro_station_kyrgyz.name
+        assert data["results"][0]["station_code"] == manual_hydro_station_kyrgyz.station_code
+        assert data["results"][0]["station_type"] == "hydro"
+        assert data["results"][0]["station_id"] == manual_hydro_station_kyrgyz.id
+        assert data["results"][0]["station_uuid"] == str(manual_hydro_station_kyrgyz.uuid)
+
+        # check values for first station
+        first_station_data = data["results"][0]["data"]
+        assert first_station_data[0]["variable_code"] == "WLD"
+        assert first_station_data[0]["unit"] == "cm"
+        assert len(first_station_data[0]["values"]) == 10  # 5 days, 2 values per day
+        assert first_station_data[1]["variable_code"] == "WLDA"
+        assert first_station_data[1]["unit"] == "cm"
+        assert len(first_station_data[1]["values"]) == 5  # 5 days, 1 daily average
+        assert first_station_data[2]["variable_code"] == "WDD"
+        assert first_station_data[2]["unit"] == "m^3/s"
+        assert len(first_station_data[2]["values"]) == 0  # no discharges because no discharge model
+        assert first_station_data[3]["variable_code"] == "WDDA"
+        assert first_station_data[3]["unit"] == "m^3/s"
+        assert len(first_station_data[3]["values"]) == 0  # no discharges because no discharge model
+
+    def test_get_sdk_data_with_for_multiple_pages(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        manual_second_hydro_station_kyrgyz,
+    ):
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station__station_code__in": [
+                    manual_hydro_station_kyrgyz.station_code,
+                    manual_second_hydro_station_kyrgyz.station_code,
+                ],
+                "metric_name__in": ["WLD", "WLDA", "WDD", "WDDA"],
+                "timestamp_local__gte": "2025-04-01T00:00:00Z",
+                "timestamp_local__lte": "2025-04-05T23:59:59Z",
+                "page_size": 1,
+                "page": 1,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        metric_name_query_params = "metric_name__in=WLD&metric_name__in=WLDA&metric_name__in=WDD&metric_name__in=WDDA"
+        station_query_params = f"station__station_code__in={manual_hydro_station_kyrgyz.station_code}&station__station_code__in={manual_second_hydro_station_kyrgyz.station_code}"
+        timestamp_query_params = (
+            "timestamp_local__gte=2025-04-01T00%3A00%3A00Z&timestamp_local__lte=2025-04-05T23%3A59%3A59Z"
+        )
+        page_query_params = "page=2&page_size=1"
+
+        assert data["count"] == 2
+        assert metric_name_query_params in data["next"]
+        assert station_query_params in data["next"]
+        assert timestamp_query_params in data["next"]
+        assert page_query_params in data["next"]
+        assert data["previous"] is None
+        assert len(data["results"]) == 1
+
+    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.parametrize("water_level_metrics_daily_generator", [(start_date, end_date)], indirect=True)
+    def test_get_sdk_data_with_data_for_multiple_stations(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        discharge_model_manual_hydro_station_kyrgyz,
+        manual_second_hydro_station_kyrgyz,
+        water_level_metrics_daily_generator,
+    ):
+        """Test getting SDK data for a single station with data."""
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station__station_code__in": [
+                    manual_hydro_station_kyrgyz.station_code,
+                    manual_second_hydro_station_kyrgyz.station_code,
+                ],
+                "metric_name__in": ["WLD", "WLDA", "WDD", "WDDA"],
+                "timestamp_local__gte": "2025-04-01T00:00:00Z",
+                "timestamp_local__lte": "2025-04-05T23:59:59Z",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        # Check that we have data for both stations
+        assert data["count"] == 2  # two stations
+        assert data["results"][0]["station_name"] == manual_hydro_station_kyrgyz.name
+        assert data["results"][1]["station_name"] == manual_second_hydro_station_kyrgyz.name
+        assert len(data["results"][0]["data"]) == 4  # four variables
+        assert len(data["results"][1]["data"]) == 4  # four variables
+
+        # check values for first station
+        first_station_data = data["results"][0]["data"]
+        assert first_station_data[0]["variable_code"] == "WLD"
+        assert first_station_data[0]["unit"] == "cm"
+        assert len(first_station_data[0]["values"]) == 10  # 5 days, 2 values per day
+        assert first_station_data[1]["variable_code"] == "WLDA"
+        assert first_station_data[1]["unit"] == "cm"
+        assert len(first_station_data[1]["values"]) == 5  # 5 days, 1 daily average
+        assert first_station_data[2]["variable_code"] == "WDD"
+        assert first_station_data[2]["unit"] == "m^3/s"
+        assert len(first_station_data[2]["values"]) == 10  # 5 days, 2 values per day
+        assert first_station_data[3]["variable_code"] == "WDDA"
+        assert first_station_data[3]["unit"] == "m^3/s"
+        assert len(first_station_data[3]["values"]) == 5  # 5 days, 1 daily average
+
+        # check values for second station
+        second_station_data = data["results"][1]["data"]
+        assert second_station_data[0]["variable_code"] == "WLD"
+        assert second_station_data[0]["unit"] == "cm"
+        assert len(second_station_data[0]["values"]) == 0  # doesnt' have values, but still shown in the response
+        assert second_station_data[1]["variable_code"] == "WLDA"
+        assert second_station_data[1]["unit"] == "cm"
+        assert len(second_station_data[1]["values"]) == 0  # doesnt' have values, but still shown in the response
+        assert second_station_data[2]["variable_code"] == "WDD"
+        assert second_station_data[2]["unit"] == "m^3/s"
+        assert len(second_station_data[2]["values"]) == 0  # doesnt' have values, but still shown in the response
+        assert second_station_data[3]["variable_code"] == "WDDA"
+        assert second_station_data[3]["unit"] == "m^3/s"
+        assert len(second_station_data[3]["values"]) == 0  # doesnt' have values, but still shown in the response
+
+    def test_get_sdk_data_with_data_for_complex_values(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_hydro_station_kyrgyz,
+        water_level_manual_hydro_station_kyrgyz,
+        water_discharge_manual_hydro_station_kyrgyz,
+        daily_precipitation_manual_station_kyrgyz,
+        ice_phenomena_manual_station_kyrgyz,
+    ):
+        """Test getting SDK data for a single station with complex values."""
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station__station_code__in": [manual_hydro_station_kyrgyz.station_code],
+                "metric_name__in": ["WLD", "WLDA", "WDD", "WDDA", "PD", "IPO"],
+                "timestamp_local__gte": "2024-09-01T00:00:00Z",
+                "timestamp_local__lte": "2024-09-03T23:59:59Z",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert (
+            data["results"]
+            == [
+                {
+                    "station_name": manual_hydro_station_kyrgyz.name,
+                    "station_code": manual_hydro_station_kyrgyz.station_code,
+                    "station_type": "hydro",
+                    "station_id": manual_hydro_station_kyrgyz.id,
+                    "station_uuid": str(manual_hydro_station_kyrgyz.uuid),
+                    "data": [
+                        {
+                            "variable_code": "WLD",
+                            "unit": "cm",
+                            "values": [
+                                {
+                                    "timestamp_local": water_level_manual_hydro_station_kyrgyz.timestamp_local.replace(
+                                        tzinfo=organization_kyrgyz.timezone
+                                    ).isoformat(),
+                                    "timestamp_utc": water_level_manual_hydro_station_kyrgyz.timestamp.isoformat().replace(
+                                        "+00:00", "Z"
+                                    ),
+                                    "value": water_level_manual_hydro_station_kyrgyz.avg_value,
+                                    "value_type": "M",
+                                    "value_code": None,
+                                }
+                            ],
+                        },
+                        {
+                            "variable_code": "WLDA",
+                            "unit": "cm",
+                            "values": [],  # don't have the daily average because it's not calculated if there's only one daily value
+                        },
+                        {
+                            "variable_code": "WDD",
+                            "unit": "m^3/s",
+                            "values": [
+                                # value here because it's a measured discharge value so we don't need a rating curve
+                                {
+                                    "timestamp_local": water_discharge_manual_hydro_station_kyrgyz.timestamp_local.replace(
+                                        tzinfo=organization_kyrgyz.timezone
+                                    ).isoformat(),
+                                    "timestamp_utc": water_discharge_manual_hydro_station_kyrgyz.timestamp.isoformat().replace(
+                                        "+00:00", "Z"
+                                    ),
+                                    "value": water_discharge_manual_hydro_station_kyrgyz.avg_value,
+                                    "value_type": "M",
+                                    "value_code": None,
+                                }
+                            ],
+                        },
+                        {
+                            "variable_code": "WDDA",
+                            "unit": "m^3/s",
+                            "values": [],  # don't have the daily average for the discharge because there's no daily average for the water level
+                        },
+                        {
+                            "variable_code": "PD",
+                            "unit": "mm/day",
+                            "values": [
+                                {
+                                    "timestamp_local": daily_precipitation_manual_station_kyrgyz.timestamp_local.replace(
+                                        tzinfo=organization_kyrgyz.timezone
+                                    ).isoformat(),
+                                    "timestamp_utc": daily_precipitation_manual_station_kyrgyz.timestamp.isoformat().replace(
+                                        "+00:00", "Z"
+                                    ),
+                                    "value": daily_precipitation_manual_station_kyrgyz.avg_value,
+                                    "value_type": "M",
+                                    "value_code": daily_precipitation_manual_station_kyrgyz.value_code,
+                                }
+                            ],
+                        },
+                        {
+                            "variable_code": "IPO",
+                            "unit": "dimensionless",
+                            "values": [
+                                {
+                                    "timestamp_local": ice_phenomena_manual_station_kyrgyz.timestamp_local.replace(
+                                        tzinfo=organization_kyrgyz.timezone
+                                    ).isoformat(),
+                                    "timestamp_utc": ice_phenomena_manual_station_kyrgyz.timestamp.isoformat().replace(
+                                        "+00:00", "Z"
+                                    ),
+                                    "value": ice_phenomena_manual_station_kyrgyz.avg_value,
+                                    "value_type": "M",
+                                    "value_code": ice_phenomena_manual_station_kyrgyz.value_code,
+                                }
+                            ],
+                        },
+                    ],
+                }
+            ]
+        )
+
+    def test_get_sdk_data_with_hydro_metric_for_meteo_station(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_meteo_station_kyrgyz,
+    ):
+        """Test getting SDK data for a single station with complex values."""
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station__station_code__in": [manual_meteo_station_kyrgyz.station_code],
+                "metric_name__in": ["WLD", "WLDA"],
+                "timestamp_local__gte": "2024-09-01T00:00:00Z",
+                "timestamp_local__lte": "2024-09-03T23:59:59Z",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["count"] == 1
+        assert data["results"][0]["station_name"] == manual_meteo_station_kyrgyz.name
+        assert data["results"][0]["station_code"] == manual_meteo_station_kyrgyz.station_code
+        assert data["results"][0]["station_type"] == "meteo"
+        assert data["results"][0]["station_id"] == manual_meteo_station_kyrgyz.id
+        assert data["results"][0]["station_uuid"] == str(manual_meteo_station_kyrgyz.uuid)
+
+        assert len(data["results"][0]["data"]) == 2  # two variables
+
+        # check values for first station
+        station_data = data["results"][0]["data"]
+        assert station_data[0]["variable_code"] == "WLD"
+        assert station_data[0]["unit"] == "cm"
+        assert len(station_data[0]["values"]) == 0  # no water levels because it's a meteo station
+        assert station_data[1]["variable_code"] == "WLDA"
+        assert station_data[1]["unit"] == "cm"
+        assert len(station_data[1]["values"]) == 0  # no water levels because it's a meteo station
+
+    def test_get_sdk_data_for_meteo_metric(
+        self,
+        regular_user_kyrgyz_api_client,
+        organization_kyrgyz,
+        manual_meteo_station_kyrgyz,
+        precipitation_meteo_station_kyrgyz,
+    ):
+        """Test getting SDK data for a single station with complex values."""
+        response = regular_user_kyrgyz_api_client.get(
+            self.endpoint.format(organization_uuid=organization_kyrgyz.uuid),
+            {
+                "station__station_code__in": [manual_meteo_station_kyrgyz.station_code],
+                "metric_name__in": ["PDCA", "PD"],
+                "timestamp_local__gte": "2024-09-01T00:00:00Z",
+                "timestamp_local__lte": "2024-09-03T23:59:59Z",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["count"] == 1
+        assert data["results"][0]["station_name"] == manual_meteo_station_kyrgyz.name
+        assert data["results"][0]["station_code"] == manual_meteo_station_kyrgyz.station_code
+        assert data["results"][0]["station_type"] == "meteo"
+        assert data["results"][0]["station_id"] == manual_meteo_station_kyrgyz.id
+        assert data["results"][0]["station_uuid"] == str(manual_meteo_station_kyrgyz.uuid)
+
+        assert len(data["results"][0]["data"]) == 2  # two variables
+
+        # check values for first station
+        station_data = data["results"][0]["data"]
+        assert station_data[0]["variable_code"] == "PDCA"
+        assert station_data[0]["unit"] == "mm/day"
+        assert station_data[0]["values"] == [
+            {
+                "timestamp_local": precipitation_meteo_station_kyrgyz.timestamp_local.replace(
+                    tzinfo=organization_kyrgyz.timezone
+                ).isoformat(),
+                "timestamp_utc": precipitation_meteo_station_kyrgyz.timestamp.isoformat().replace("+00:00", "Z"),
+                "value": precipitation_meteo_station_kyrgyz.value,
+                "value_type": "M",
+                "value_code": None,
+            }
+        ]
+        assert station_data[1]["variable_code"] == "PD"
+        assert station_data[1]["unit"] == "mm/day"
+        assert len(station_data[1]["values"]) == 0  # no precipitation because it's a meteo station

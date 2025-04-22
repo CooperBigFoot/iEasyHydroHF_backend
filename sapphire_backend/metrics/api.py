@@ -22,6 +22,7 @@ from ninja_extra.pagination import PageNumberPaginationExtra, paginate
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
+from sapphire_backend.organizations.models import Organization
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
 from sapphire_backend.utils.datetime_helper import SmartDatetime
 from sapphire_backend.utils.mixins.models import SourceTypeMixin
@@ -81,6 +82,8 @@ from .schema import (
     OperationalJournalDecadalMeteoDataSchema,
     OperationalJournalDischargeDataSchema,
     OrderQueryParamSchema,
+    PaginatedSDKOutputSchema,
+    SDKDataFiltersSchema,
     TimeBucketQueryParams,
     TimestampGroupedHydroMetricSchema,
     UpdateHydrologicalMetricResponseSchema,
@@ -98,6 +101,7 @@ from .utils.helpers import (
     HydrologicalYearResolver,
     OperationalJournalDataTransformer,
     OperationalJournalVirtualDataTransformer,
+    SDKDataHelper,
     create_norm_dataframe,
     hydro_station_uuids_belong_to_organization_uuid,
     meteo_station_uuids_belong_to_organization_uuid,
@@ -420,6 +424,30 @@ class HydroMetricsAPIController:
             raise ValidationError("Metric not found")
         except Exception as e:
             raise ValidationError(f"Failed to update metric: {str(e)}")
+
+
+@api_controller("sdk-data-values", tags=["SDK Data Values"], auth=JWTAuth(), permissions=regular_permissions)
+class SDKDataValuesAPIController:
+    @route.get("{organization_uuid}", response={200: PaginatedSDKOutputSchema})
+    @paginate(PageNumberPaginationExtra, page_size=10, max_page_size=11)
+    def get_sdk_data(self, organization_uuid: str, filters: Query[SDKDataFiltersSchema]):
+        """
+        Get SDK data values for the specified organization and filters.
+
+        Args:
+            organization_uuid (str): The UUID of the organization.
+            filters (Query[SDKDataFiltersSchema]): The filters to apply.
+
+        Returns:
+            PaginatedSDKOutputSchema: A paginated SDK output schema.
+        """
+        organization = Organization.objects.get(uuid=organization_uuid)
+
+        filters_dict = filters.dict(exclude_none=True)
+        sdk_helper = SDKDataHelper(organization, filters_dict)
+        data = sdk_helper.get_data()
+
+        return data
 
 
 @api_controller(
