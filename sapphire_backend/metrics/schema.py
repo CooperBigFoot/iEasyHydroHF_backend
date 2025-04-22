@@ -355,3 +355,51 @@ class UpdateHydrologicalMetricSchema(Schema):
 class UpdateHydrologicalMetricResponseSchema(Schema):
     success: bool
     message: str
+
+
+class SDKDataValueSchema(Schema):
+    value: float
+    value_type: str
+    timestamp_local: datetime
+    timestamp_utc: datetime
+    value_code: int | None = None
+
+
+class SDKDataVariableSchema(Schema):
+    variable_code: str
+    unit: str
+    values: list[SDKDataValueSchema]
+
+
+class SDKOutputSchema(Schema):
+    station_id: int
+    station_uuid: str
+    station_code: str
+    station_name: str
+    station_type: Literal["hydro", "meteo"]
+    data: list[SDKDataVariableSchema]
+
+
+class PaginatedSDKOutputSchema(Schema):
+    count: int
+    next: str | None = None
+    previous: str | None = None
+    results: list[SDKOutputSchema]
+
+
+class SDKDataFiltersSchema(FilterSchema):
+    timestamp_local: datetime = None
+    timestamp_local__gt: datetime = None
+    timestamp_local__gte: datetime = None
+    timestamp_local__lt: datetime = None
+    timestamp_local__lte: datetime = None
+    timestamp: datetime = None
+    timestamp__gt: datetime = None
+    timestamp__gte: datetime = None
+    timestamp__lt: datetime = None
+    timestamp__lte: datetime = None
+    station: int = None
+    station__in: list[int] = None
+    station__station_code: str = None
+    station__station_code__in: list[str] = None
+    metric_name__in: list[HydrologicalMetricName | MeteorologicalMetricName] = None
