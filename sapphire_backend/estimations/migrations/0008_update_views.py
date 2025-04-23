@@ -528,70 +528,95 @@ class Migration(migrations.Migration):
         ),
         migrations.RunSQL(
             """
-            CREATE OR REPLACE VIEW estimations_water_discharge_daily_average AS
+            CREATE OR REPLACE VIEW valid_discharge_points AS
             SELECT
-                metric.timestamp_local,
-                CAST(NULL AS NUMERIC) as min_value,
-                CASE 
-                    WHEN metric.metric_name = 'WDD' AND metric.value_type = 'O' THEN 
-                        metric.avg_value  -- Already averaged in the subquery
-                    ELSE 
-                        hydrological_round(model.param_c * POWER((metric.avg_value + model.param_a), model.param_b))  -- Apply formula to daily average water level
-                END AS avg_value,
-                CAST(NULL AS NUMERIC) as max_value,
-                'm^3/s' as unit,
-                'E' as value_type,
-                'WDDA' as metric_name,
-                '' as sensor_identifier,
-                '' as sensor_type,
-                metric.station_id
-            FROM (
-                -- Get daily average of manual discharge overrides
-                SELECT 
-                    DATE_TRUNC('day', timestamp_local) as timestamp_local,
-                    station_id,
-                    'WDD' as metric_name,
-                    'O' as value_type,
-                    AVG(avg_value) as avg_value,
-                    'cm' as unit,
-                    '' as sensor_identifier,
-                    '' as sensor_type
-                FROM metrics_hydrologicalmetric
-                WHERE metric_name = 'WDD' AND value_type = 'O'
-                GROUP BY 
-                    DATE_TRUNC('day', timestamp_local),
-                    station_id
-                UNION ALL
-                -- Get daily average water levels
-                SELECT 
-                    timestamp_local,
-                    station_id,
-                    metric_name,
-                    value_type,
-                    avg_value,
-                    unit,
-                    sensor_identifier,
-                    sensor_type
-                FROM estimations_water_level_daily_average_with_periods
-            ) metric
-            LEFT JOIN estimations_dischargecalculationperiod edp
-                ON metric.station_id = edp.station_id
-                AND metric.timestamp_local >= edp.start_date_local
-                AND (edp.end_date_local IS NULL OR metric.timestamp_local < edp.end_date_local)
-                AND edp.is_active = TRUE
+                m.timestamp_local,
+                m.station_id,
+                time_bucket('1 day', m.timestamp_local) AS timestamp_local_day,
+                DATE_PART('hour', m.timestamp_local) AS hour_of_day,
+                CASE
+                    WHEN m.metric_name = 'WDD' THEN m.avg_value  -- Manual override
+                    ELSE hydrological_round(dm.param_c * POWER((m.avg_value + dm.param_a), dm.param_b))  -- Estimated
+                END AS discharge_value,
+                CASE
+                    WHEN m.metric_name = 'WDD' THEN 'manual'
+                    ELSE 'estimated'
+                END AS source
+            FROM metrics_hydrologicalmetric m
             JOIN (
-                SELECT
-                    dm.*,
+                SELECT dm.*,
                     LEAD(valid_from_local) OVER (PARTITION BY station_id ORDER BY valid_from_local) AS next_valid_from_local
                 FROM estimations_dischargemodel dm
-            ) model ON metric.timestamp_local >= model.valid_from_local 
-                AND (metric.timestamp_local < model.next_valid_from_local OR model.next_valid_from_local IS NULL) 
-                AND metric.station_id = model.station_id
+            ) dm ON m.station_id = dm.station_id
+                AND m.timestamp_local >= dm.valid_from_local
+                AND (dm.next_valid_from_local IS NULL OR m.timestamp_local < dm.next_valid_from_local)
             WHERE
-                -- Skip if suspended
-                (edp.id IS NULL OR edp.state != 'SUSPENDED')
-                -- During manual periods, only use WDD overrides
-                AND (edp.id IS NULL OR edp.state != 'MANUAL' OR (metric.metric_name = 'WDD' AND metric.value_type = 'O'));
+                (
+                    -- Valid WDD-O: must be inside an active manual period
+                    m.metric_name = 'WDD'
+                    AND m.value_type = 'O'
+                    AND EXISTS (
+                        SELECT 1
+                        FROM estimations_dischargecalculationperiod edp
+                        WHERE edp.station_id = m.station_id
+                        AND edp.state = 'MANUAL'
+                        AND edp.is_active = TRUE
+                        AND m.timestamp_local >= edp.start_date_local
+                        AND (edp.end_date_local IS NULL OR m.timestamp_local < edp.end_date_local)
+                    )
+                )
+                OR (
+                    -- Valid WLD estimate: only if outside any manual period
+                    m.metric_name = 'WLD'
+                    AND m.value_type = 'M'
+                    AND DATE_PART('hour', m.timestamp_local) IN (8, 20)
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM estimations_dischargecalculationperiod edp
+                        WHERE edp.station_id = m.station_id
+                        AND edp.state = 'MANUAL'
+                        AND edp.is_active = TRUE
+                        AND m.timestamp_local >= edp.start_date_local
+                        AND (edp.end_date_local IS NULL OR m.timestamp_local < edp.end_date_local)
+                    )
+                )
+            AND DATE_PART('hour', m.timestamp_local) IN (8, 20);
+
+
+            """,
+            reverse_sql="DROP VIEW IF EXISTS valid_discharge_points;"
+        ),
+        migrations.RunSQL(
+            """
+            CREATE OR REPLACE VIEW daily_discharge_valid_points AS
+            SELECT
+                timestamp_local_day AS timestamp_local,
+                station_id,
+                ROUND(AVG(discharge_value), 2) AS avg_value,
+                COUNT(*) AS point_count
+            FROM valid_discharge_points
+            GROUP BY timestamp_local_day, station_id
+            HAVING COUNT(*) = 2;  -- Require both 08:00 and 20:00 discharges
+
+            """,
+            reverse_sql="DROP VIEW IF EXISTS daily_discharge_valid_points;"
+        ),
+        migrations.RunSQL(
+            """
+            CREATE OR REPLACE VIEW estimations_water_discharge_daily_average AS
+            SELECT
+                d.timestamp_local,
+                CAST(NULL AS NUMERIC) AS min_value,
+                d.avg_value,
+                CAST(NULL AS NUMERIC) AS max_value,
+                'm^3/s' AS unit,
+                'E' AS value_type,
+                'WDDA' AS metric_name,
+                '' AS sensor_identifier,
+                '' AS sensor_type,
+                d.station_id
+            FROM daily_discharge_valid_points d;
+
             """,
             reverse_sql="DROP VIEW IF EXISTS estimations_water_discharge_daily_average;"
         ),
