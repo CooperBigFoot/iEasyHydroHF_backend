@@ -440,18 +440,27 @@ class Migration(migrations.Migration):
                 wlda.sensor_type,
                 wlda.station_id
             FROM estimations_water_level_daily_average wlda
-            LEFT JOIN public.estimations_dischargecalculationperiod edp
-                ON wlda.station_id = edp.station_id
-                AND wlda.timestamp_local >= edp.start_date_local
-                AND (edp.end_date_local IS NULL OR wlda.timestamp_local < edp.end_date_local)
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM public.estimations_dischargecalculationperiod edp
+                WHERE edp.station_id = wlda.station_id
                 AND edp.is_active = TRUE
                 AND (
-                    -- Skip calculation if suspended
-                    edp.state = 'SUSPENDED'
-                    -- Skip calculation if manual with privodka only on the first day
-                    OR (edp.state = 'MANUAL' AND edp.reason = 'PRIVODKA' AND DATE(wlda.timestamp_local) = DATE(edp.start_date_local))
+                    -- Suspended period: exclude if ANY measurement is inside
+                    (edp.state = 'SUSPENDED' AND (
+                        (wlda.timestamp_local::date + INTERVAL '08:00' >= edp.start_date_local
+                        AND wlda.timestamp_local::date + INTERVAL '08:00' < COALESCE(edp.end_date_local, 'infinity'))
+                        OR
+                        (wlda.timestamp_local::date + INTERVAL '20:00' >= edp.start_date_local
+                        AND wlda.timestamp_local::date + INTERVAL '20:00' < COALESCE(edp.end_date_local, 'infinity'))
+                    ))
+                    OR
+                    -- Manual PRIVODKA calculation: exclude ONLY the first day
+                    (edp.state = 'MANUAL' AND edp.reason = 'PRIVODKA'
+                    AND wlda.timestamp_local::date = edp.start_date_local::date)
                 )
-            WHERE edp.id IS NULL;  -- Only include rows where no calculation period applies
+            );
+
             """,
             reverse_sql="DROP VIEW IF EXISTS estimations_water_level_daily_average_with_periods;"
         ),
