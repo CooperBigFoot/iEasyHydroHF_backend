@@ -288,3 +288,87 @@ class DischargeCalculationPeriod(UUIDMixin, CreateLastModifiedDateMixin, models.
             return False
 
         return period.state == cls.CalculationState.MANUAL
+
+    @classmethod
+    def has_overlapping_period(cls, station_id, start_date, end_date=None, exclude_uuid=None):
+        """
+        Check if there are any overlapping periods for a given station and date range.
+
+        This method detects the following overlap scenarios:
+
+        1. A new period starting during an existing period
+           Example:
+           - Existing: Jan 1, 2023 to Mar 31, 2023
+           - New: Feb 15, 2023 to Apr 30, 2023
+           (The new period starts during the existing period)
+
+        2. A new period ending during an existing period
+           Example:
+           - Existing: Mar 1, 2023 to May 31, 2023
+           - New: Jan 1, 2023 to Apr 15, 2023
+           (The new period ends during the existing period)
+
+        3. A new period completely containing an existing period
+           Example:
+           - Existing: Mar 1, 2023 to Apr 30, 2023
+           - New: Jan 1, 2023 to Jun 30, 2023
+           (The new period completely contains the existing period)
+
+        4. Open-ended periods (with null end_date)
+           Examples:
+           a) New open-ended period overlapping with existing period:
+              - Existing: Jan 1, 2023 to Mar 31, 2023
+              - New: Feb 15, 2023 to null (open-ended)
+           b) New period overlapping with existing open-ended period:
+              - Existing: Jan 1, 2023 to null (open-ended)
+              - New: Mar 1, 2023 to May 31, 2023
+           c) New open-ended period containing existing period:
+              - Existing: Mar 1, 2023 to Apr 30, 2023
+              - New: Jan 1, 2023 to null (open-ended)
+
+        Args:
+            station_id: The ID of the hydrological station
+            start_date: The start date of the period to check
+            end_date: The end date of the period to check (can be None for open-ended periods)
+            exclude_uuid: UUID of a period to exclude from the check (useful for updates)
+
+        Returns:
+            bool: True if there are overlapping periods, False otherwise
+        """
+        # Base query for the station
+        query = cls.objects.filter(station_id=station_id)
+
+        # Exclude a specific period if provided (useful for updates)
+        if exclude_uuid:
+            query = query.exclude(uuid=exclude_uuid)
+
+        # Case 1: New period starts during an existing period
+        # (existing.start <= new.start < existing.end OR existing.end is NULL)
+        case1 = query.filter(
+            start_date_local__lte=start_date,
+        ).filter(Q(end_date_local__isnull=True) | Q(end_date_local__gt=start_date))
+
+        # Case 2: New period ends during an existing period
+        # (existing.start < new.end <= existing.end OR existing.end is NULL)
+        if end_date:
+            case2 = query.filter(
+                start_date_local__lt=end_date,
+            ).filter(Q(end_date_local__isnull=True) | Q(end_date_local__gte=end_date))
+        else:
+            # If new period has no end date, check if it overlaps with any existing period
+            case2 = query.filter(Q(end_date_local__isnull=True) | Q(end_date_local__gt=start_date))
+
+        # Case 3: New period completely contains an existing period
+        # (new.start <= existing.start AND (new.end >= existing.end OR new.end is NULL))
+        if end_date:
+            case3 = query.filter(
+                start_date_local__gte=start_date,
+            ).filter(Q(end_date_local__isnull=True) | Q(end_date_local__lte=end_date))
+        else:
+            # If new period has no end date, it will contain any period that starts after its start date
+            case3 = query.filter(start_date_local__gte=start_date)
+
+        # Combine all cases
+        overlapping = case1.union(case2).union(case3)
+
+        return overlapping.exists()

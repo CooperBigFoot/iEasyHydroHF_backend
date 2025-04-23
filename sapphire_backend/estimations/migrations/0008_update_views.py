@@ -484,11 +484,25 @@ class Migration(migrations.Migration):
                 '' as sensor_type,
                 metric.station_id
             FROM (
+                -- Water level estimates (WLD-M)
                 SELECT * FROM metrics_hydrologicalmetric
                 WHERE metric_name = 'WLD' AND value_type = 'M'
+
                 UNION ALL
-                SELECT * FROM metrics_hydrologicalmetric
-                WHERE metric_name = 'WDD' AND value_type = 'O'
+
+                -- Manual discharge overrides (WDD-O) used ONLY when inside active MANUAL period
+                SELECT m.*
+                FROM metrics_hydrologicalmetric m
+                WHERE m.metric_name = 'WDD' AND m.value_type = 'O'
+                AND EXISTS (
+                    SELECT 1
+                    FROM public.estimations_dischargecalculationperiod edp
+                    WHERE edp.station_id = m.station_id
+                    AND edp.state = 'MANUAL'
+                    AND edp.is_active = TRUE
+                    AND m.timestamp_local >= edp.start_date_local
+                    AND (edp.end_date_local IS NULL OR m.timestamp_local < edp.end_date_local)
+                )
             ) metric
             LEFT JOIN public.estimations_dischargecalculationperiod edp
                 ON metric.station_id = edp.station_id
@@ -504,10 +518,11 @@ class Migration(migrations.Migration):
                 AND (metric.timestamp_local < dm.next_valid_from_local OR dm.next_valid_from_local IS NULL)
                 AND metric.station_id = dm.station_id
             WHERE
-                -- Skip calculation if suspended
+                -- Skip if suspended
                 (edp.id IS NULL OR edp.state != 'SUSPENDED')
-                -- Use override WDD when manual
-                AND (edp.id IS NULL OR edp.state != 'MANUAL' OR metric.metric_name = 'WDD' AND metric.value_type = 'O');
+                -- During manual period, allow only WDD overrides
+                AND (edp.id IS NULL OR edp.state != 'MANUAL' OR (metric.metric_name = 'WDD' AND metric.value_type = 'O'));
+
             """,
             reverse_sql="DROP VIEW IF EXISTS estimations_water_discharge_daily;"
         ),

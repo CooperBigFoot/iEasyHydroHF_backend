@@ -229,8 +229,19 @@ class DischargeCalculationPeriodsAPIController:
     ):
         try:
             station = HydrologicalStation.objects.get(uuid=station_uuid)
+
+            data_dict = data.dict()
+            start_date = data_dict.get("start_date_local")
+            end_date = data_dict.get("end_date_local")
+
+            if DischargeCalculationPeriod.has_overlapping_period(station.id, start_date, end_date):
+                return 400, {
+                    "detail": "A period with overlapping dates already exists for this station.",
+                    "code": "overlapping_period",
+                }
+
             period = DischargeCalculationPeriod.objects.create(
-                **data.dict(),
+                **data_dict,
                 station=station,
                 user=request.user,
             )
@@ -246,7 +257,7 @@ class DischargeCalculationPeriodsAPIController:
         except DischargeCalculationPeriod.DoesNotExist:
             return 404, {"detail": "Calculation period not found.", "code": "not_found"}
 
-    @route.put("{period_uuid}", response={200: DischargeCalculationPeriodOutputSchema, 404: Message})
+    @route.put("{period_uuid}", response={200: DischargeCalculationPeriodOutputSchema, 400: Message, 404: Message})
     def update_period(
         self,
         request: HttpRequest,
@@ -257,7 +268,24 @@ class DischargeCalculationPeriodsAPIController:
     ):
         try:
             period = DischargeCalculationPeriod.objects.get(uuid=period_uuid, station__uuid=station_uuid)
-            for key, value in data.dict(exclude_unset=True).items():
+
+            # Get the updated data
+            updated_data = data.dict(exclude_unset=True)
+
+            # Check if start_date or end_date is being updated
+            start_date = updated_data.get("start_date_local", period.start_date_local)
+            end_date = updated_data.get("end_date_local", period.end_date_local)
+
+            if DischargeCalculationPeriod.has_overlapping_period(
+                station_id=period.station_id, start_date=start_date, end_date=end_date, exclude_uuid=period_uuid
+            ):
+                return 400, {
+                    "detail": "A period with overlapping dates already exists for this station.",
+                    "code": "overlapping_period",
+                }
+
+            # Apply the updates
+            for key, value in updated_data.items():
                 setattr(period, key, value)
             period.save()
             return 200, period
