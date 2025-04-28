@@ -551,38 +551,47 @@ class Migration(migrations.Migration):
                 AND m.timestamp_local >= dm.valid_from_local
                 AND (dm.next_valid_from_local IS NULL OR m.timestamp_local < dm.next_valid_from_local)
             WHERE
-                (
-                    -- Valid WDD-O: must be inside an active manual period
-                    m.metric_name = 'WDD'
-                    AND m.value_type = 'O'
-                    AND EXISTS (
-                        SELECT 1
-                        FROM estimations_dischargecalculationperiod edp
-                        WHERE edp.station_id = m.station_id
-                        AND edp.state = 'MANUAL'
-                        AND edp.is_active = TRUE
-                        AND m.timestamp_local >= edp.start_date_local
-                        AND (edp.end_date_local IS NULL OR m.timestamp_local < edp.end_date_local)
+                -- Exclude everything during suspended periods
+                NOT EXISTS (
+                    SELECT 1
+                    FROM estimations_dischargecalculationperiod edp
+                    WHERE edp.station_id = m.station_id
+                    AND edp.state = 'SUSPENDED'
+                    AND edp.is_active = TRUE
+                    AND m.timestamp_local >= edp.start_date_local
+                    AND (edp.end_date_local IS NULL OR m.timestamp_local < edp.end_date_local)
+                )
+                AND (
+                    (
+                        -- Valid WDD-O inside manual period
+                        m.metric_name = 'WDD'
+                        AND m.value_type = 'O'
+                        AND EXISTS (
+                            SELECT 1
+                            FROM estimations_dischargecalculationperiod edp
+                            WHERE edp.station_id = m.station_id
+                            AND edp.state = 'MANUAL'
+                            AND edp.is_active = TRUE
+                            AND m.timestamp_local >= edp.start_date_local
+                            AND (edp.end_date_local IS NULL OR m.timestamp_local < edp.end_date_local)
+                        )
+                    )
+                    OR (
+                        -- Valid WLD outside any manual period
+                        m.metric_name = 'WLD'
+                        AND m.value_type = 'M'
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM estimations_dischargecalculationperiod edp
+                            WHERE edp.station_id = m.station_id
+                            AND edp.state = 'MANUAL'
+                            AND edp.is_active = TRUE
+                            AND m.timestamp_local >= edp.start_date_local
+                            AND (edp.end_date_local IS NULL OR m.timestamp_local < edp.end_date_local)
+                        )
                     )
                 )
-                OR (
-                    -- Valid WLD estimate: only if outside any manual period
-                    m.metric_name = 'WLD'
-                    AND m.value_type = 'M'
-                    AND DATE_PART('hour', m.timestamp_local) IN (8, 20)
-                    AND NOT EXISTS (
-                        SELECT 1
-                        FROM estimations_dischargecalculationperiod edp
-                        WHERE edp.station_id = m.station_id
-                        AND edp.state = 'MANUAL'
-                        AND edp.is_active = TRUE
-                        AND m.timestamp_local >= edp.start_date_local
-                        AND (edp.end_date_local IS NULL OR m.timestamp_local < edp.end_date_local)
-                    )
-                )
-            AND DATE_PART('hour', m.timestamp_local) IN (8, 20);
-
-
+                AND DATE_PART('hour', m.timestamp_local) IN (8, 20);
             """,
             reverse_sql="DROP VIEW IF EXISTS valid_discharge_points;"
         ),
