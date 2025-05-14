@@ -56,6 +56,8 @@ class TestVirtualStationsAPI:
         authenticated_regular_user_api_client,
         organization,
         virtual_station,
+        virtual_station_association_one,
+        virtual_station_association_two,
         virtual_station_no_associations,
         virtual_station_backup_organization,
         virtual_station_deleted,
@@ -100,6 +102,22 @@ class TestVirtualStationsAPI:
                 "decadal_forecast": False,
                 "monthly_forecast": False,
                 "seasonal_forecast": False,
+                "associations": [
+                    {
+                        "name": virtual_station.virtualstationassociation_set.first().hydro_station.name,
+                        "id": virtual_station.virtualstationassociation_set.first().hydro_station.id,
+                        "uuid": str(virtual_station.virtualstationassociation_set.first().hydro_station.uuid),
+                        "weight": virtual_station.virtualstationassociation_set.first().weight,
+                        "station_code": virtual_station.virtualstationassociation_set.first().hydro_station.station_code,
+                    },
+                    {
+                        "name": virtual_station.virtualstationassociation_set.last().hydro_station.name,
+                        "id": virtual_station.virtualstationassociation_set.last().hydro_station.id,
+                        "uuid": str(virtual_station.virtualstationassociation_set.last().hydro_station.uuid),
+                        "weight": virtual_station.virtualstationassociation_set.last().weight,
+                        "station_code": virtual_station.virtualstationassociation_set.last().hydro_station.station_code,
+                    },
+                ],
             },
             {
                 "basin": {
@@ -142,6 +160,7 @@ class TestVirtualStationsAPI:
                 "decadal_forecast": False,
                 "monthly_forecast": False,
                 "seasonal_forecast": False,
+                "associations": [],
             },
         ]
 
