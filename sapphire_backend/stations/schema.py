@@ -284,6 +284,10 @@ class VirtualStationDetailOutputSchema(VirtualStationListOutputSchema):
     associations: list[VirtualStationAssociationSchema] = Field(None, alias="virtualstationassociation_set")
 
 
+class VirtualStationOutputSchema(VirtualStationDetailOutputSchema):
+    pass
+
+
 class AssignedStationNestedSchema(UUIDSchemaMixin, Schema):
     id: int
     name: str
