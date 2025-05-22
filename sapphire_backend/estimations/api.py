@@ -71,7 +71,7 @@ class DischargeModelsAPIController:
 
         hydro_station = HydrologicalStation.objects.get(uuid=station_uuid)
         valid_from_local = datetime.fromisoformat(input_data.valid_from_local).replace(
-            hour=0, minute=0, second=0, microsecond=0, tzinfo=ZoneInfo("UTC")
+            microsecond=0, tzinfo=ZoneInfo("UTC")
         )
 
         DischargeModel.objects.filter(station__uuid=station_uuid, valid_from_local=valid_from_local).delete()

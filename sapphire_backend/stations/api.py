@@ -33,11 +33,10 @@ from .schema import (
     RemarkInputSchema,
     RemarkOutputSchema,
     VirtualStationAssociationInputSchema,
-    VirtualStationDetailOutputSchema,
     VirtualStationForecastStatusInputSchema,
     VirtualStationForecastStatusOutputSchema,
     VirtualStationInputSchema,
-    VirtualStationListOutputSchema,
+    VirtualStationOutputSchema,
     VirtualStationUpdateSchema,
 )
 
@@ -365,15 +364,15 @@ class MeteoStationsAPIController:
     "stations/{organization_uuid}/virtual", tags=["Virtual stations"], auth=JWTAuth(), permissions=regular_permissions
 )
 class VirtualStationsAPIController:
-    @route.get("", response=list[VirtualStationListOutputSchema])
+    @route.get("", response=list[VirtualStationOutputSchema])
     def get_virtual_stations(self, request: HttpRequest, organization_uuid: str):
         return VirtualStation.objects.for_organization(organization_uuid).active()
 
-    @route.get("{virtual_station_uuid}", response={200: VirtualStationDetailOutputSchema})
+    @route.get("{virtual_station_uuid}", response={200: VirtualStationOutputSchema})
     def get_virtual_station(self, request: HttpRequest, organization_uuid: str, virtual_station_uuid: str):
         return VirtualStation.objects.get(organization=organization_uuid, uuid=virtual_station_uuid, is_deleted=False)
 
-    @route.post("", response={201: VirtualStationDetailOutputSchema})
+    @route.post("", response={201: VirtualStationOutputSchema})
     def create_virtual_station(
         self, request: HttpRequest, organization_uuid: str, virtual_station_data: VirtualStationInputSchema
     ):
@@ -384,7 +383,7 @@ class VirtualStationsAPIController:
 
     @route.post(
         "{virtual_station_uuid}/associations",
-        response={201: VirtualStationDetailOutputSchema},
+        response={201: VirtualStationOutputSchema},
     )
     def create_virtual_station_associations(
         self,
@@ -421,7 +420,7 @@ class VirtualStationsAPIController:
         virtual_station.save()
         return 200, {"detail": "Station successfully deleted", "code": "deleted"}
 
-    @route.put("{virtual_station_uuid}", response={200: VirtualStationDetailOutputSchema})
+    @route.put("{virtual_station_uuid}", response={200: VirtualStationOutputSchema})
     def update_virtual_station(
         self,
         request: HttpRequest,

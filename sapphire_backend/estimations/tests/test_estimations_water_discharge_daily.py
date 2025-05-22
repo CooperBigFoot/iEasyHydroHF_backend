@@ -66,6 +66,61 @@ class TestHydroStationWaterDischargeDaily:
 
         assert custom_round(discharge_evening_estimated, 6) == custom_round(discharge_evening_expected, 6)
 
+    def test_water_discharge_daily_different_curves_same_day(
+        self,
+        discharge_model_manual_hydro_station_kyrgyz,
+        discharge_second_model_manual_hydro_station_kyrgyz,
+        manual_hydro_station_kyrgyz,
+    ):
+        # Set up the second model to be valid from the same day as the first model
+        timestamp = discharge_model_manual_hydro_station_kyrgyz.valid_from_local
+        discharge_second_model_manual_hydro_station_kyrgyz.valid_from_local = timestamp.replace(hour=12, minute=0)
+        discharge_second_model_manual_hydro_station_kyrgyz.save()
+
+        smart_dt = SmartDatetime(timestamp, station=manual_hydro_station_kyrgyz, tz_included=False)
+
+        # Create morning water level measurement
+        water_level_morning = HydrologicalMetric(
+            timestamp_local=smart_dt.morning_local,
+            avg_value=70,
+            unit=MetricUnit.WATER_LEVEL,
+            metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+            value_type=HydrologicalMeasurementType.MANUAL,
+            station=manual_hydro_station_kyrgyz,
+        )
+        water_level_morning.save()
+
+        # Create evening water level measurement
+        water_level_evening = HydrologicalMetric(
+            timestamp_local=smart_dt.evening_local,
+            avg_value=135,
+            unit=MetricUnit.WATER_LEVEL,
+            metric_name=HydrologicalMetricName.WATER_LEVEL_DAILY,
+            value_type=HydrologicalMeasurementType.MANUAL,
+            station=manual_hydro_station_kyrgyz,
+        )
+        water_level_evening.save()
+
+        # Calculate expected discharge values using different curves
+        discharge_morning_expected = discharge_model_manual_hydro_station_kyrgyz.estimate_discharge(
+            water_level_morning.avg_value
+        )
+        discharge_evening_expected = discharge_second_model_manual_hydro_station_kyrgyz.estimate_discharge(
+            water_level_evening.avg_value
+        )
+
+        # Get actual discharge values from the database
+        discharge_morning_estimated = EstimationsWaterDischargeDaily.objects.get(
+            station_id=manual_hydro_station_kyrgyz.id, timestamp_local=smart_dt.morning_local
+        ).avg_value
+        discharge_evening_estimated = EstimationsWaterDischargeDaily.objects.get(
+            station_id=manual_hydro_station_kyrgyz.id, timestamp_local=smart_dt.evening_local
+        ).avg_value
+
+        # Verify that morning discharge uses first curve and evening uses second curve
+        assert custom_round(discharge_morning_estimated, 6) == custom_round(discharge_morning_expected, 6)
+        assert custom_round(discharge_evening_estimated, 6) == custom_round(discharge_evening_expected, 6)
+
 
 class TestHydroStationWaterDischargeDailyMultipleRatingCurves:
     start_date = date(2020, 2, 1)
