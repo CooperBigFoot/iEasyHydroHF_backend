@@ -633,7 +633,11 @@ class Migration(migrations.Migration):
             SELECT
                 m.timestamp_local,
                 m.min_value,
-                COALESCE(c.avg_value, o.avg_value, m.avg_value) AS avg_value,
+                COALESCE(
+                    c.avg_value,              -- 1. true mean when multiple model/override points
+                    o.avg_value,              -- 2. operator overrides, if ≥2
+                    m.avg_value               -- 3. single-curve model average
+                ) AS avg_value,
                 m.max_value,
                 m.unit,
                 m.value_type,
@@ -647,7 +651,23 @@ class Migration(migrations.Migration):
                 AND o.timestamp_local = m.timestamp_local
             LEFT JOIN estimations_water_discharge_daily_average_computed c
                 ON m.station_id   = c.station_id
-                AND m.timestamp_local = c.timestamp_local;
+                AND m.timestamp_local = c.timestamp_local
+            WHERE
+                -- keep days with a computed or override average
+                c.avg_value IS NOT NULL
+            OR o.avg_value IS NOT NULL
+                -- or days with no overlapping SUSPENDED or MANUAL period
+            OR NOT EXISTS (
+                SELECT 1
+                FROM public.estimations_dischargecalculationperiod edp
+                WHERE edp.station_id    = m.station_id
+                    AND edp.is_active     = TRUE
+                    -- overlap check: period intersects the 24 h bucket around timestamp_local
+                    AND edp.start_date_local
+                        <  m.timestamp_local + INTERVAL '12 hours'
+                    AND COALESCE(edp.end_date_local, 'infinity')
+                        >  m.timestamp_local - INTERVAL '12 hours'
+            );
             """,
             reverse_sql="DROP VIEW IF EXISTS estimations_water_discharge_daily_average;"
             ),
