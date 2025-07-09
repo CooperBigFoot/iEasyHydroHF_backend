@@ -63,6 +63,28 @@ class EstimationsWaterLevelDecadeAverage(BaseHydroMetricMixin, MinMaxValueMixin,
         db_table = "estimations_water_level_decade_average"
 
 
+class EstimationsWaterDischargeDailyModel(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+    model_id = models.IntegerField(verbose_name=_("Model ID"))
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_daily_model"
+
+
+class EstimationsWaterDischargeDailyOverrides(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+    model_id = models.IntegerField(verbose_name=_("Model ID"))
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_daily_overrides"
+
+
 class EstimationsWaterDischargeDaily(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
     station = models.ForeignKey(
         "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
@@ -71,6 +93,42 @@ class EstimationsWaterDischargeDaily(BaseHydroMetricMixin, MinMaxValueMixin, Sen
     class Meta:
         managed = False
         db_table = "estimations_water_discharge_daily"
+
+
+class EstimationsWaterDischargeDailyAverageModel(
+    BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model
+):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_daily_average_model"
+
+
+class EstimationsWaterDischargeDailyAverageComputed(
+    BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model
+):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_daily_average_computed"
+
+
+class EstimationsWaterDischargeDailyAverageOverrides(
+    BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model
+):
+    station = models.ForeignKey(
+        "stations.HydrologicalStation", verbose_name=_("Hydrological station"), on_delete=models.DO_NOTHING
+    )
+
+    class Meta:
+        managed = False
+        db_table = "estimations_water_discharge_daily_average_overrides"
 
 
 class EstimationsWaterDischargeDailyAverage(BaseHydroMetricMixin, MinMaxValueMixin, SensorInfoMixin, models.Model):
