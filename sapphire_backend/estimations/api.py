@@ -19,10 +19,14 @@ from sapphire_backend.utils.permissions import (
 
 from ..stations.models import HydrologicalStation
 from .models import (
+    DischargeCalculationPeriod,
     DischargeModel,
     EstimationsWaterDischargeDailyAverageVirtual,
 )
 from .schema import (
+    DischargeCalculationPeriodInputSchema,
+    DischargeCalculationPeriodOutputSchema,
+    DischargeCalculationPeriodUpdateSchema,
     DischargeCalculationSchema,
     DischargeModelBaseSchema,
     DischargeModelCreateInputDeltaSchema,
@@ -196,3 +200,104 @@ class EstimationsAPIController:
     ):
         queryset = self._get_averages_queryset(EstimationsWaterDischargeDailyAverageVirtual, filters, order, limit)
         return queryset
+
+
+@api_controller(
+    "stations/{organization_uuid}/hydrological/{station_uuid}/discharge-calculation-periods",
+    tags=["Discharge Calculation Periods"],
+    auth=JWTAuth(),
+    permissions=regular_permissions,
+)
+class DischargeCalculationPeriodsAPIController:
+    @route.get("", response={200: list[DischargeCalculationPeriodOutputSchema], 404: Message})
+    def list_periods(self, organization_uuid: str, station_uuid: str):
+        try:
+            periods = DischargeCalculationPeriod.objects.filter(station__uuid=station_uuid).order_by(
+                "-start_date_local"
+            )
+            return 200, periods
+        except DischargeCalculationPeriod.DoesNotExist:
+            return 404, {"detail": "No calculation periods found.", "code": "not_found"}
+
+    @route.post("", response={201: DischargeCalculationPeriodOutputSchema, 400: Message})
+    def create_period(
+        self,
+        request: HttpRequest,
+        organization_uuid: str,
+        station_uuid: str,
+        data: DischargeCalculationPeriodInputSchema,
+    ):
+        try:
+            station = HydrologicalStation.objects.get(uuid=station_uuid)
+
+            data_dict = data.dict()
+            start_date = data_dict.get("start_date_local")
+            end_date = data_dict.get("end_date_local")
+
+            if DischargeCalculationPeriod.has_overlapping_period(station.id, start_date, end_date):
+                return 400, {
+                    "detail": "A period with overlapping dates already exists for this station.",
+                    "code": "overlapping_period",
+                }
+
+            period = DischargeCalculationPeriod.objects.create(
+                **data_dict,
+                station=station,
+                user=request.user,
+            )
+            return 201, period
+        except Exception as e:
+            return 400, {"detail": str(e), "code": "creation_failed"}
+
+    @route.get("{period_uuid}", response={200: DischargeCalculationPeriodOutputSchema, 404: Message})
+    def get_period(self, organization_uuid: str, station_uuid: str, period_uuid: str):
+        try:
+            period = DischargeCalculationPeriod.objects.get(uuid=period_uuid, station__uuid=station_uuid)
+            return 200, period
+        except DischargeCalculationPeriod.DoesNotExist:
+            return 404, {"detail": "Calculation period not found.", "code": "not_found"}
+
+    @route.put("{period_uuid}", response={200: DischargeCalculationPeriodOutputSchema, 400: Message, 404: Message})
+    def update_period(
+        self,
+        request: HttpRequest,
+        organization_uuid: str,
+        station_uuid: str,
+        period_uuid: str,
+        data: DischargeCalculationPeriodUpdateSchema,
+    ):
+        try:
+            period = DischargeCalculationPeriod.objects.get(uuid=period_uuid, station__uuid=station_uuid)
+
+            # Get the updated data
+            updated_data = data.dict(exclude_unset=True)
+
+            # Check if start_date or end_date is being updated
+            start_date = updated_data.get("start_date_local", period.start_date_local)
+            end_date = updated_data.get("end_date_local", period.end_date_local)
+
+            if DischargeCalculationPeriod.has_overlapping_period(
+                station_id=period.station_id, start_date=start_date, end_date=end_date, exclude_uuid=period_uuid
+            ):
+                return 400, {
+                    "detail": "A period with overlapping dates already exists for this station.",
+                    "code": "overlapping_period",
+                }
+
+            # Apply the updates
+            for key, value in updated_data.items():
+                setattr(period, key, value)
+            period.save()
+            return 200, period
+        except DischargeCalculationPeriod.DoesNotExist:
+            return 404, {"detail": "Calculation period not found.", "code": "not_found"}
+
+    @route.put("{period_uuid}/toggle-active", response={200: DischargeCalculationPeriodOutputSchema, 404: Message})
+    def toggle_period_active(self, organization_uuid: str, station_uuid: str, period_uuid: str):
+        try:
+            period = DischargeCalculationPeriod.objects.get(uuid=period_uuid, station__uuid=station_uuid)
+            period.is_active = not period.is_active
+            period.save()
+            return 200, period
+        except DischargeCalculationPeriod.DoesNotExist:
+            return 404, {"detail": "Calculation period not found.", "code": "not_found"}

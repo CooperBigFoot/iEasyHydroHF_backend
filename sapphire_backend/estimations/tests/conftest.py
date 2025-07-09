@@ -5,7 +5,7 @@ import pytest
 from pytest_factoryboy import register
 from zoneinfo import ZoneInfo
 
-from sapphire_backend.estimations.tests.factories import DischargeModelFactory
+from sapphire_backend.estimations.tests.factories import DischargeCalculationPeriodFactory, DischargeModelFactory
 from sapphire_backend.metrics.choices import NormType
 from sapphire_backend.metrics.tests.factories import HydrologicalNormFactory
 from sapphire_backend.stations.tests.factories import (
@@ -16,6 +16,7 @@ from sapphire_backend.utils.rounding import hydrological_round
 
 register(VirtualStationFactory)
 register(VirtualStationAssociationFactory)
+register(DischargeCalculationPeriodFactory)
 
 
 @pytest.fixture
@@ -128,4 +129,46 @@ def discharge_model_2021(db, manual_hydro_station_kyrgyz):
         param_b=2,
         param_c=0.0005,
         station=manual_hydro_station_kyrgyz,
+    )
+
+
+@pytest.fixture
+def suspended_calculation_period(db, manual_hydro_station_kyrgyz, regular_user_kyrgyz):
+    return DischargeCalculationPeriodFactory(
+        station=manual_hydro_station_kyrgyz,
+        user=regular_user_kyrgyz,
+        start_date_local=datetime(2020, 2, 10, tzinfo=ZoneInfo("UTC")),
+        end_date_local=datetime(2020, 2, 15, tzinfo=ZoneInfo("UTC")),
+        state=DischargeCalculationPeriodFactory._meta.model.CalculationState.SUSPENDED,
+        reason=DischargeCalculationPeriodFactory._meta.model.CalculationReason.ICE,
+        is_active=True,
+        comment="Ice phenomena period - suspend calculations",
+    )
+
+
+@pytest.fixture
+def manual_calculation_period(db, manual_hydro_station_kyrgyz, regular_user_kyrgyz):
+    return DischargeCalculationPeriodFactory(
+        station=manual_hydro_station_kyrgyz,
+        user=regular_user_kyrgyz,
+        start_date_local=datetime(2020, 2, 15, tzinfo=ZoneInfo("UTC")),
+        end_date_local=datetime(2020, 2, 20, tzinfo=ZoneInfo("UTC")),
+        state=DischargeCalculationPeriodFactory._meta.model.CalculationState.MANUAL,
+        reason=DischargeCalculationPeriodFactory._meta.model.CalculationReason.OTHER,
+        is_active=True,
+        comment="Manual override period for special conditions",
+    )
+
+
+@pytest.fixture
+def manual_privodka_calculation_period(db, manual_hydro_station_kyrgyz, regular_user_kyrgyz):
+    return DischargeCalculationPeriodFactory(
+        station=manual_hydro_station_kyrgyz,
+        user=regular_user_kyrgyz,
+        start_date_local=datetime(2020, 2, 20, tzinfo=ZoneInfo("UTC")),
+        end_date_local=datetime(2020, 2, 25, tzinfo=ZoneInfo("UTC")),
+        state=DischargeCalculationPeriodFactory._meta.model.CalculationState.MANUAL,
+        reason=DischargeCalculationPeriodFactory._meta.model.CalculationReason.PRIVODKA,
+        is_active=True,
+        comment="Privodka calibration period",
     )

@@ -1,7 +1,11 @@
 from datetime import datetime
 from typing import Literal
 
-from ninja import Field, FilterSchema, Schema
+from ninja import Field, FilterSchema, ModelSchema, Schema
+
+from sapphire_backend.utils.mixins.schemas import UUIDSchemaMixin
+
+from .models import DischargeCalculationPeriod
 
 
 class DischargeModelBaseSchema(Schema):
@@ -88,3 +92,22 @@ class HQTableRowSchema(Schema):
 class DischargeCalculationSchema(Schema):
     discharge: float
     water_level: float
+
+
+class DischargeCalculationPeriodInputSchema(ModelSchema):
+    class Meta:
+        model = DischargeCalculationPeriod
+        fields = ["start_date_local", "end_date_local", "state", "reason", "comment"]
+
+
+class DischargeCalculationPeriodUpdateSchema(ModelSchema):
+    class Meta:
+        model = DischargeCalculationPeriod
+        fields = ["start_date_local", "end_date_local", "state", "reason", "comment"]
+        optional_fields = "__all__"
+
+
+class DischargeCalculationPeriodOutputSchema(UUIDSchemaMixin, DischargeCalculationPeriodInputSchema):
+    id: int
+    user: str = Field(None, alias="user.username")
+    is_active: bool

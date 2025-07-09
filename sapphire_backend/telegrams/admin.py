@@ -31,7 +31,7 @@ class TelegramReceivedAdmin(admin.ModelAdmin):
 @admin.register(TelegramStored)
 class TelegramStoredAdmin(admin.ModelAdmin):
     list_display = ["telegram", "created_date", "telegram_day", "station_code", "stored_by", "auto_stored"]
-    list_filter = ["created_date", "telegram_day", "station_code", "stored_by", "auto_stored"]
+    list_filter = ["created_date", "organization", "telegram_day", "station_code", "stored_by", "auto_stored"]
 
 
 @admin.register(TelegramParserLog)

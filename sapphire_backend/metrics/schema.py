@@ -103,6 +103,7 @@ class MetricValueWithMetadata(Schema):
     sensor_identifier: str | None = None
     value_type: str | None = None
     has_history: bool | None = None
+    allow_manual_override: bool | None = False
 
 
 class IcePhenomenaWithMetadata(Schema):

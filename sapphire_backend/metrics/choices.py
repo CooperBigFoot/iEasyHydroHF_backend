@@ -8,6 +8,7 @@ class HydrologicalMeasurementType(models.TextChoices):
     ESTIMATED = "E", _("Estimated")
     IMPORTED = "I", _("Imported")
     UNKNOWN = "U", _("Unknown")
+    OVERRIDE = "O", _("Override")
 
 
 class HydrologicalMetricName(models.TextChoices):

@@ -135,6 +135,6 @@ class Migration(migrations.Migration):
                 GROUP BY station_id, timestamp_local::timestamp without time zone;
                """
             )],
-            reverse_sql=[("drop view if exists metrics_bulk_data_auto;")],
+            reverse_sql=[("drop view if exists metrics_bulk_data_hydro_auto;")],
         ),
     ]

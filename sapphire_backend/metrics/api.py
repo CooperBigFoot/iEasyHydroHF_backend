@@ -22,6 +22,7 @@ from ninja_extra.pagination import PageNumberPaginationExtra, paginate
 from ninja_jwt.authentication import JWTAuth
 from zoneinfo import ZoneInfo
 
+from sapphire_backend.estimations.models import DischargeCalculationPeriod
 from sapphire_backend.organizations.models import Organization
 from sapphire_backend.stations.models import HydrologicalStation, MeteorologicalStation, VirtualStation
 from sapphire_backend.utils.datetime_helper import SmartDatetime
@@ -41,6 +42,7 @@ from ..estimations.models import (
     EstimationsWaterDischargeDecadeAverage,
     EstimationsWaterDischargeDecadeAverageVirtual,
     EstimationsWaterLevelDailyAverage,
+    EstimationsWaterLevelDailyAverageWithPeriods,
     EstimationsWaterLevelDecadeAverage,
     EstimationsWaterTemperatureDaily,
     HydrologicalNormVirtual,
@@ -148,7 +150,6 @@ class HydroMetricsAPIController:
         else:  # ViewType.DAILY
             self._validate_datetime_range(filter_dict, allowed_days=365)  # 365 days for daily data
 
-        # For chart views, only return water level data
         if view_type == "daily":
             model_mapping = {
                 HydrologicalMetricName.WATER_LEVEL_DAILY_AVERAGE: EstimationsWaterLevelDailyAverage,
@@ -271,8 +272,10 @@ class HydroMetricsAPIController:
 
         if view_type.view_type == ViewType.DAILY:
             results = defaultdict(dict)
+
             for record in qs:
                 results[record.timestamp_local][record.metric_name] = record.avg_value
+
             return [HFChartSchema(timestamp_local=ts, **values) for ts, values in results.items()]
         else:
             annotations = self._prepare_annotations(filter_dict)
@@ -424,6 +427,49 @@ class HydroMetricsAPIController:
             raise ValidationError("Metric not found")
         except Exception as e:
             raise ValidationError(f"Failed to update metric: {str(e)}")
+
+    @route.post(
+        "discharge-override", response={200: UpdateHydrologicalMetricResponseSchema, 404: Message, 400: Message}
+    )
+    def create_discharge_override(self, request, payload: UpdateHydrologicalMetricSchema) -> dict:
+        try:
+            with transaction.atomic():
+                if (
+                    payload.metric_name != HydrologicalMetricName.WATER_DISCHARGE_DAILY
+                    and payload.value_type != HydrologicalMeasurementType.OVERRIDE
+                ):
+                    raise ValidationError("This endpoint can only be used for override discharge metrics")
+
+                manual_calculation_period = DischargeCalculationPeriod.is_manual_calculation(
+                    payload.station_id, payload.timestamp_local
+                )
+
+                if not manual_calculation_period:
+                    raise ValidationError("No active manual calculation period found for this date")
+
+                # Create the override metric
+                metric = HydrologicalMetric(
+                    timestamp_local=payload.timestamp_local,
+                    station_id=payload.station_id,
+                    metric_name=payload.metric_name,
+                    value_type=HydrologicalMeasurementType.OVERRIDE,
+                    sensor_identifier="",
+                    avg_value=payload.new_value,
+                    value_code=payload.value_code,
+                    unit=MetricUnit.WATER_DISCHARGE,
+                    source_type=SourceTypeMixin.SourceType.USER,
+                    source_id=request.user.id,
+                )
+
+                # Save and create log entry
+                save_metric_and_create_log(metric, description=payload.comment)
+
+                return {"success": True, "message": "Discharge override created successfully"}
+
+        except ValidationError as e:
+            raise ValidationError(str(e))
+        except Exception as e:
+            raise ValidationError(f"Failed to create discharge override: {str(e)}")
 
 
 @api_controller("sdk-data-values", tags=["SDK Data Values"], auth=JWTAuth(), permissions=regular_permissions)
@@ -761,7 +807,7 @@ class OperationalJournalAPIController:
 
         cls_estimations_views = [
             EstimationsWaterDischargeDaily,
-            EstimationsWaterLevelDailyAverage,
+            EstimationsWaterLevelDailyAverageWithPeriods,
             EstimationsWaterDischargeDailyAverage,
         ]
 
