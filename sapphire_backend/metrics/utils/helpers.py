@@ -290,7 +290,11 @@ class OperationalJournalDataTransformer:
         max_row = {"id": "max", "date": "maximum", "station_id": self.station.id}
 
         for metric in relevant_metrics:
-            valid_values = [row[metric]["value"] for row in daily_data if row[metric]["value"] != "--"]
+            valid_values = [
+                row[metric]["value"]
+                for row in daily_data
+                if metric in row and isinstance(row[metric], dict) and row[metric].get("value", "--") != "--"
+            ]
             if valid_values:
                 min_row[metric] = {"value": min(valid_values)}
                 max_row[metric] = {"value": max(valid_values)}
@@ -377,6 +381,7 @@ class OperationalJournalDataTransformer:
                 water_level_morning = self._get_metric_value(
                     morning_data, HydrologicalMetricName.WATER_LEVEL_DAILY, True
                 )
+
                 water_discharge_morning = self._get_metric_value(
                     morning_data, HydrologicalMetricName.WATER_DISCHARGE_DAILY, True
                 )
@@ -394,6 +399,7 @@ class OperationalJournalDataTransformer:
             else:
                 previous_day_water_level = None
                 day_dict["water_level_morning"] = {"value": "--"}
+                day_dict["water_discharge_morning"] = {"value": "--"}
 
             # get evening data next
             evening_data = self._get_evening_data(daily_data)
