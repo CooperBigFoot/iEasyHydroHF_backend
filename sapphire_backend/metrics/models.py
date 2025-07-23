@@ -15,6 +15,7 @@ from ..utils.datetime_helper import SmartDatetime
 from .choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
+    HydrologicalNormMetric,
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
     MeteorologicalNormMetric,
@@ -323,6 +324,12 @@ class HydrologicalNorm(NormModelMixin, models.Model):
         to_field="uuid",
         verbose_name=_("Hydrological station"),
         on_delete=models.CASCADE,
+    )
+    norm_metric = models.CharField(
+        verbose_name=_("Norm metric"),
+        choices=HydrologicalNormMetric,
+        default=HydrologicalNormMetric.WATER_DISCHARGE,
+        max_length=5,
     )
 
     objects = HydrologicalNormQuerySet.as_manager()
