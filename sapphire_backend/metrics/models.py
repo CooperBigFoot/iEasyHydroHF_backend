@@ -329,7 +329,7 @@ class HydrologicalNorm(NormModelMixin, models.Model):
         verbose_name=_("Norm metric"),
         choices=HydrologicalNormMetric,
         default=HydrologicalNormMetric.WATER_DISCHARGE,
-        max_length=5,
+        max_length=20,
     )
 
     objects = HydrologicalNormQuerySet.as_manager()
