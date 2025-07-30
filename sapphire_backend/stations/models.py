@@ -65,6 +65,13 @@ class HydrologicalStation(UUIDMixin, ForecastToggleMixin, BulletinOrderMixin, mo
     historical_discharge_maximum = models.FloatField(
         verbose_name=_("Historical maximal value of discharge"), blank=True, null=True
     )
+    water_level_alarm = models.FloatField(verbose_name=_("Dangerous water level"), blank=True, null=True)
+    historical_water_level_minimum = models.FloatField(
+        verbose_name=_("Historical minimal value of water level"), blank=True, null=True
+    )
+    historical_water_level_maximum = models.FloatField(
+        verbose_name=_("Historical maximal value of water level"), blank=True, null=True
+    )
     is_deleted = models.BooleanField(verbose_name=_("Is deleted?"), default=False)
 
     objects = HydroStationQuerySet.as_manager()

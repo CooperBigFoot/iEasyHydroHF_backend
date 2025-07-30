@@ -9,6 +9,7 @@ from pydantic import field_validator
 from .choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
+    HydrologicalNormMetric,
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
     MeteorologicalNormMetric,
@@ -224,8 +225,12 @@ class HydrologicalNormTypeFiltersSchema(FilterSchema):
     norm_type: NormType
 
 
+class HydrologicalNormMetricFiltersSchema(FilterSchema):
+    metric: HydrologicalNormMetric
+
+
 class MeteorologicalNormTypeFiltersSchema(HydrologicalNormTypeFiltersSchema):
-    norm_metric: MeteorologicalNormMetric
+    metric: MeteorologicalNormMetric
 
 
 class HydrologicalNormOutputSchema(ModelSchema):

@@ -6,7 +6,7 @@ from pytest_factoryboy import register
 from zoneinfo import ZoneInfo
 
 from sapphire_backend.estimations.tests.factories import DischargeCalculationPeriodFactory, DischargeModelFactory
-from sapphire_backend.metrics.choices import NormType
+from sapphire_backend.metrics.choices import HydrologicalNormMetric, NormType
 from sapphire_backend.metrics.tests.factories import HydrologicalNormFactory
 from sapphire_backend.stations.tests.factories import (
     VirtualStationAssociationFactory,
@@ -65,6 +65,7 @@ def decadal_discharge_norm_manual_hydro_station_kyrgyz(db, manual_hydro_station_
         value=hydrological_round(Decimal("10.1")),
         norm_type=NormType.DECADAL,
         ordinal_number=1,
+        norm_metric=HydrologicalNormMetric.WATER_DISCHARGE,
     )
 
 
@@ -75,6 +76,7 @@ def decadal_discharge_norm_manual_second_hydro_station_kyrgyz(db, manual_second_
         value=hydrological_round(Decimal("20.54")),
         norm_type=NormType.DECADAL,
         ordinal_number=1,
+        norm_metric=HydrologicalNormMetric.WATER_DISCHARGE,
     )
 
 
@@ -85,6 +87,7 @@ def decadal_discharge_norm_manual_third_hydro_station_kyrgyz(db, manual_third_hy
         value=hydrological_round(Decimal("70.44")),
         norm_type=NormType.DECADAL,
         ordinal_number=1,
+        norm_metric=HydrologicalNormMetric.WATER_DISCHARGE,
     )
 
 
@@ -95,6 +98,7 @@ def monthly_discharge_norm_manual_hydro_station_kyrgyz(db, manual_hydro_station_
         value=hydrological_round(Decimal("10.7")),
         norm_type=NormType.MONTHLY,
         ordinal_number=1,
+        norm_metric=HydrologicalNormMetric.WATER_DISCHARGE,
     )
 
 
@@ -105,6 +109,7 @@ def monthly_discharge_norm_manual_second_hydro_station_kyrgyz(db, manual_second_
         value=hydrological_round(Decimal(15.0)),
         norm_type=NormType.MONTHLY,
         ordinal_number=1,
+        norm_metric=HydrologicalNormMetric.WATER_DISCHARGE,
     )
 
 

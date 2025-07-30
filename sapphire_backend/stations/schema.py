@@ -116,18 +116,24 @@ class HydroStationBaseSchema(Schema):
     station_type: HydrologicalStation.StationType
     station_code: str
     measurement_time_step: int | None = None
-    discharge_level_alarm: float | None = None
-    historical_discharge_minimum: float | None = None
-    historical_discharge_maximum: float | None = None
     bulletin_order: int | None = 0
 
 
-class HydroStationInputSchema(HydroStationBaseSchema, Schema):
+class HydroStationExtremesSchema(Schema):
+    discharge_level_alarm: float | None = None
+    historical_discharge_minimum: float | None = None
+    historical_discharge_maximum: float | None = None
+    water_level_alarm: float | None = None
+    historical_water_level_minimum: float | None = None
+    historical_water_level_maximum: float | None = None
+
+
+class HydroStationInputSchema(HydroStationBaseSchema, HydroStationExtremesSchema, Schema):
     site_uuid: str = None
     site_data: SiteInputSchema = None
 
 
-class HydroStationUpdateSchema(HydroStationBaseSchema):
+class HydroStationUpdateSchema(HydroStationBaseSchema, HydroStationExtremesSchema):
     name: str | None = None
     station_type: HydrologicalStation.StationType | None = None
     station_code: str | None = None
@@ -143,7 +149,7 @@ class ForecastStatusSchema(Schema):
 
 
 class HydroStationOutputDetailSchema(
-    HydroStationBaseSchema, ForecastStatusSchema, RelatedStationsSchema, UUIDSchemaMixin
+    HydroStationBaseSchema, HydroStationExtremesSchema, ForecastStatusSchema, RelatedStationsSchema, UUIDSchemaMixin
 ):
     site: SiteOutputSchema
     id: int

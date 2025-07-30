@@ -62,6 +62,11 @@ class NormType(models.TextChoices):
     PENTADAL = "p", _("Pentadal")
 
 
+class HydrologicalNormMetric(models.TextChoices):
+    WATER_LEVEL = "water_level", _("Water level")
+    WATER_DISCHARGE = "discharge", _("Water discharge")
+
+
 class MeteorologicalNormMetric(models.TextChoices):
-    PRECIPITATION = "p", _("Precipitation")
-    TEMPERATURE = "t", _("Temperature")
+    PRECIPITATION = "precipitation", _("Precipitation")
+    TEMPERATURE = "temperature", _("Temperature")
