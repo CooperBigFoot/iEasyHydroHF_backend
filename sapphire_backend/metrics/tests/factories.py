@@ -48,7 +48,7 @@ class MeteorologicalMetricFactory(factory.django.DjangoModelFactory):
 class HydrologicalNormFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = HydrologicalNorm
-        django_get_or_create = ("station", "norm_type", "ordinal_number")
+        django_get_or_create = ("station", "norm_type", "norm_metric", "ordinal_number")
 
 
 class MeteorologicalNormFactory(factory.django.DjangoModelFactory):

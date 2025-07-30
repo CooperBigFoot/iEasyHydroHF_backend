@@ -46,7 +46,7 @@ class BaseNormFileParser(ABC):
 
 class MonthlyDischargeNormFileParser(BaseNormFileParser):
     def _get_sheet_names(self):
-        return ["discharge"]
+        return ["discharge", "water_level"]
 
     def parse(self):
         data = self._load_file()
@@ -65,7 +65,7 @@ class MonthlyDischargeNormFileParser(BaseNormFileParser):
 
 class DecadalDischargeNormFileParser(BaseNormFileParser):
     def _get_sheet_names(self):
-        return ["discharge"]
+        return ["discharge", "water_level"]
 
     def parse(self):
         data = self._load_file()
@@ -90,7 +90,7 @@ class DecadalDischargeNormFileParser(BaseNormFileParser):
 
 class PentadalDischargeNormFileParser(BaseNormFileParser):
     def _get_sheet_names(self):
-        return ["discharge"]
+        return ["discharge", "water_level"]
 
     def parse(self):
         data = self._load_file()

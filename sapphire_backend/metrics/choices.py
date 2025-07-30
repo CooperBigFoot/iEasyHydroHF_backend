@@ -68,5 +68,5 @@ class HydrologicalNormMetric(models.TextChoices):
 
 
 class MeteorologicalNormMetric(models.TextChoices):
-    PRECIPITATION = "p", _("Precipitation")
-    TEMPERATURE = "t", _("Temperature")
+    PRECIPITATION = "precipitation", _("Precipitation")
+    TEMPERATURE = "temperature", _("Temperature")

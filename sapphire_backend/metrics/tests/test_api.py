@@ -593,9 +593,18 @@ class TestHydroMetricsAPI:
             assert custom_round(entry_returned["avg_value"], 6) == custom_round(entry_expected["avg_value"], 6)
 
 
-class TestDischargeNormsAPI:
+class TestHydrologicalNormsAPI:
     endpoint = "/api/v1/hydrological-norms"
     decadal_test_file = os.path.join(Path(__file__).parent, "data", "decadal_hydro_norm_example.xlsx")
+    decadal_test_file_with_empty_sheets = os.path.join(
+        Path(__file__).parent, "data", "decadal_hydro_norm_empty_example.xlsx"
+    )
+    decadal_discharge_only_test_file = os.path.join(
+        Path(__file__).parent, "data", "decadal_hydro_norm_only_discharge_example.xlsx"
+    )
+    decadal_water_level_only_test_file = os.path.join(
+        Path(__file__).parent, "data", "decadal_hydro_norm_only_water_level_example.xlsx"
+    )
     monthly_test_file = os.path.join(Path(__file__).parent, "data", "monthly_hydro_norm_example.xlsx")
     pentadal_test_file = os.path.join(Path(__file__).parent, "data", "pentadal_hydro_norm_example.xlsx")
 
@@ -629,6 +638,42 @@ class TestDischargeNormsAPI:
 
         file = SimpleUploadedFile(
             self.pentadal_test_file,
+            file_content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        return file
+
+    def _get_decadal_discharge_only_test_file(self):
+        with open(self.decadal_discharge_only_test_file, "rb") as f:
+            file_content = f.read()
+
+        file = SimpleUploadedFile(
+            self.decadal_discharge_only_test_file,
+            file_content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        return file
+
+    def _get_decadal_water_level_only_test_file(self):
+        with open(self.decadal_water_level_only_test_file, "rb") as f:
+            file_content = f.read()
+
+        file = SimpleUploadedFile(
+            self.decadal_water_level_only_test_file,
+            file_content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        return file
+
+    def _get_decadal_empty_test_file(self):
+        with open(self.decadal_test_file_with_empty_sheets, "rb") as f:
+            file_content = f.read()
+
+        file = SimpleUploadedFile(
+            self.decadal_test_file_with_empty_sheets,
             file_content,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
@@ -738,7 +783,7 @@ class TestDischargeNormsAPI:
 
             assert response.status_code == 400
             assert response.json() == {
-                "detail": "Missing required sheets: 'test', found: 'discharge'",
+                "detail": "Missing required sheets: 'test', found: 'discharge, water_level'",
                 "code": "invalid_norm_file",
             }
 
@@ -763,7 +808,15 @@ class TestDischargeNormsAPI:
         )
 
         assert response.status_code == 201
-        assert HydrologicalNorm.objects.for_station(manual_hydro_station).decadal().count() == 36
+        # Check that both discharge and water level norms were created (if present in file)
+        discharge_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).decadal().filter(norm_metric="discharge")
+        )
+        water_level_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).decadal().filter(norm_metric="water_level")
+        )
+        assert discharge_norms.count() == 36
+        assert water_level_norms.count() == 36
 
     def test_upload_monthly_norm(self, authenticated_regular_user_api_client, manual_hydro_station):
         assert HydrologicalNorm.objects.for_station(manual_hydro_station).monthly().count() == 0
@@ -774,7 +827,15 @@ class TestDischargeNormsAPI:
         )
 
         assert response.status_code == 201
-        assert HydrologicalNorm.objects.for_station(manual_hydro_station).monthly().count() == 12
+        # Check that both discharge and water level norms were created (if present in file)
+        discharge_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).monthly().filter(norm_metric="discharge")
+        )
+        water_level_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).monthly().filter(norm_metric="water_level")
+        )
+        assert discharge_norms.count() == 12
+        assert water_level_norms.count() == 12
 
     def test_upload_pentadal_norm(self, authenticated_regular_user_api_client, manual_hydro_station):
         assert HydrologicalNorm.objects.for_station(manual_hydro_station).pentadal().count() == 0
@@ -785,7 +846,15 @@ class TestDischargeNormsAPI:
         )
 
         assert response.status_code == 201
-        assert HydrologicalNorm.objects.for_station(manual_hydro_station).pentadal().count() == 72
+        # Check that both discharge and water level norms were created (if present in file)
+        discharge_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).pentadal().filter(norm_metric="discharge")
+        )
+        water_level_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).pentadal().filter(norm_metric="water_level")
+        )
+        assert discharge_norms.count() == 72
+        assert water_level_norms.count() == 72
 
     def test_upload_monthly_norm_api_response(self, authenticated_regular_user_api_client, manual_hydro_station):
         file = self._get_monthly_test_file()
@@ -794,20 +863,36 @@ class TestDischargeNormsAPI:
         )
 
         current_year = dt.datetime.now().year
-        assert response.json() == [
-            {"timestamp_local": f"{current_year}-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
-            {"timestamp_local": f"{current_year}-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
-            {"timestamp_local": f"{current_year}-03-01T12:00:00Z", "ordinal_number": 3, "value": "3.00"},
-            {"timestamp_local": f"{current_year}-04-01T12:00:00Z", "ordinal_number": 4, "value": "4.00"},
-            {"timestamp_local": f"{current_year}-05-01T12:00:00Z", "ordinal_number": 5, "value": "5.00"},
-            {"timestamp_local": f"{current_year}-06-01T12:00:00Z", "ordinal_number": 6, "value": "6.00"},
-            {"timestamp_local": f"{current_year}-07-01T12:00:00Z", "ordinal_number": 7, "value": "7.00"},
-            {"timestamp_local": f"{current_year}-08-01T12:00:00Z", "ordinal_number": 8, "value": "8.00"},
-            {"timestamp_local": f"{current_year}-09-01T12:00:00Z", "ordinal_number": 9, "value": "9.00"},
-            {"timestamp_local": f"{current_year}-10-01T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
-            {"timestamp_local": f"{current_year}-11-01T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
-            {"timestamp_local": f"{current_year}-12-01T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
-        ]
+        assert response.json() == {
+            "discharge": [
+                {"timestamp_local": f"{current_year}-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
+                {"timestamp_local": f"{current_year}-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
+                {"timestamp_local": f"{current_year}-03-01T12:00:00Z", "ordinal_number": 3, "value": "3.00"},
+                {"timestamp_local": f"{current_year}-04-01T12:00:00Z", "ordinal_number": 4, "value": "4.00"},
+                {"timestamp_local": f"{current_year}-05-01T12:00:00Z", "ordinal_number": 5, "value": "5.00"},
+                {"timestamp_local": f"{current_year}-06-01T12:00:00Z", "ordinal_number": 6, "value": "6.00"},
+                {"timestamp_local": f"{current_year}-07-01T12:00:00Z", "ordinal_number": 7, "value": "7.00"},
+                {"timestamp_local": f"{current_year}-08-01T12:00:00Z", "ordinal_number": 8, "value": "8.00"},
+                {"timestamp_local": f"{current_year}-09-01T12:00:00Z", "ordinal_number": 9, "value": "9.00"},
+                {"timestamp_local": f"{current_year}-10-01T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
+                {"timestamp_local": f"{current_year}-11-01T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
+                {"timestamp_local": f"{current_year}-12-01T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
+            ],
+            "water_level": [
+                {"timestamp_local": f"{current_year}-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.50"},
+                {"timestamp_local": f"{current_year}-02-01T12:00:00Z", "ordinal_number": 2, "value": "2.50"},
+                {"timestamp_local": f"{current_year}-03-01T12:00:00Z", "ordinal_number": 3, "value": "3.50"},
+                {"timestamp_local": f"{current_year}-04-01T12:00:00Z", "ordinal_number": 4, "value": "4.50"},
+                {"timestamp_local": f"{current_year}-05-01T12:00:00Z", "ordinal_number": 5, "value": "5.50"},
+                {"timestamp_local": f"{current_year}-06-01T12:00:00Z", "ordinal_number": 6, "value": "6.50"},
+                {"timestamp_local": f"{current_year}-07-01T12:00:00Z", "ordinal_number": 7, "value": "7.50"},
+                {"timestamp_local": f"{current_year}-08-01T12:00:00Z", "ordinal_number": 8, "value": "8.50"},
+                {"timestamp_local": f"{current_year}-09-01T12:00:00Z", "ordinal_number": 9, "value": "9.50"},
+                {"timestamp_local": f"{current_year}-10-01T12:00:00Z", "ordinal_number": 10, "value": "10.5"},
+                {"timestamp_local": f"{current_year}-11-01T12:00:00Z", "ordinal_number": 11, "value": "11.5"},
+                {"timestamp_local": f"{current_year}-12-01T12:00:00Z", "ordinal_number": 12, "value": "12.5"},
+            ],
+        }
 
     def test_upload_decadal_norm_partial_api_response(
         self, authenticated_regular_user_api_client, manual_hydro_station
@@ -818,7 +903,7 @@ class TestDischargeNormsAPI:
         )
 
         current_year = dt.datetime.now().year
-        assert response.json()[:12] == [
+        assert response.json()["discharge"][:12] == [
             {"timestamp_local": f"{current_year}-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
             {"timestamp_local": f"{current_year}-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
             {"timestamp_local": f"{current_year}-01-25T12:00:00Z", "ordinal_number": 3, "value": "3.00"},
@@ -832,6 +917,20 @@ class TestDischargeNormsAPI:
             {"timestamp_local": f"{current_year}-04-15T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
             {"timestamp_local": f"{current_year}-04-25T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
         ]
+        assert response.json()["water_level"][:12] == [
+            {"timestamp_local": f"{current_year}-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.50"},
+            {"timestamp_local": f"{current_year}-01-15T12:00:00Z", "ordinal_number": 2, "value": "2.50"},
+            {"timestamp_local": f"{current_year}-01-25T12:00:00Z", "ordinal_number": 3, "value": "3.50"},
+            {"timestamp_local": f"{current_year}-02-05T12:00:00Z", "ordinal_number": 4, "value": "4.50"},
+            {"timestamp_local": f"{current_year}-02-15T12:00:00Z", "ordinal_number": 5, "value": "5.50"},
+            {"timestamp_local": f"{current_year}-02-25T12:00:00Z", "ordinal_number": 6, "value": "6.50"},
+            {"timestamp_local": f"{current_year}-03-05T12:00:00Z", "ordinal_number": 7, "value": "7.50"},
+            {"timestamp_local": f"{current_year}-03-15T12:00:00Z", "ordinal_number": 8, "value": "8.50"},
+            {"timestamp_local": f"{current_year}-03-25T12:00:00Z", "ordinal_number": 9, "value": "9.50"},
+            {"timestamp_local": f"{current_year}-04-05T12:00:00Z", "ordinal_number": 10, "value": "10.5"},
+            {"timestamp_local": f"{current_year}-04-15T12:00:00Z", "ordinal_number": 11, "value": "11.5"},
+            {"timestamp_local": f"{current_year}-04-25T12:00:00Z", "ordinal_number": 12, "value": "12.5"},
+        ]
 
     def test_upload_pentadal_norm_partial_api_response(
         self, authenticated_regular_user_api_client, manual_hydro_station
@@ -842,7 +941,7 @@ class TestDischargeNormsAPI:
         )
 
         current_year = dt.datetime.now().year
-        assert response.json()[:12] == [
+        assert response.json()["discharge"][:12] == [
             {"timestamp_local": f"{current_year}-01-03T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
             {"timestamp_local": f"{current_year}-01-08T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
             {"timestamp_local": f"{current_year}-01-13T12:00:00Z", "ordinal_number": 3, "value": "3.00"},
@@ -852,9 +951,23 @@ class TestDischargeNormsAPI:
             {"timestamp_local": f"{current_year}-02-03T12:00:00Z", "ordinal_number": 7, "value": "7.00"},
             {"timestamp_local": f"{current_year}-02-08T12:00:00Z", "ordinal_number": 8, "value": "8.00"},
             {"timestamp_local": f"{current_year}-02-13T12:00:00Z", "ordinal_number": 9, "value": "9.00"},
-            {"timestamp_local": f"{current_year}-02-18T12:00:00Z", "ordinal_number": 10, "value": "1.00"},
-            {"timestamp_local": f"{current_year}-02-23T12:00:00Z", "ordinal_number": 11, "value": "2.00"},
-            {"timestamp_local": f"{current_year}-02-28T12:00:00Z", "ordinal_number": 12, "value": "3.00"},
+            {"timestamp_local": f"{current_year}-02-18T12:00:00Z", "ordinal_number": 10, "value": "10.0"},
+            {"timestamp_local": f"{current_year}-02-23T12:00:00Z", "ordinal_number": 11, "value": "11.0"},
+            {"timestamp_local": f"{current_year}-02-28T12:00:00Z", "ordinal_number": 12, "value": "12.0"},
+        ]
+        assert response.json()["water_level"][:12] == [
+            {"timestamp_local": f"{current_year}-01-03T12:00:00Z", "ordinal_number": 1, "value": "1.50"},
+            {"timestamp_local": f"{current_year}-01-08T12:00:00Z", "ordinal_number": 2, "value": "2.50"},
+            {"timestamp_local": f"{current_year}-01-13T12:00:00Z", "ordinal_number": 3, "value": "3.50"},
+            {"timestamp_local": f"{current_year}-01-18T12:00:00Z", "ordinal_number": 4, "value": "4.50"},
+            {"timestamp_local": f"{current_year}-01-23T12:00:00Z", "ordinal_number": 5, "value": "5.50"},
+            {"timestamp_local": f"{current_year}-01-28T12:00:00Z", "ordinal_number": 6, "value": "6.50"},
+            {"timestamp_local": f"{current_year}-02-03T12:00:00Z", "ordinal_number": 7, "value": "7.50"},
+            {"timestamp_local": f"{current_year}-02-08T12:00:00Z", "ordinal_number": 8, "value": "8.50"},
+            {"timestamp_local": f"{current_year}-02-13T12:00:00Z", "ordinal_number": 9, "value": "9.50"},
+            {"timestamp_local": f"{current_year}-02-18T12:00:00Z", "ordinal_number": 10, "value": "10.5"},
+            {"timestamp_local": f"{current_year}-02-23T12:00:00Z", "ordinal_number": 11, "value": "11.5"},
+            {"timestamp_local": f"{current_year}-02-28T12:00:00Z", "ordinal_number": 12, "value": "12.5"},
         ]
 
     def test_upload_norm_overwrites_existing_records(
@@ -862,13 +975,19 @@ class TestDischargeNormsAPI:
     ):
         for i in range(1, 13):
             _ = HydrologicalNorm.objects.create(
-                station=manual_hydro_station, norm_type=NormType.MONTHLY, value=i + 10, ordinal_number=i
+                station=manual_hydro_station,
+                norm_type=NormType.MONTHLY,
+                value=i + 10,
+                ordinal_number=i,
+                norm_metric="discharge",
             )
 
-        norms = HydrologicalNorm.objects.for_station(manual_hydro_station).monthly()
+        discharge_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).monthly().filter(norm_metric="discharge")
+        )
 
-        assert norms.count() == 12
-        assert list(norms.values_list("value", flat=True)) == [
+        assert discharge_norms.count() == 12
+        assert list(discharge_norms.values_list("value", flat=True)) == [
             Decimal("11.00000"),
             Decimal("12.00000"),
             Decimal("13.00000"),
@@ -888,8 +1007,12 @@ class TestDischargeNormsAPI:
             f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m", {"file": file}, format="multipart"
         )
 
-        assert norms.count() == 12
-        assert list(norms.values_list("value", flat=True)) == [
+        # Check that discharge norms were overwritten
+        discharge_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).monthly().filter(norm_metric="discharge")
+        )
+        assert discharge_norms.count() == 12
+        assert list(discharge_norms.values_list("value", flat=True)) == [
             Decimal("1.00000"),
             Decimal("2.00000"),
             Decimal("3.00000"),
@@ -904,25 +1027,169 @@ class TestDischargeNormsAPI:
             Decimal("12.00000"),
         ]
 
+    def test_upload_decadal_norm_with_only_discharge_sheet(
+        self,
+        authenticated_regular_user_api_client,
+        manual_hydro_station,
+        decadal_water_level_norm_first,
+        decadal_water_level_norm_second,
+    ):
+        """Test uploading a file with only discharge sheet - should fail validation."""
+        # Verify initial state - water level norms exist from fixtures
+        assert (
+            HydrologicalNorm.objects.for_station(manual_hydro_station)
+            .decadal()
+            .filter(norm_metric="discharge")
+            .count()
+            == 0
+        )
+        assert (
+            HydrologicalNorm.objects.for_station(manual_hydro_station)
+            .decadal()
+            .filter(norm_metric="water_level")
+            .count()
+            == 2
+        )
+
+        # Upload file with only discharge sheet - should fail validation
+        file = self._get_decadal_discharge_only_test_file()
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", {"file": file}, format="multipart"
+        )
+
+        assert response.status_code == 400
+        assert "Missing required sheets" in response.json()["detail"]
+
+    def test_upload_decadal_norm_with_only_water_level_sheet(
+        self,
+        authenticated_regular_user_api_client,
+        manual_hydro_station,
+        decadal_discharge_norm_first,
+        decadal_discharge_norm_second,
+    ):
+        """Test uploading a file with only water level sheet - should fail validation."""
+        # Verify initial state - discharge norms exist from fixtures
+        assert (
+            HydrologicalNorm.objects.for_station(manual_hydro_station)
+            .decadal()
+            .filter(norm_metric="discharge")
+            .count()
+            == 2
+        )
+        assert (
+            HydrologicalNorm.objects.for_station(manual_hydro_station)
+            .decadal()
+            .filter(norm_metric="water_level")
+            .count()
+            == 0
+        )
+
+        # Upload file with only water level sheet - should fail validation
+        file = self._get_decadal_water_level_only_test_file()
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", {"file": file}, format="multipart"
+        )
+
+        assert response.status_code == 400
+        assert "Missing required sheets" in response.json()["detail"]
+
+    def test_upload_decadal_norm_with_both_sheets(
+        self,
+        authenticated_regular_user_api_client,
+        manual_hydro_station,
+        decadal_discharge_norm_first,
+        decadal_discharge_norm_second,
+        decadal_water_level_norm_first,
+        decadal_water_level_norm_second,
+    ):
+        """Test uploading a file with both discharge and water level sheets."""
+        # Verify initial state - norms exist from fixtures
+        assert HydrologicalNorm.objects.for_station(manual_hydro_station).decadal().count() == 4
+
+        # Upload file with both sheets
+        file = self._get_decadal_test_file()
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", {"file": file}, format="multipart"
+        )
+
+        assert response.status_code == 201
+        response_data = response.json()
+
+        # Verify response contains both discharge and water level data
+        assert "discharge" in response_data
+        assert "water_level" in response_data
+        assert len(response_data["discharge"]) == 36
+        assert len(response_data["water_level"]) == 36
+
+        # Verify database state - existing norms should be replaced with new ones
+        discharge_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).decadal().filter(norm_metric="discharge")
+        )
+        water_level_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).decadal().filter(norm_metric="water_level")
+        )
+        assert discharge_norms.count() == 36
+        assert water_level_norms.count() == 36
+
+    def test_upload_decadal_norm_with_empty_sheets(
+        self,
+        authenticated_regular_user_api_client,
+        manual_hydro_station,
+        decadal_discharge_norm_first,
+        decadal_discharge_norm_second,
+        decadal_water_level_norm_first,
+        decadal_water_level_norm_second,
+    ):
+        """Test uploading a file with existing sheets but empty data - should delete existing norms."""
+        # Verify initial state - norms exist from fixtures
+        assert HydrologicalNorm.objects.for_station(manual_hydro_station).decadal().count() == 4
+
+        # Upload file with empty sheets
+        file = self._get_decadal_empty_test_file()
+        response = authenticated_regular_user_api_client.post(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d", {"file": file}, format="multipart"
+        )
+
+        assert response.status_code == 201
+        response_data = response.json()
+
+        # Verify response contains empty arrays for both sheets
+        assert "discharge" in response_data
+        assert "water_level" in response_data
+        assert len(response_data["discharge"]) == 0
+        assert len(response_data["water_level"]) == 0
+
+        # Verify that existing norms were deleted since sheets were empty
+        discharge_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).decadal().filter(norm_metric="discharge")
+        )
+        water_level_norms = (
+            HydrologicalNorm.objects.for_station(manual_hydro_station).decadal().filter(norm_metric="water_level")
+        )
+        assert discharge_norms.count() == 0
+        assert water_level_norms.count() == 0
+
     def test_get_norm_for_anonymous_user(self, api_client, manual_hydro_station):
-        response = api_client.get(f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m")
+        response = api_client.get(f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m&metric=discharge")
         assert response.status_code == 401
 
     def test_get_norm_for_station_in_different_organization(
         self, authenticated_regular_user_other_organization_api_client, manual_hydro_station
     ):
         response = authenticated_regular_user_other_organization_api_client.get(
-            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m&metric=discharge"
         )
         assert response.status_code == 403
 
     def test_get_norm_for_non_existent_station(self, authenticated_regular_user_api_client):
-        response = authenticated_regular_user_api_client.get(f"{self.endpoint}/{uuid.uuid4()}?norm_type=m")
+        response = authenticated_regular_user_api_client.get(
+            f"{self.endpoint}/{uuid.uuid4()}?norm_type=m&metric=discharge"
+        )
         assert response.status_code == 403  # not ideal, permission class can't find the station so the check fails
 
     def test_get_norm_for_station_with_no_data(self, authenticated_regular_user_api_client, manual_hydro_station):
         response = authenticated_regular_user_api_client.get(
-            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m&metric=discharge"
         )
         assert response.status_code == 200
         assert response.json() == []
@@ -940,7 +1207,7 @@ class TestDischargeNormsAPI:
     ):
         current_year = dt.datetime.now().year
         response = authenticated_regular_user_api_client.get(
-            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d&metric=discharge"
         )
         assert response.json() == [
             {"timestamp_local": f"{current_year}-01-05T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
@@ -960,7 +1227,7 @@ class TestDischargeNormsAPI:
     ):
         current_year = dt.datetime.now(dt.timezone.utc).year
         response = authenticated_regular_user_api_client.get(
-            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m&metric=discharge"
         )
         assert response.json() == [
             {"timestamp_local": f"{current_year}-01-01T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
@@ -980,12 +1247,44 @@ class TestDischargeNormsAPI:
     ):
         current_year = dt.datetime.now().year
         response = authenticated_regular_user_api_client.get(
-            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=p"
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=p&metric=discharge"
         )
         assert response.json() == [
             {"timestamp_local": f"{current_year}-01-03T12:00:00Z", "ordinal_number": 1, "value": "1.00"},
             {"timestamp_local": f"{current_year}-01-08T12:00:00Z", "ordinal_number": 2, "value": "2.00"},
         ]
+
+    def test_get_norm_with_water_level_metric(
+        self,
+        authenticated_regular_user_api_client,
+        manual_hydro_station,
+        decadal_discharge_norm_first,
+        decadal_discharge_norm_second,
+        monthly_discharge_norm_first,
+        monthly_discharge_norm_second,
+        pentadal_discharge_norm_first,
+        pentadal_discharge_norm_second,
+    ):
+        """Test getting norms with water_level metric parameter."""
+        response = authenticated_regular_user_api_client.get(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=d&metric=water_level"
+        )
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_get_norm_with_invalid_metric(self, authenticated_regular_user_api_client, manual_hydro_station):
+        """Test getting norms with invalid metric parameter."""
+        response = authenticated_regular_user_api_client.get(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m&metric=invalid_metric"
+        )
+        assert response.status_code == 422  # Should fail validation
+
+    def test_get_norm_without_metric_parameter(self, authenticated_regular_user_api_client, manual_hydro_station):
+        """Test getting norms without metric parameter (should fail)."""
+        response = authenticated_regular_user_api_client.get(
+            f"{self.endpoint}/{manual_hydro_station.uuid}?norm_type=m"
+        )
+        assert response.status_code == 422  # Should fail validation
 
 
 class TestSDKDataValuesAPIController:

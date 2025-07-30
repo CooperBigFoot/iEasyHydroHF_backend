@@ -335,16 +335,21 @@ class HydrologicalNorm(NormModelMixin, models.Model):
     objects = HydrologicalNormQuerySet.as_manager()
 
     class Meta:
-        verbose_name = _("Discharge norm")
-        verbose_name_plural = _("Discharge norms")
+        verbose_name = _("Hydrological norm")
+        verbose_name_plural = _("Hydrological norms")
         ordering = ["ordinal_number"]
         constraints = [
-            models.UniqueConstraint("station", "ordinal_number", "norm_type", name="discharge_norm_unique_cn")
+            models.UniqueConstraint(
+                "station", "ordinal_number", "norm_type", "norm_metric", name="hydrological_norm_unique_cn"
+            )
         ]
-        indexes = [models.Index("norm_type", name="discharge_norm_type_idx")]
+        indexes = [
+            models.Index("norm_type", name="hydrological_norm_type_idx"),
+            models.Index("norm_metric", name="hydrological_norm_metric_idx"),
+        ]
 
     def __str__(self):
-        return f"Discharge norm {self.station.name} ({self.norm_type} - {self.ordinal_number})"
+        return f"Hydrological norm {self.station.name} ({self.norm_type}, {self.norm_metric} - {self.ordinal_number})"
 
 
 class MeteorologicalNorm(NormModelMixin, models.Model):
@@ -358,7 +363,7 @@ class MeteorologicalNorm(NormModelMixin, models.Model):
         verbose_name=_("Norm type"),
         choices=MeteorologicalNormMetric,
         default=MeteorologicalNormMetric.PRECIPITATION,
-        max_length=2,
+        max_length=20,
     )
 
     objects = MeteorologicalNormQuerySet.as_manager()

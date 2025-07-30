@@ -50,6 +50,7 @@ from ..estimations.models import (
 from .choices import (
     HydrologicalMeasurementType,
     HydrologicalMetricName,
+    HydrologicalNormMetric,
     MeteorologicalMeasurementType,
     MeteorologicalMetricName,
     MeteorologicalNormMetric,
@@ -627,7 +628,11 @@ class HydrologicalNormsAPIController:
                 norm_type=norm_type.norm_type.value, norm_metric=metric.metric.value
             )
 
-    @route.post("{station_uuid}", response={201: list[HydrologicalNormOutputSchema]}, permissions=regular_permissions)
+    @route.post(
+        "{station_uuid}",
+        response={201: dict[str, list[HydrologicalNormOutputSchema]]},
+        permissions=regular_permissions,
+    )
     def upload_hydro_station_norm(
         self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema], file: UploadedFile = File(...)
     ):
@@ -638,32 +643,66 @@ class HydrologicalNormsAPIController:
         else:  # MONTHLY
             parser_class = MonthlyDischargeNormFileParser
         data = parser_class(file).parse()
-        _ = HydrologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value).delete()
 
-        norms = HydrologicalNorm.objects.bulk_create(
-            [
-                HydrologicalNorm(
-                    station_id=station_uuid,
-                    value=hydrological_round(point["value"]),
-                    ordinal_number=point["ordinal_number"],
-                    norm_type=norm_type.norm_type.value,
-                )
-                for point in data["discharge"]
-                if not math.isnan(point["value"])
-            ]
-        )
+        discharge_norms = []
+        water_level_norms = []
 
-        return 201, norms
+        if "discharge" in data:
+            _ = (
+                HydrologicalNorm.objects.for_station(station_uuid)
+                .filter(norm_type=norm_type.norm_type.value, norm_metric=HydrologicalNormMetric.WATER_DISCHARGE)
+                .delete()
+            )
+            discharge_norms = HydrologicalNorm.objects.bulk_create(
+                [
+                    HydrologicalNorm(
+                        station_id=station_uuid,
+                        value=hydrological_round(point["value"]),
+                        ordinal_number=point["ordinal_number"],
+                        norm_type=norm_type.norm_type.value,
+                        norm_metric=HydrologicalNormMetric.WATER_DISCHARGE,
+                    )
+                    for point in data["discharge"]
+                    if not math.isnan(point["value"])
+                ]
+            )
+
+        if "water_level" in data:
+            _ = (
+                HydrologicalNorm.objects.for_station(station_uuid)
+                .filter(norm_type=norm_type.norm_type.value, norm_metric=HydrologicalNormMetric.WATER_LEVEL)
+                .delete()
+            )
+            water_level_norms = HydrologicalNorm.objects.bulk_create(
+                [
+                    HydrologicalNorm(
+                        station_id=station_uuid,
+                        value=hydrological_round(point["value"]),
+                        ordinal_number=point["ordinal_number"],
+                        norm_type=norm_type.norm_type.value,
+                        norm_metric=HydrologicalNormMetric.WATER_LEVEL,
+                    )
+                    for point in data["water_level"]
+                    if not math.isnan(point["value"])
+                ]
+            )
+
+        return 201, {
+            "discharge": discharge_norms,
+            "water_level": water_level_norms,
+        }
 
     @route.get("{station_uuid}/download", response={200: None, 404: Message})
     def download_discharge_norm(self, station_uuid: str, norm_type: Query[HydrologicalNormTypeFiltersSchema]):
         station = HydrologicalStation.objects.get(uuid=station_uuid)
         norm_data = HydrologicalNorm.objects.for_station(station_uuid).filter(norm_type=norm_type.norm_type.value)
-        output_df = create_norm_dataframe(norm_data, norm_type.norm_type)
-
         buffer = io.BytesIO()
+
         with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            output_df.to_excel(writer, index=False, sheet_name="discharge")
+            for norm_metric in [HydrologicalNormMetric.WATER_DISCHARGE, HydrologicalNormMetric.WATER_LEVEL]:
+                norm_metric_data = norm_data.filter(norm_metric=norm_metric)
+                output_df = create_norm_dataframe(norm_metric_data, norm_type.norm_type)
+                output_df.to_excel(writer, index=False, sheet_name=norm_metric)
 
         output_filename = f"historic-data-discharge-{station.station_code}.xlsx"
         buffer.seek(0)
@@ -695,7 +734,7 @@ class MeteorologicalNormsAPIController:
         self, station_uuid: str, norm_filters: Query[MeteorologicalNormTypeFiltersSchema]
     ):
         return MeteorologicalNorm.objects.for_station(station_uuid).filter(
-            norm_type=norm_filters.norm_type.value, norm_metric=norm_filters.norm_metric.value
+            norm_type=norm_filters.norm_type.value, norm_metric=norm_filters.metric.value
         )
 
     @route.post(

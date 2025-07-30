@@ -230,7 +230,7 @@ class HydrologicalNormMetricFiltersSchema(FilterSchema):
 
 
 class MeteorologicalNormTypeFiltersSchema(HydrologicalNormTypeFiltersSchema):
-    norm_metric: MeteorologicalNormMetric
+    metric: MeteorologicalNormMetric
 
 
 class HydrologicalNormOutputSchema(ModelSchema):
